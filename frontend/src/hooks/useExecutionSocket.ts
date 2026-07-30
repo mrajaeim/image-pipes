@@ -10,6 +10,7 @@ export function useExecutionSocket() {
   const setActiveNodeId = useGraphStore((s) => s.setActiveNodeId)
   const addPreview = useGraphStore((s) => s.addPreview)
   const appendLog = useGraphStore((s) => s.appendLog)
+  const setNodeTiming = useGraphStore((s) => s.setNodeTiming)
   const toGraphPayload = useGraphStore((s) => s.toGraphPayload)
   const seed = useGraphStore((s) => s.seed)
   const sampleCount = useGraphStore((s) => s.sampleCount)
@@ -45,7 +46,19 @@ export function useExecutionSocket() {
       const event = JSON.parse(message.data) as ExecutionEvent
       if (event.type === 'progress' && event.node_id) {
         setActiveNodeId(event.node_id)
-        if (event.message) appendLog(event.message)
+        if (event.duration_ms != null) {
+          setNodeTiming(event.node_id, {
+            ms: event.duration_ms,
+            cacheHit: Boolean(event.cache_hit),
+          })
+          appendLog(
+            event.message ??
+              `${event.node_id} ${event.duration_ms.toFixed(1)}ms` +
+                (event.cache_hit ? ' (cache)' : ''),
+          )
+        } else if (event.message) {
+          appendLog(event.message)
+        }
       }
       if (event.type === 'preview' && event.node_id && event.image_b64) {
         addPreview({
@@ -98,6 +111,7 @@ export function useExecutionSocket() {
     seed,
     setActiveNodeId,
     setIsExecuting,
+    setNodeTiming,
     toGraphPayload,
   ])
 
