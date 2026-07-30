@@ -31,6 +31,8 @@ type ImageItem = {
 const CELL_WIDTH = 150
 const IMAGE_HEIGHT = 140
 const HEADER_HEIGHT = 44
+const PORT_SLOT = 56
+const PORT_INSET = 14
 const MAX_VISIBLE_ROWS = 8
 
 const handleBaseStyle: React.CSSProperties = {
@@ -60,8 +62,10 @@ function portLabel(portId: string | undefined, ports: PortSpec[]): string | unde
 
 function sideHandleTop(index: number, total: number, contentHeight: number): number {
   if (total <= 1) return HEADER_HEIGHT + contentHeight / 2
-  const slot = contentHeight / total
-  return HEADER_HEIGHT + slot * index + slot / 2
+  const inset = Math.min(PORT_INSET, contentHeight / 4)
+  const usable = Math.max(contentHeight - inset * 2, 1)
+  const slot = usable / total
+  return HEADER_HEIGHT + inset + slot * index + slot / 2
 }
 
 function PortTag({
@@ -249,9 +253,9 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
   const sectionPorts = grid.sectionPorts
   const columnCount = Math.max(1, grid.columns.length)
   const rowCount = Math.max(1, grid.rows.length)
-  // Keep enough height for stacked multi-input/output port handles without fake body sections.
+  // Grow the body so every stacked port handle stays inside the node chrome.
   const portCount = Math.max(inputPorts.length, outputPorts.length, 1)
-  const contentHeight = Math.max(rowCount * IMAGE_HEIGHT, portCount > 1 ? portCount * 52 : IMAGE_HEIGHT)
+  const contentHeight = Math.max(rowCount * IMAGE_HEIGHT, portCount * PORT_SLOT)
   const nodeWidth = columnCount * CELL_WIDTH
 
   useEffect(() => {
@@ -356,8 +360,10 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
           sx={{
             position: 'relative',
             overflow: 'hidden',
+            minHeight: contentHeight,
             borderBottomLeftRadius: 10,
             borderBottomRightRadius: 10,
+            bgcolor: '#141414',
           }}
         >
           {timing && (
