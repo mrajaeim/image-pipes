@@ -35,6 +35,8 @@ class Edge(BaseModel):
     source_port: str = "image"
     target: str
     target_port: str = "image"
+    # Frontend-only bend anchors; ignored by the executor.
+    waypoints: list[dict[str, float]] | None = None
 
 
 class Graph(BaseModel):
