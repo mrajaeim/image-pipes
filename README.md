@@ -117,7 +117,7 @@ docker compose up --build
 7. Use **Export** / **Load** for workflow JSON; **Export Python** for a standalone script.
 8. Open **About** (info button next to the brand) for license and GitHub.
 
-Example workflows live under [`backend/examples/`](backend/examples/) (e.g. [`blur_canny.json`](backend/examples/blur_canny.json), [`albumentations_augment.json`](backend/examples/albumentations_augment.json); image: [`lena.png`](backend/examples/lena.png)).
+Example workflows live under [`backend/examples/`](backend/examples/) (e.g. Blur & Canny, Albu Augment, HSV Color Mask, CLAHE & Sharpen, K-Means Palette; image: [`lena.png`](backend/examples/lena.png)).
 
 ## Albumentations augments
 

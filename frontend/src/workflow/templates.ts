@@ -37,4 +37,22 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     description: 'Annotations + color jitter + flip with synced bboxes/keypoints.',
     path: '/examples/albumentations_augment.json',
   },
+  {
+    id: 'hsv_color_mask',
+    name: 'HSV Color Mask',
+    description: 'HSV in-range mask then apply to the original image.',
+    path: '/examples/hsv_color_mask.json',
+  },
+  {
+    id: 'clahe_sharpen',
+    name: 'CLAHE & Sharpen',
+    description: 'Local contrast (CLAHE) followed by sharpening.',
+    path: '/examples/clahe_sharpen.json',
+  },
+  {
+    id: 'kmeans_palette',
+    name: 'K-Means Palette',
+    description: 'Quantize colors with k-means for a compact palette.',
+    path: '/examples/kmeans_palette.json',
+  },
 ]

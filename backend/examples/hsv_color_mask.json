@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "name": "hsv-color-mask",
+  "description": "HSV in-range mask then apply to the original — classic color segmentation.",
+  "seed": 0,
+  "sampleCount": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "load-1",
+        "type": "load_image",
+        "params": { "path": "examples/lena.png" },
+        "position": { "x": 0, "y": 80 }
+      },
+      {
+        "id": "hsv-1",
+        "type": "to_hsv",
+        "params": {},
+        "position": { "x": 240, "y": 0 }
+      },
+      {
+        "id": "range-1",
+        "type": "in_range",
+        "params": {
+          "space": "hsv",
+          "c0_min": 0,
+          "c0_max": 25,
+          "c1_min": 40,
+          "c1_max": 180,
+          "c2_min": 60,
+          "c2_max": 255,
+          "output": "mask"
+        },
+        "position": { "x": 460, "y": 0 }
+      },
+      {
+        "id": "mask-1",
+        "type": "apply_mask",
+        "params": { "fill": "black" },
+        "position": { "x": 680, "y": 80 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "load-1",
+        "source_port": "image",
+        "target": "hsv-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e2",
+        "source": "hsv-1",
+        "source_port": "image",
+        "target": "range-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e3",
+        "source": "load-1",
+        "source_port": "image",
+        "target": "mask-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e4",
+        "source": "range-1",
+        "source_port": "image",
+        "target": "mask-1",
+        "target_port": "mask"
+      }
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "name": "kmeans-palette",
+  "description": "K-means color quantization — reduce the image to a small palette.",
+  "seed": 0,
+  "sampleCount": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "load-1",
+        "type": "load_image",
+        "params": { "path": "examples/lena.png" },
+        "position": { "x": 0, "y": 0 }
+      },
+      {
+        "id": "kmeans-1",
+        "type": "kmeans_colors",
+        "params": {
+          "k": 6,
+          "attempts": 3,
+          "output": "quantized",
+          "palette_height": 48
+        },
+        "position": { "x": 260, "y": 0 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "load-1",
+        "source_port": "image",
+        "target": "kmeans-1",
+        "target_port": "image"
+      }
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "name": "clahe-sharpen",
+  "description": "CLAHE contrast boost then sharpen — local contrast enhancement.",
+  "seed": 0,
+  "sampleCount": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "load-1",
+        "type": "load_image",
+        "params": { "path": "examples/lena.png" },
+        "position": { "x": 0, "y": 0 }
+      },
+      {
+        "id": "clahe-1",
+        "type": "clahe",
+        "params": { "clip_limit": 3.0, "tile_grid": 8 },
+        "position": { "x": 240, "y": 0 }
+      },
+      {
+        "id": "sharpen-1",
+        "type": "sharpen",
+        "params": { "amount": 1.2, "kernel": "laplacian" },
+        "position": { "x": 480, "y": 0 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "load-1",
+        "source_port": "image",
+        "target": "clahe-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e2",
+        "source": "clahe-1",
+        "source_port": "image",
+        "target": "sharpen-1",
+        "target_port": "image"
+      }
+    ]
+  }
+}
