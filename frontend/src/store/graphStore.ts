@@ -10,6 +10,8 @@ import {
 } from '@xyflow/react'
 import { create } from 'zustand'
 import type { ExecutionPreview, GraphNodeData, NodeMetadata } from '../types'
+import type { WorkflowDocument, WorkflowGraphPayload } from '../workflow/io'
+
 
 type PipelineNode = Node<GraphNodeData>
 
@@ -64,24 +66,21 @@ interface GraphState {
   setSampleCount: (count: number) => void
   getInputImages: (nodeId: string) => string[]
   getResultImages: (nodeId: string) => string[]
-  toGraphPayload: () => {
-    nodes: Array<{
-      id: string
-      type: string
-      params: Record<string, unknown>
-      position: { x: number; y: number }
-    }>
-    edges: Array<{
-      id: string
-      source: string
-      source_port: string
-      target: string
-      target_port: string
-    }>
-  }
+  toGraphPayload: () => WorkflowGraphPayload
+  toWorkflowDocument: () => WorkflowDocument
+  loadWorkflow: (doc: WorkflowDocument) => { skippedTypes: string[] }
 }
 
 let nodeCounter = 1
+
+function syncNodeCounter(nodeIds: string[]) {
+  let max = 0
+  for (const id of nodeIds) {
+    const match = /-(\d+)$/.exec(id)
+    if (match) max = Math.max(max, Number(match[1]))
+  }
+  nodeCounter = Math.max(nodeCounter, max + 1)
+}
 
 function emptyNodeImages(): NodeImageState {
   return { result: null, samples: [], ports: {}, portSamples: {} }
@@ -460,5 +459,80 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         target_port: edge.targetHandle ?? 'image',
       })),
     }
+  },
+
+  toWorkflowDocument: () => {
+    const { seed, sampleCount } = get()
+    return {
+      version: 1 as const,
+      seed,
+      sampleCount,
+      graph: get().toGraphPayload(),
+    }
+  },
+
+  loadWorkflow: (doc) => {
+    const catalogByType = Object.fromEntries(
+      get().nodeCatalog.map((meta) => [meta.type, meta]),
+    )
+    const skipped = new Set<string>()
+    const nodes: PipelineNode[] = []
+    const keptIds = new Set<string>()
+
+    for (const raw of doc.graph.nodes) {
+      const meta = catalogByType[raw.type]
+      if (!meta) {
+        skipped.add(raw.type)
+        continue
+      }
+      keptIds.add(raw.id)
+      nodes.push({
+        id: raw.id,
+        type: 'pipeline',
+        position: raw.position,
+        data: {
+          type: meta.type,
+          label: meta.label,
+          category: meta.category,
+          params: { ...raw.params },
+          ports: meta.ports,
+          localPreviewUrls: [],
+          active: false,
+        },
+      })
+    }
+
+    const edges: Edge[] = doc.graph.edges
+      .filter((edge) => keptIds.has(edge.source) && keptIds.has(edge.target))
+      .map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.source_port,
+        targetHandle: edge.target_port,
+        type: 'editable',
+        zIndex: 1000,
+        reconnectable: true,
+        selectable: true,
+        data: { waypoints: [] },
+      }))
+
+    syncNodeCounter(nodes.map((node) => node.id))
+
+    set({
+      nodes,
+      edges,
+      selectedNodeId: null,
+      activeNodeId: null,
+      previews: [],
+      nodeImages: {},
+      logs: [],
+      isExecuting: false,
+      generatedCode: '# Run codegen to export a Python script\n',
+      seed: doc.seed,
+      sampleCount: Math.max(1, doc.sampleCount),
+    })
+
+    return { skippedTypes: [...skipped].sort() }
   },
 }))
