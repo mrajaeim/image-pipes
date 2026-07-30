@@ -39,6 +39,7 @@ from app.nodes.filters import (
 )
 from app.nodes.geometry import CropNode, FlipNode, ResizeNode, RotateNode
 from app.nodes.io import BlankImageNode, LoadImageNode, PreviewNode, SaveImageNode
+from app.nodes.math import ApplyMaskNode
 from app.nodes.morphology import DilateNode, ErodeNode, MorphologyExNode
 from app.nodes.stochastic import GaussianNoiseNode, RandomBrightnessContrastNode
 from app.nodes.structure import (
@@ -76,6 +77,7 @@ def register_builtin_nodes() -> None:
         SplitChannelsNode(),
         MergeChannelsNode(),
         InRangeNode(),
+        ApplyMaskNode(),
         GaussianBlurNode(),
         MedianBlurNode(),
         BoxBlurNode(),
