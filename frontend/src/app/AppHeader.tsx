@@ -1,11 +1,14 @@
 import {
   Box,
   Button,
+  IconButton,
   Stack,
   TextField,
   Typography,
 } from '@mui/material'
+import { useState } from 'react'
 import { useGraphStore } from '../store/graphStore'
+import { ProjectInfoModal } from './ProjectInfoModal'
 
 const fieldSx = {
   width: 92,
@@ -159,6 +162,7 @@ export function AppHeader({
   const isExecuting = useGraphStore((s) => s.isExecuting)
   const nodeCount = useGraphStore((s) => s.nodes.length)
   const edgeCount = useGraphStore((s) => s.edges.length)
+  const [infoOpen, setInfoOpen] = useState(false)
 
   return (
     <Box
@@ -177,33 +181,81 @@ export function AppHeader({
       }}
     >
       <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>
-        <BrandMark />
-        <Box sx={{ minWidth: 0 }}>
-          <Typography
-            component="h1"
-            sx={{
-              fontFamily: '"Fraunces", Georgia, serif',
-              fontWeight: 700,
-              fontSize: 20,
-              lineHeight: 1.1,
-              color: '#f4f1ea',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            Image Pipes
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: 11,
-              color: 'rgba(244,241,234,0.45)',
-              lineHeight: 1.2,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            OpenCV pipeline playground
-          </Typography>
+        <Box
+          component="button"
+          type="button"
+          onClick={() => setInfoOpen(true)}
+          aria-label="About Image Pipes"
+          sx={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 1.25,
+            m: 0,
+            p: 0.5,
+            pr: 1,
+            border: '1px solid transparent',
+            borderRadius: 1.5,
+            bgcolor: 'transparent',
+            cursor: 'pointer',
+            color: 'inherit',
+            minWidth: 0,
+            '&:hover': {
+              bgcolor: 'rgba(255,255,255,0.04)',
+              borderColor: 'rgba(255,255,255,0.08)',
+            },
+          }}
+        >
+          <BrandMark />
+          <Box sx={{ minWidth: 0, textAlign: 'left' }}>
+            <Typography
+              component="h1"
+              sx={{
+                fontFamily: '"Fraunces", Georgia, serif',
+                fontWeight: 700,
+                fontSize: 20,
+                lineHeight: 1.1,
+                color: '#f4f1ea',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Image Pipes
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: 11,
+                color: 'rgba(244,241,234,0.45)',
+                lineHeight: 1.2,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              OpenCV pipeline playground
+            </Typography>
+          </Box>
         </Box>
+        <IconButton
+          size="small"
+          aria-label="Project info"
+          onClick={() => setInfoOpen(true)}
+          sx={{
+            width: 30,
+            height: 30,
+            color: 'rgba(244,241,234,0.55)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 1.25,
+            fontSize: 13,
+            fontWeight: 700,
+            '&:hover': {
+              color: '#7dcea0',
+              borderColor: 'rgba(125,206,160,0.35)',
+              bgcolor: 'rgba(125,206,160,0.08)',
+            },
+          }}
+        >
+          i
+        </IconButton>
       </Stack>
+
+      <ProjectInfoModal open={infoOpen} onClose={() => setInfoOpen(false)} />
 
       <Stack
         direction="row"
