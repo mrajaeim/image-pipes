@@ -20,7 +20,14 @@ class _PassthroughNode(BaseNode):
         PortSpec(id="image", name="Image", direction=PortDirection.OUTPUT),
     ]
     params = [
-        ParamField(name="gain", label="Gain", type="number", default=1.0, minimum=0.0, maximum=10.0),
+        ParamField(
+            name="gain",
+            label="Gain",
+            type="number",
+            default=1.0,
+            minimum=0.0,
+            maximum=10.0,
+        ),
     ]
 
     def execute(
