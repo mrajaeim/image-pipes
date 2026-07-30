@@ -193,6 +193,66 @@ class ToLabNode(BaseNode):
         return [f"{output_vars['image']} = cv2.cvtColor({input_vars['image']}, cv2.COLOR_BGR2LAB)"]
 
 
+class ToYuvNode(BaseNode):
+    type = "to_yuv"
+    label = "To YUV"
+    category = "color"
+    description = "Convert BGR to YUV color space."
+    ports = [image_in(), image_out()]
+    params = []
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        if len(image.shape) == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        return {"image": cv2.cvtColor(image, cv2.COLOR_BGR2YUV)}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        return [f"{output_vars['image']} = cv2.cvtColor({input_vars['image']}, cv2.COLOR_BGR2YUV)"]
+
+
+class ToYCrCbNode(BaseNode):
+    type = "to_ycrcb"
+    label = "To YCrCb"
+    category = "color"
+    description = "Convert BGR to YCrCb color space."
+    ports = [image_in(), image_out()]
+    params = []
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        if len(image.shape) == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        return {"image": cv2.cvtColor(image, cv2.COLOR_BGR2YCrCb)}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        return [
+            f"{output_vars['image']} = cv2.cvtColor({input_vars['image']}, cv2.COLOR_BGR2YCrCb)"
+        ]
+
+
 class InvertNode(BaseNode):
     type = "invert"
     label = "Invert"

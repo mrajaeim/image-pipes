@@ -16,6 +16,8 @@ from app.nodes.color import (
     ToGrayNode,
     ToHsvNode,
     ToLabNode,
+    ToYCrCbNode,
+    ToYuvNode,
 )
 from app.nodes.filters import (
     BilateralFilterNode,
@@ -54,6 +56,8 @@ def register_builtin_nodes() -> None:
         ToGrayNode(),
         ToHsvNode(),
         ToLabNode(),
+        ToYuvNode(),
+        ToYCrCbNode(),
         InvertNode(),
         ClaheNode(),
         BrightnessContrastNode(),
