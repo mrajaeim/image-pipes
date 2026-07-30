@@ -32,6 +32,7 @@ def test_builtin_nodes_registered() -> None:
         "adaptive_threshold",
         "distance_transform",
         "histogram_equalize",
+        "find_contours",
         "erode",
         "dilate",
         "morphology_ex",
