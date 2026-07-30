@@ -50,6 +50,7 @@ export function useExecutionSocket() {
           nodeId: event.node_id,
           sampleIndex: event.sample_index ?? 0,
           imageB64: event.image_b64,
+          portId: event.port_id,
           cacheHit: event.cache_hit,
         })
       }
