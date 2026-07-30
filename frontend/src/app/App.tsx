@@ -4,6 +4,7 @@ import { PipelineCanvas } from '../features/canvas/PipelineCanvas'
 import { NodePalette } from '../features/palette/NodePalette'
 import { NodeInspector } from '../features/inspector/NodeInspector'
 import { CodePanel } from '../features/code/CodePanel'
+import { ExecutionLogPanel } from '../features/execution/ExecutionLogPanel'
 import { useGraphStore } from '../store/graphStore'
 import { requestCodegen, useExecutionSocket } from '../hooks/useExecutionSocket'
 import { notifyError, notifyInfo, notifySuccess } from '../notify'
@@ -114,8 +115,18 @@ export default function App() {
         <Box sx={{ borderRight: '1px solid rgba(255,255,255,0.08)', bgcolor: '#141414', overflow: 'auto' }}>
           <NodePalette />
         </Box>
-        <Box sx={{ minHeight: 0, minWidth: 0 }}>
-          <PipelineCanvas />
+        <Box
+          sx={{
+            minHeight: 0,
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <Box sx={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+            <PipelineCanvas />
+          </Box>
+          <ExecutionLogPanel />
         </Box>
         <Box
           sx={{
