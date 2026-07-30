@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "name": "morphology-cleanup",
+  "description": "Threshold then morphological open to clean noise before analysis.",
+  "seed": 0,
+  "sampleCount": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "load-1",
+        "type": "load_image",
+        "params": { "path": "examples/lena.png" },
+        "position": { "x": 0, "y": 0 }
+      },
+      {
+        "id": "gray-1",
+        "type": "to_gray",
+        "params": {},
+        "position": { "x": 220, "y": 0 }
+      },
+      {
+        "id": "thresh-1",
+        "type": "threshold",
+        "params": { "method": "otsu", "thresh": 127.0, "maxval": 255.0 },
+        "position": { "x": 440, "y": 0 }
+      },
+      {
+        "id": "morph-1",
+        "type": "morphology_ex",
+        "params": { "op": "open", "ksize": 5, "shape": "ellipse" },
+        "position": { "x": 660, "y": 0 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "load-1",
+        "source_port": "image",
+        "target": "gray-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e2",
+        "source": "gray-1",
+        "source_port": "image",
+        "target": "thresh-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e3",
+        "source": "thresh-1",
+        "source_port": "image",
+        "target": "morph-1",
+        "target_port": "image"
+      }
+    ]
+  }
+}

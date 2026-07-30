@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "name": "hist-equalize",
+  "description": "Grayscale then histogram equalize — classic OCR / document preprocess.",
+  "seed": 0,
+  "sampleCount": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "load-1",
+        "type": "load_image",
+        "params": { "path": "examples/lena.png" },
+        "position": { "x": 0, "y": 0 }
+      },
+      {
+        "id": "gray-1",
+        "type": "to_gray",
+        "params": {},
+        "position": { "x": 220, "y": 0 }
+      },
+      {
+        "id": "eq-1",
+        "type": "histogram_equalize",
+        "params": {},
+        "position": { "x": 440, "y": 0 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "load-1",
+        "source_port": "image",
+        "target": "gray-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e2",
+        "source": "gray-1",
+        "source_port": "image",
+        "target": "eq-1",
+        "target_port": "image"
+      }
+    ]
+  }
+}
