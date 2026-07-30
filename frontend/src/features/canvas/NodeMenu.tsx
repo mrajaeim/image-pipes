@@ -104,6 +104,17 @@ export function useNodeMenu({
     runPipeline({ targetNodeId: nodeId })
   }, [close, isExecuting, nodeId])
 
+  const runFromButton = useCallback(
+    (event: MouseEvent<HTMLElement>) => {
+      event.stopPropagation()
+      event.preventDefault()
+      if (isExecuting) return
+      selectNode(nodeId)
+      runPipeline({ targetNodeId: nodeId })
+    },
+    [isExecuting, nodeId, selectNode],
+  )
+
   const runDuplicate = useCallback(() => {
     duplicateNode(nodeId)
     close()
@@ -114,54 +125,93 @@ export function useNodeMenu({
     close()
   }, [close, nodeId, removeNode])
 
+  const headerButtonSx = {
+    width: 28,
+    height: 28,
+    color: 'rgba(255,255,255,0.55)',
+    bgcolor: 'transparent',
+    border: '1px solid',
+    borderColor: 'transparent',
+    transition: 'background-color 120ms ease, border-color 120ms ease, color 120ms ease',
+    '&:hover': {
+      color: '#fff',
+      bgcolor: 'rgba(255,255,255,0.1)',
+      borderColor: 'rgba(255,255,255,0.14)',
+    },
+    '&.Mui-disabled': {
+      color: 'rgba(255,255,255,0.25)',
+    },
+  } as const
+
   return {
     openFromContext,
     menu: (
       <>
-        <IconButton
-          size="small"
-          className="nodrag nopan"
-          aria-label="Node actions"
-          aria-haspopup="menu"
-          aria-expanded={open}
-          onClick={openFromButton}
-          onMouseDown={(event) => event.stopPropagation()}
+        <Box
           sx={{
-            width: 28,
-            height: 28,
-            color: 'rgba(255,255,255,0.55)',
-            bgcolor: open ? 'rgba(255,255,255,0.1)' : 'transparent',
-            border: '1px solid',
-            borderColor: open ? 'rgba(255,255,255,0.16)' : 'transparent',
-            transition: 'background-color 120ms ease, border-color 120ms ease, color 120ms ease',
-            '&:hover': {
-              color: '#fff',
-              bgcolor: 'rgba(255,255,255,0.1)',
-              borderColor: 'rgba(255,255,255,0.14)',
-            },
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.25,
           }}
         >
-          <Box
-            component="span"
+          <IconButton
+            size="small"
+            className="nodrag nopan"
+            aria-label="Run to here"
+            disabled={isExecuting}
+            onClick={runFromButton}
+            onMouseDown={(event) => event.stopPropagation()}
+            sx={headerButtonSx}
+          >
+            <Box
+              component="span"
+              sx={{
+                fontSize: 11,
+                fontWeight: 700,
+                lineHeight: 1,
+                ml: '1px',
+              }}
+            >
+              ▶
+            </Box>
+          </IconButton>
+
+          <IconButton
+            size="small"
+            className="nodrag nopan"
+            aria-label="Node actions"
+            aria-haspopup="menu"
+            aria-expanded={open}
+            onClick={openFromButton}
+            onMouseDown={(event) => event.stopPropagation()}
             sx={{
-              display: 'grid',
-              gap: '3px',
-              placeItems: 'center',
+              ...headerButtonSx,
+              bgcolor: open ? 'rgba(255,255,255,0.1)' : 'transparent',
+              borderColor: open ? 'rgba(255,255,255,0.16)' : 'transparent',
             }}
           >
-            {[0, 1, 2].map((dot) => (
-              <Box
-                key={dot}
-                sx={{
-                  width: 3,
-                  height: 3,
-                  borderRadius: '50%',
-                  bgcolor: 'currentColor',
-                }}
-              />
-            ))}
-          </Box>
-        </IconButton>
+            <Box
+              component="span"
+              sx={{
+                display: 'grid',
+                gap: '3px',
+                placeItems: 'center',
+              }}
+            >
+              {[0, 1, 2].map((dot) => (
+                <Box
+                  key={dot}
+                  sx={{
+                    width: 3,
+                    height: 3,
+                    borderRadius: '50%',
+                    bgcolor: 'currentColor',
+                  }}
+                />
+              ))}
+            </Box>
+          </IconButton>
+        </Box>
 
         <Menu
           className="nodrag nopan"
