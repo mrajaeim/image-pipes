@@ -97,6 +97,27 @@ async def upload_images(
     )
 
 
+@router.delete("/uploads")
+def delete_uploaded_file(path: str) -> dict[str, str]:
+    """Remove one previously uploaded image (must live under uploads/)."""
+    try:
+        target = Path(path).resolve()
+        uploads_root = UPLOAD_DIR.resolve()
+        if uploads_root not in target.parents and target != uploads_root:
+            raise HTTPException(status_code=400, detail="Path is outside uploads directory")
+        if not target.is_file():
+            raise HTTPException(status_code=404, detail="Uploaded file not found")
+        target.unlink()
+        parent = target.parent
+        if parent != uploads_root and parent.is_dir() and not any(parent.iterdir()):
+            parent.rmdir()
+        return {"status": "deleted", "path": str(target)}
+    except HTTPException:
+        raise
+    except OSError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/execute")
 def execute_graph(request: ExecuteRequest) -> dict:
     register_builtin_nodes()
