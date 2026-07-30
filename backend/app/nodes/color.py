@@ -8,7 +8,13 @@ import cv2
 import numpy as np
 
 from app.engine.registry import BaseNode
-from app.nodes.common import image_in, image_out, require_image
+from app.nodes.common import (
+    image_in,
+    image_out,
+    int_param,
+    number_param,
+    require_image,
+)
 
 
 class ToGrayNode(BaseNode):
@@ -154,4 +160,151 @@ class MergeChannelsNode(BaseNode):
         return [
             f"{output_vars['image']} = cv2.merge(["
             f"{input_vars['b']}, {input_vars['g']}, {input_vars['r']}])"
+        ]
+
+
+class ToLabNode(BaseNode):
+    type = "to_lab"
+    label = "To LAB"
+    category = "color"
+    description = "Convert BGR to CIELAB (perceptually uniform color space)."
+    ports = [image_in(), image_out()]
+    params = []
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        if len(image.shape) == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        return {"image": cv2.cvtColor(image, cv2.COLOR_BGR2LAB)}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        return [f"{output_vars['image']} = cv2.cvtColor({input_vars['image']}, cv2.COLOR_BGR2LAB)"]
+
+
+class InvertNode(BaseNode):
+    type = "invert"
+    label = "Invert"
+    category = "color"
+    description = "Invert pixel intensities (photographic negative)."
+    ports = [image_in(), image_out()]
+    params = []
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        return {"image": cv2.bitwise_not(require_image(inputs))}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        return [f"{output_vars['image']} = cv2.bitwise_not({input_vars['image']})"]
+
+
+class ClaheNode(BaseNode):
+    type = "clahe"
+    label = "CLAHE"
+    category = "color"
+    description = "Contrast Limited Adaptive Histogram Equalization on luminance."
+    ports = [image_in(), image_out()]
+    params = [
+        number_param("clip_limit", "Clip Limit", 2.0, minimum=0.1, maximum=40.0, step=0.1),
+        int_param("tile_grid", "Tile Grid", 8, minimum=2, maximum=32),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        clahe = cv2.createCLAHE(
+            clipLimit=float(params["clip_limit"]),
+            tileGridSize=(int(params["tile_grid"]), int(params["tile_grid"])),
+        )
+        if len(image.shape) == 2:
+            return {"image": clahe.apply(image)}
+        lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+        l_chan, a_chan, b_chan = cv2.split(lab)
+        merged = cv2.merge([clahe.apply(l_chan), a_chan, b_chan])
+        return {"image": cv2.cvtColor(merged, cv2.COLOR_LAB2BGR)}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        src = input_vars["image"]
+        dst = output_vars["image"]
+        clip = float(params["clip_limit"])
+        tile = int(params["tile_grid"])
+        return [
+            f"_clahe = cv2.createCLAHE(clipLimit={clip}, tileGridSize=({tile}, {tile}))",
+            f"if len({src}.shape) == 2:",
+            f"    {dst} = _clahe.apply({src})",
+            "else:",
+            f"    _lab = cv2.cvtColor({src}, cv2.COLOR_BGR2LAB)",
+            "    _l, _a, _b = cv2.split(_lab)",
+            "    _merged = cv2.merge([_clahe.apply(_l), _a, _b])",
+            f"    {dst} = cv2.cvtColor(_merged, cv2.COLOR_LAB2BGR)",
+        ]
+
+
+class BrightnessContrastNode(BaseNode):
+    type = "brightness_contrast"
+    label = "Brightness / Contrast"
+    category = "color"
+    description = "Deterministic brightness and contrast adjustment (alpha/beta)."
+    ports = [image_in(), image_out()]
+    params = [
+        number_param("alpha", "Contrast", 1.0, minimum=0.0, maximum=3.0, step=0.05),
+        number_param("beta", "Brightness", 0.0, minimum=-100.0, maximum=100.0, step=1.0),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        return {
+            "image": cv2.convertScaleAbs(
+                image,
+                alpha=float(params["alpha"]),
+                beta=float(params["beta"]),
+            )
+        }
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        return [
+            f"{output_vars['image']} = cv2.convertScaleAbs("
+            f"{input_vars['image']}, alpha={float(params['alpha'])}, "
+            f"beta={float(params['beta'])})"
         ]

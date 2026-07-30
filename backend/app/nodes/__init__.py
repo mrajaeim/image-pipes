@@ -1,7 +1,16 @@
 """Register all built-in OpenCV nodes."""
 
 from app.engine.registry import registry
-from app.nodes.color import MergeChannelsNode, SplitChannelsNode, ToGrayNode, ToHsvNode
+from app.nodes.color import (
+    BrightnessContrastNode,
+    ClaheNode,
+    InvertNode,
+    MergeChannelsNode,
+    SplitChannelsNode,
+    ToGrayNode,
+    ToHsvNode,
+    ToLabNode,
+)
 from app.nodes.filters import (
     BilateralFilterNode,
     CannyNode,
@@ -29,6 +38,10 @@ def register_builtin_nodes() -> None:
         PreviewNode(),
         ToGrayNode(),
         ToHsvNode(),
+        ToLabNode(),
+        InvertNode(),
+        ClaheNode(),
+        BrightnessContrastNode(),
         SplitChannelsNode(),
         MergeChannelsNode(),
         GaussianBlurNode(),
