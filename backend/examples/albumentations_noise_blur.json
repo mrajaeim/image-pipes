@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "name": "albumentations-noise-blur",
+  "description": "Albumentations Gaussian noise then motion blur — sensor / camera shake look.",
+  "seed": 0,
+  "sampleCount": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "load-1",
+        "type": "load_image",
+        "params": { "path": "examples/lena.png" },
+        "position": { "x": 0, "y": 0 }
+      },
+      {
+        "id": "noise-1",
+        "type": "albu_gauss_noise",
+        "params": {
+          "std_min": 0.15,
+          "std_max": 0.35,
+          "per_channel": "true",
+          "p": 1.0
+        },
+        "position": { "x": 260, "y": 0 }
+      },
+      {
+        "id": "blur-1",
+        "type": "albu_motion_blur",
+        "params": { "blur_limit": 9, "p": 1.0 },
+        "position": { "x": 520, "y": 0 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "load-1",
+        "source_port": "image",
+        "target": "noise-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e2",
+        "source": "noise-1",
+        "source_port": "image",
+        "target": "blur-1",
+        "target_port": "image"
+      }
+    ]
+  }
+}

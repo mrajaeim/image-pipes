@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "name": "albumentations-weather",
+  "description": "Albumentations fog then rain — synthetic weather degradation.",
+  "seed": 0,
+  "sampleCount": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "load-1",
+        "type": "load_image",
+        "params": { "path": "examples/lena.png" },
+        "position": { "x": 0, "y": 0 }
+      },
+      {
+        "id": "fog-1",
+        "type": "albu_random_fog",
+        "params": {
+          "fog_coef_min": 0.25,
+          "fog_coef_max": 0.55,
+          "alpha_coef": 0.08,
+          "p": 1.0
+        },
+        "position": { "x": 260, "y": 0 }
+      },
+      {
+        "id": "rain-1",
+        "type": "albu_random_rain",
+        "params": { "p": 1.0 },
+        "position": { "x": 520, "y": 0 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "load-1",
+        "source_port": "image",
+        "target": "fog-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e2",
+        "source": "fog-1",
+        "source_port": "image",
+        "target": "rain-1",
+        "target_port": "image"
+      }
+    ]
+  }
+}

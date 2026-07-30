@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "name": "albumentations-geometry",
+  "description": "Annotations with Albumentations rotate then affine — dual targets stay synced.",
+  "seed": 0,
+  "sampleCount": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "load-1",
+        "type": "load_image",
+        "params": { "path": "examples/lena.png" },
+        "position": { "x": 0, "y": 80 }
+      },
+      {
+        "id": "ann-1",
+        "type": "annotations",
+        "params": {
+          "bboxes_json": "[[180, 80, 380, 320, \"face\"]]",
+          "keypoints_json": "[[230, 180], [320, 180], [275, 250]]"
+        },
+        "position": { "x": 0, "y": 320 }
+      },
+      {
+        "id": "rotate-1",
+        "type": "albu_rotate",
+        "params": {
+          "limit": 25,
+          "border_mode": "constant",
+          "p": 1.0
+        },
+        "position": { "x": 280, "y": 120 }
+      },
+      {
+        "id": "affine-1",
+        "type": "albu_affine",
+        "params": {
+          "scale": 1.05,
+          "translate_percent": 0.08,
+          "rotate": 8,
+          "shear": 6,
+          "p": 1.0
+        },
+        "position": { "x": 560, "y": 120 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e-img-rotate",
+        "source": "load-1",
+        "source_port": "image",
+        "target": "rotate-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e-bbox-rotate",
+        "source": "ann-1",
+        "source_port": "bboxes",
+        "target": "rotate-1",
+        "target_port": "bboxes"
+      },
+      {
+        "id": "e-kp-rotate",
+        "source": "ann-1",
+        "source_port": "keypoints",
+        "target": "rotate-1",
+        "target_port": "keypoints"
+      },
+      {
+        "id": "e-img-affine",
+        "source": "rotate-1",
+        "source_port": "image",
+        "target": "affine-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e-bbox-affine",
+        "source": "rotate-1",
+        "source_port": "bboxes",
+        "target": "affine-1",
+        "target_port": "bboxes"
+      },
+      {
+        "id": "e-kp-affine",
+        "source": "rotate-1",
+        "source_port": "keypoints",
+        "target": "affine-1",
+        "target_port": "keypoints"
+      }
+    ]
+  }
+}
