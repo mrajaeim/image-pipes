@@ -173,6 +173,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         {
           ...connection,
           id: `e-${crypto.randomUUID()}`,
+          type: 'removable',
+          zIndex: 1000,
           reconnectable: true,
           selectable: true,
         },
@@ -187,6 +189,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         ...oldEdge,
         ...connection,
         id: oldEdge.id,
+        type: oldEdge.type ?? 'removable',
+        zIndex: oldEdge.zIndex ?? 1000,
         source: connection.source ?? oldEdge.source,
         target: connection.target ?? oldEdge.target,
         sourceHandle: connection.sourceHandle ?? oldEdge.sourceHandle,

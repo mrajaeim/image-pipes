@@ -6,12 +6,14 @@ import {
   ReactFlow,
   type Connection,
   type Edge,
+  type EdgeTypes,
   type NodeTypes,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { Box } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
 import { PipelineNodeView } from './PipelineNode'
+import { RemovableEdge } from './RemovableEdge'
 import type { NodeMetadata } from '../../types'
 
 export function PipelineCanvas() {
@@ -25,6 +27,7 @@ export function PipelineCanvas() {
   const addNodeFromType = useGraphStore((s) => s.addNodeFromType)
 
   const nodeTypes: NodeTypes = useMemo(() => ({ pipeline: PipelineNodeView }), [])
+  const edgeTypes: EdgeTypes = useMemo(() => ({ removable: RemovableEdge }), [])
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -49,7 +52,14 @@ export function PipelineCanvas() {
 
   return (
     <Box
-      sx={{ width: '100%', height: '100%', bgcolor: '#0c0c0c' }}
+      sx={{
+        width: '100%',
+        height: '100%',
+        bgcolor: '#0c0c0c',
+        '& .react-flow__edges': { zIndex: 1000 },
+        '& .react-flow__edgelabel-renderer': { zIndex: 1001 },
+        '& .react-flow__nodes': { zIndex: 1 },
+      }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
     >
@@ -62,6 +72,7 @@ export function PipelineCanvas() {
         onReconnect={onReconnect}
         isValidConnection={isValidConnection}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodeClick={(_, node) => selectNode(node.id)}
         onPaneClick={() => selectNode(null)}
         deleteKeyCode={['Backspace', 'Delete']}
@@ -70,11 +81,13 @@ export function PipelineCanvas() {
         nodesDraggable
         elementsSelectable
         edgesReconnectable
+        elevateEdgesOnSelect
         fitView
         colorMode="dark"
         defaultEdgeOptions={{
-          style: { stroke: 'rgba(255,255,255,0.45)', strokeWidth: 2.5 },
-          type: 'smoothstep',
+          type: 'removable',
+          zIndex: 1000,
+          style: { stroke: 'rgba(255,255,255,0.55)', strokeWidth: 2.5 },
           reconnectable: true,
           selectable: true,
         }}
