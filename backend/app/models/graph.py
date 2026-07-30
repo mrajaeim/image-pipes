@@ -47,6 +47,7 @@ class ExecuteRequest(BaseModel):
     seed: int = 0
     sample_count: int = 1
     cache: bool = True
+    target_node_id: str | None = None
 
 
 class ExecutionEventType(StrEnum):
