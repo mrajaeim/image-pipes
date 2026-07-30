@@ -13,6 +13,7 @@ import {
   requestCodegen,
   useExecutionSocket,
 } from '../hooks/useExecutionSocket'
+import { useWorkflowPersistence } from '../hooks/useWorkflowPersistence'
 import { notifyError, notifyInfo, notifySuccess } from '../notify'
 import { downloadWorkflowJson, parseWorkflowJson } from '../workflow/io'
 import type { WorkflowTemplate } from '../workflow/templates'
@@ -31,6 +32,7 @@ export default function App() {
   const [sideTab, setSideTab] = useState(0)
 
   useEffect(() => bindExecutionRunner(run), [run])
+  useWorkflowPersistence()
 
   const onExportPython = async () => {
     try {
