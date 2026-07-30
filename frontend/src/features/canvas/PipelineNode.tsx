@@ -298,9 +298,10 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
             borderBottom: '1px solid rgba(255,255,255,0.06)',
             borderTopLeftRadius: 10,
             borderTopRightRadius: 10,
+            overflow: 'hidden',
           }}
         >
-          <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Box sx={{ minWidth: 0, flex: '1 1 0%', overflow: 'hidden', pr: 0.25 }}>
             <Typography
               sx={{
                 color: 'rgba(255,255,255,0.45)',
@@ -309,6 +310,9 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 lineHeight: 1.2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
               }}
             >
               {data.category}
@@ -327,29 +331,44 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               {data.label}
             </Typography>
           </Box>
+          <Box sx={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>{nodeMenu}</Box>
+        </Stack>
+
+        <Box
+          sx={{
+            position: 'relative',
+            overflow: 'hidden',
+            borderBottomLeftRadius: 10,
+            borderBottomRightRadius: 10,
+          }}
+        >
           {timing && (
             <Box
               component="span"
               title={timing.cacheHit ? 'Served from cache' : 'Execution time'}
               sx={{
-                flexShrink: 0,
+                position: 'absolute',
+                top: 6,
+                right: 6,
+                zIndex: 2,
                 px: 0.7,
                 py: 0.25,
                 borderRadius: 0.75,
                 bgcolor: timing.cacheHit
-                  ? 'rgba(125,206,160,0.14)'
-                  : 'rgba(255,255,255,0.06)',
+                  ? 'rgba(20,40,30,0.85)'
+                  : 'rgba(0,0,0,0.72)',
                 border: '1px solid',
                 borderColor: timing.cacheHit
-                  ? 'rgba(125,206,160,0.35)'
-                  : 'rgba(255,255,255,0.1)',
-                color: timing.cacheHit ? '#7dcea0' : 'rgba(255,255,255,0.72)',
+                  ? 'rgba(125,206,160,0.45)'
+                  : 'rgba(255,255,255,0.18)',
+                color: timing.cacheHit ? '#7dcea0' : 'rgba(255,255,255,0.85)',
                 fontSize: 10,
                 fontWeight: 700,
                 fontVariantNumeric: 'tabular-nums',
                 letterSpacing: '0.02em',
                 whiteSpace: 'nowrap',
                 lineHeight: 1.2,
+                pointerEvents: 'none',
               }}
             >
               {timing.ms < 10 ? timing.ms.toFixed(1) : Math.round(timing.ms)}
@@ -357,16 +376,6 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               {timing.cacheHit ? ' · cache' : ''}
             </Box>
           )}
-          {nodeMenu}
-        </Stack>
-
-        <Box
-          sx={{
-            overflow: 'hidden',
-            borderBottomLeftRadius: 10,
-            borderBottomRightRadius: 10,
-          }}
-        >
           {grid.rows.length === 0
             ? (
                 <Box
