@@ -4,6 +4,7 @@ from app.engine.registry import registry
 from app.nodes.analysis import (
     AdaptiveThresholdNode,
     DistanceTransformNode,
+    DrawHistogramNode,
     HistogramEqualizeNode,
 )
 from app.nodes.color import (
@@ -78,6 +79,7 @@ def register_builtin_nodes() -> None:
         AdaptiveThresholdNode(),
         DistanceTransformNode(),
         HistogramEqualizeNode(),
+        DrawHistogramNode(),
         FindContoursNode(),
         ConvexHullNode(),
         ImageMomentsNode(),

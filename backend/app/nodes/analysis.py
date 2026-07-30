@@ -196,3 +196,74 @@ class HistogramEqualizeNode(BaseNode):
             "    _merged = cv2.merge([cv2.equalizeHist(_y), _cr, _cb])",
             f"    {dst} = cv2.cvtColor(_merged, cv2.COLOR_YCrCb2BGR)",
         ]
+
+
+def _draw_hist_curve(canvas: np.ndarray, hist: np.ndarray, color: tuple[int, int, int]) -> None:
+    height, width = canvas.shape[:2]
+    if hist.max() <= 0:
+        return
+    norm = hist * ((height - 1) / hist.max())
+    bin_w = width / 256.0
+    for i in range(1, 256):
+        x1 = int((i - 1) * bin_w)
+        x2 = int(i * bin_w)
+        y1 = height - 1 - int(norm[i - 1])
+        y2 = height - 1 - int(norm[i])
+        cv2.line(canvas, (x1, y1), (x2, y2), color, 1, cv2.LINE_AA)
+
+
+class DrawHistogramNode(BaseNode):
+    type = "draw_histogram"
+    label = "Draw Histogram"
+    category = "analysis"
+    description = "Render channel histograms as a plot image."
+    ports = [image_in(), image_out()]
+    params = [
+        select_param("mode", "Mode", "channels", ["gray", "channels"]),
+        int_param("height", "Plot Height", 256, minimum=64, maximum=1024),
+        int_param("width", "Plot Width", 512, minimum=128, maximum=2048),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        height = int(params["height"])
+        width = int(params["width"])
+        canvas = np.full((height, width, 3), 30, dtype=np.uint8)
+        if str(params["mode"]) == "gray" or len(image.shape) == 2:
+            gray = image if len(image.shape) == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            hist = cv2.calcHist([gray], [0], None, [256], [0, 256]).flatten()
+            _draw_hist_curve(canvas, hist, (220, 220, 220))
+        else:
+            colors = ((255, 80, 80), (80, 255, 80), (80, 80, 255))  # B,G,R
+            for channel_idx, color in enumerate(colors):
+                hist = cv2.calcHist([image], [channel_idx], None, [256], [0, 256]).flatten()
+                _draw_hist_curve(canvas, hist, color)
+        return {"image": canvas}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        src = input_vars["image"]
+        dst = output_vars["image"]
+        height = int(params["height"])
+        width = int(params["width"])
+        return [
+            f"{dst} = np.full(({height}, {width}, 3), 30, dtype='uint8')",
+            f"_h = cv2.calcHist([{src} if len({src}.shape)==2 else "
+            f"cv2.cvtColor({src}, cv2.COLOR_BGR2GRAY)], [0], None, [256], [0, 256]).ravel()",
+            f"_n = _h * (({height}-1) / max(float(_h.max()), 1.0))",
+            f"_bw = {width} / 256.0",
+            "for _i in range(1, 256):",
+            "    _x1 = int((_i-1)*_bw); _x2 = int(_i*_bw)",
+            f"    _y1 = {height}-1-int(_n[_i-1]); _y2 = {height}-1-int(_n[_i])",
+            f"    cv2.line({dst}, (_x1, _y1), (_x2, _y2), (220, 220, 220), 1, cv2.LINE_AA)",
+        ]

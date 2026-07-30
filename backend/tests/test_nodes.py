@@ -37,6 +37,7 @@ def test_builtin_nodes_registered() -> None:
         "adaptive_threshold",
         "distance_transform",
         "histogram_equalize",
+        "draw_histogram",
         "find_contours",
         "convex_hull",
         "moments",
