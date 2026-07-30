@@ -278,3 +278,107 @@ class ImageMomentsNode(BaseNode):
             f"    cv2.circle({dst}, (_cx, _cy), 4, (0, 200, 255), -1)",
             f"    cv2.drawContours({dst}, [_c], -1, (80, 180, 255), 1)",
         ]
+
+
+class ConnectedComponentsNode(BaseNode):
+    type = "connected_components"
+    label = "Connected Components"
+    category = "analysis"
+    description = "Label connected regions and draw boxes or a color map."
+    ports = [image_in(), image_out()]
+    params = [
+        select_param("connectivity", "Connectivity", "8", ["4", "8"]),
+        int_param("min_area", "Min Area", 20, minimum=1, maximum=100000),
+        select_param("mode", "Mode", "boxes", ["boxes", "labels"]),
+        select_param("overlay", "Overlay", "on_input", ["on_input", "blank"]),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        binary = _binary(image)
+        connectivity = 4 if str(params["connectivity"]) == "4" else 8
+        count, labels, stats, _centroids = cv2.connectedComponentsWithStats(
+            binary,
+            connectivity=connectivity,
+        )
+        min_area = int(params["min_area"])
+        if str(params["mode"]) == "labels":
+            canvas = np.zeros((*binary.shape, 3), dtype=np.uint8)
+            rng = np.random.default_rng(seed)
+            for label_id in range(1, count):
+                area = int(stats[label_id, cv2.CC_STAT_AREA])
+                if area < min_area:
+                    continue
+                color = tuple(int(c) for c in rng.integers(64, 256, size=3))
+                canvas[labels == label_id] = color
+            return {"image": canvas}
+
+        if str(params["overlay"]) == "blank":
+            canvas = np.zeros_like(_as_bgr(image))
+        else:
+            canvas = _as_bgr(image)
+        for label_id in range(1, count):
+            area = int(stats[label_id, cv2.CC_STAT_AREA])
+            if area < min_area:
+                continue
+            x = int(stats[label_id, cv2.CC_STAT_LEFT])
+            y = int(stats[label_id, cv2.CC_STAT_TOP])
+            w = int(stats[label_id, cv2.CC_STAT_WIDTH])
+            h = int(stats[label_id, cv2.CC_STAT_HEIGHT])
+            cv2.rectangle(canvas, (x, y), (x + w - 1, y + h - 1), (0, 255, 120), 2)
+        return {"image": canvas}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        src = input_vars["image"]
+        dst = output_vars["image"]
+        connectivity = 4 if str(params["connectivity"]) == "4" else 8
+        min_area = int(params["min_area"])
+        blank = str(params["overlay"]) == "blank"
+        if str(params["mode"]) == "labels":
+            return [
+                f"_gray = {src} if len({src}.shape) == 2 else "
+                f"cv2.cvtColor({src}, cv2.COLOR_BGR2GRAY)",
+                "_uniq = set(np.unique(_gray).tolist())",
+                "_bin = _gray if _uniq <= {0, 255} else "
+                "cv2.threshold(_gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]",
+                f"_n, _lab, _st, _ = cv2.connectedComponentsWithStats("
+                f"_bin, connectivity={connectivity})",
+                f"{dst} = np.zeros((_bin.shape[0], _bin.shape[1], 3), dtype='uint8')",
+                "_rng = np.random.default_rng(0)",
+                "for _i in range(1, _n):",
+                f"    if int(_st[_i, cv2.CC_STAT_AREA]) < {min_area}: continue",
+                "    _col = tuple(int(c) for c in _rng.integers(64, 256, size=3))",
+                f"    {dst}[_lab == _i] = _col",
+            ]
+        return [
+            f"_gray = {src} if len({src}.shape) == 2 else cv2.cvtColor({src}, cv2.COLOR_BGR2GRAY)",
+            "_uniq = set(np.unique(_gray).tolist())",
+            "_bin = _gray if _uniq <= {0, 255} else "
+            "cv2.threshold(_gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]",
+            f"_n, _lab, _st, _ = cv2.connectedComponentsWithStats("
+            f"_bin, connectivity={connectivity})",
+            (
+                f"{dst} = np.zeros((_gray.shape[0], _gray.shape[1], 3), dtype='uint8')"
+                if blank
+                else (
+                    f"{dst} = {src}.copy() if len({src}.shape) == 3 else "
+                    f"cv2.cvtColor({src}, cv2.COLOR_GRAY2BGR)"
+                )
+            ),
+            "for _i in range(1, _n):",
+            f"    if int(_st[_i, cv2.CC_STAT_AREA]) < {min_area}: continue",
+            "    _x = int(_st[_i, cv2.CC_STAT_LEFT]); _y = int(_st[_i, cv2.CC_STAT_TOP])",
+            "    _w = int(_st[_i, cv2.CC_STAT_WIDTH]); _h = int(_st[_i, cv2.CC_STAT_HEIGHT])",
+            f"    cv2.rectangle({dst}, (_x, _y), (_x+_w-1, _y+_h-1), (0, 255, 120), 2)",
+        ]

@@ -35,6 +35,7 @@ def test_builtin_nodes_registered() -> None:
         "find_contours",
         "convex_hull",
         "moments",
+        "connected_components",
         "erode",
         "dilate",
         "morphology_ex",
