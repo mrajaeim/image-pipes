@@ -113,6 +113,7 @@ export function NodeInspector() {
                 field={field}
                 value={String(selected.data.params[field.name] ?? '')}
                 previewUrls={selected.data.localPreviewUrls ?? []}
+                uploadedFiles={selected.data.uploadedFiles ?? []}
                 onChange={(path) => {
                   setValue(field.name, path, { shouldDirty: true, shouldValidate: true })
                   updateNodeParams(selected.id, { [field.name]: path })

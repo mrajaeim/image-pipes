@@ -7,6 +7,7 @@ interface FileParamInputProps {
   field: ParamField
   value: string
   previewUrls?: string[]
+  uploadedFiles?: string[]
   onChange: (path: string) => void
   onPreviews?: (dataUrls: string[], uploadedFiles: string[]) => void
   onRemovePreview?: (index: number) => void
@@ -41,12 +42,22 @@ function filterImageFiles(fileList: FileList | null, field: ParamField): File[] 
   })
 }
 
-async function uploadFiles(files: File[], asFolder: boolean): Promise<UploadResponse> {
+function parentDir(filePath: string): string {
+  return filePath.replace(/[\\/][^\\/]+$/, '')
+}
+
+async function uploadFiles(
+  files: File[],
+  asFolder: boolean,
+  appendTo?: string,
+): Promise<UploadResponse> {
   const body = new FormData()
   for (const file of files) {
     body.append('files', file, file.name)
   }
-  const response = await fetch(`/api/uploads?as_folder=${asFolder ? 'true' : 'false'}`, {
+  const params = new URLSearchParams({ as_folder: asFolder ? 'true' : 'false' })
+  if (appendTo) params.set('append_to', appendTo)
+  const response = await fetch(`/api/uploads?${params.toString()}`, {
     method: 'POST',
     body,
   })
@@ -70,12 +81,14 @@ export function FileParamInput({
   field,
   value,
   previewUrls = [],
+  uploadedFiles = [],
   onChange,
   onPreviews,
   onRemovePreview,
   onBatchCount,
 }: FileParamInputProps) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const addRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -93,7 +106,11 @@ export function FileParamInput({
     input.setAttribute('directory', '')
   }, [])
 
-  const handleFiles = async (fileList: FileList | null, asFolder: boolean) => {
+  const handleFiles = async (
+    fileList: FileList | null,
+    asFolder: boolean,
+    mode: 'replace' | 'append',
+  ) => {
     const files = filterImageFiles(fileList, field).sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true }),
     )
@@ -107,16 +124,31 @@ export function FileParamInput({
     setError(null)
     try {
       const urls = await Promise.all(files.map((file) => readFileAsDataUrl(file)))
-      const batch = asFolder || files.length > 1
-      const result = await uploadFiles(files, batch)
-      onPreviews?.(urls, result.files)
-      onChange(result.path)
-      onBatchCount?.(result.count)
-      notifySuccess(
-        result.count > 1 ? `${result.count} images loaded` : 'Image loaded',
-      )
+      const appending = mode === 'append' && uploadedFiles.length > 0
+      const appendTo = appending ? parentDir(uploadedFiles[0]) : undefined
+      const batch = asFolder || files.length > 1 || appending
+      const result = await uploadFiles(files, batch, appendTo)
+      if (appending) {
+        const nextUrls = [...previewUrls, ...urls]
+        const nextFiles = [...uploadedFiles, ...result.files]
+        onPreviews?.(nextUrls, nextFiles)
+        onChange(result.path)
+        onBatchCount?.(nextUrls.length)
+        notifySuccess(
+          result.count > 1
+            ? `Added ${result.count} images (${nextUrls.length} total)`
+            : `Added image (${nextUrls.length} total)`,
+        )
+      } else {
+        onPreviews?.(urls, result.files)
+        onChange(result.path)
+        onBatchCount?.(result.count)
+        notifySuccess(
+          result.count > 1 ? `${result.count} images loaded` : 'Image loaded',
+        )
+      }
     } catch (err) {
-      onPreviews?.([], [])
+      if (mode === 'replace') onPreviews?.([], [])
       const message = err instanceof Error ? err.message : 'Upload failed'
       setError(message)
       notifyError(message)
@@ -147,6 +179,14 @@ export function FileParamInput({
           size="small"
           variant="outlined"
           disabled={busy}
+          onClick={() => addRef.current?.click()}
+        >
+          Add image
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          disabled={busy}
           onClick={() => folderRef.current?.click()}
         >
           Choose folder
@@ -159,7 +199,18 @@ export function FileParamInput({
         multiple
         accept={acceptAttr(field)}
         onChange={(event) => {
-          void handleFiles(event.target.files, false)
+          void handleFiles(event.target.files, false, 'replace')
+          event.target.value = ''
+        }}
+      />
+      <input
+        ref={addRef}
+        type="file"
+        hidden
+        multiple
+        accept={acceptAttr(field)}
+        onChange={(event) => {
+          void handleFiles(event.target.files, false, 'append')
           event.target.value = ''
         }}
       />
@@ -169,7 +220,7 @@ export function FileParamInput({
         hidden
         multiple
         onChange={(event) => {
-          void handleFiles(event.target.files, true)
+          void handleFiles(event.target.files, true, 'replace')
           event.target.value = ''
         }}
       />
