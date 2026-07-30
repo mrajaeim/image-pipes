@@ -7,8 +7,6 @@
 
 Build, debug, and export OpenCV workflows without writing preprocessing code by hand.
 
-**Repository:** [https://github.com/mrajaeim/image-pipes](https://github.com/mrajaeim/image-pipes)
-
 ## Why Image Pipes?
 
 Computer vision preprocessing is usually hidden inside long Python scripts. Changing the pipeline often means editing code, re-running everything, and debugging intermediate images manually.
