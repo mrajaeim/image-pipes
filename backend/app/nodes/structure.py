@@ -8,7 +8,14 @@ import cv2
 import numpy as np
 
 from app.engine.registry import BaseNode
-from app.nodes.common import image_in, image_out, int_param, require_image, select_param
+from app.nodes.common import (
+    image_in,
+    image_out,
+    int_param,
+    number_param,
+    require_image,
+    select_param,
+)
 
 
 def _as_gray(image: np.ndarray) -> np.ndarray:
@@ -381,4 +388,115 @@ class ConnectedComponentsNode(BaseNode):
             "    _x = int(_st[_i, cv2.CC_STAT_LEFT]); _y = int(_st[_i, cv2.CC_STAT_TOP])",
             "    _w = int(_st[_i, cv2.CC_STAT_WIDTH]); _h = int(_st[_i, cv2.CC_STAT_HEIGHT])",
             f"    cv2.rectangle({dst}, (_x, _y), (_x+_w-1, _y+_h-1), (0, 255, 120), 2)",
+        ]
+
+
+class BlobDetectNode(BaseNode):
+    type = "blob_detect"
+    label = "Blob Detect"
+    category = "analysis"
+    description = "Detect blob keypoints with OpenCV SimpleBlobDetector."
+    ports = [image_in(), image_out()]
+    params = [
+        number_param("min_area", "Min Area", 20.0, minimum=1.0, maximum=100000.0),
+        number_param("max_area", "Max Area", 5000.0, minimum=1.0, maximum=1000000.0),
+        number_param(
+            "min_circularity",
+            "Min Circularity",
+            0.1,
+            minimum=0.0,
+            maximum=1.0,
+            step=0.05,
+        ),
+        number_param(
+            "min_convexity",
+            "Min Convexity",
+            0.5,
+            minimum=0.0,
+            maximum=1.0,
+            step=0.05,
+        ),
+        number_param(
+            "min_inertia",
+            "Min Inertia",
+            0.1,
+            minimum=0.0,
+            maximum=1.0,
+            step=0.05,
+        ),
+        select_param("overlay", "Overlay", "on_input", ["on_input", "blank"]),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        gray = _as_gray(image)
+        blob_params = cv2.SimpleBlobDetector_Params()
+        blob_params.filterByArea = True
+        blob_params.minArea = float(params["min_area"])
+        blob_params.maxArea = float(params["max_area"])
+        blob_params.filterByCircularity = True
+        blob_params.minCircularity = float(params["min_circularity"])
+        blob_params.filterByConvexity = True
+        blob_params.minConvexity = float(params["min_convexity"])
+        blob_params.filterByInertia = True
+        blob_params.minInertiaRatio = float(params["min_inertia"])
+        blob_params.filterByColor = False
+        detector = cv2.SimpleBlobDetector_create(blob_params)
+        keypoints = detector.detect(gray)
+        if str(params["overlay"]) == "blank":
+            canvas = np.zeros_like(_as_bgr(image))
+        else:
+            canvas = _as_bgr(image)
+        return {
+            "image": cv2.drawKeypoints(
+                canvas,
+                keypoints,
+                np.array([]),
+                (0, 140, 255),
+                cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS,
+            )
+        }
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        src = input_vars["image"]
+        dst = output_vars["image"]
+        blank = str(params["overlay"]) == "blank"
+        return [
+            f"_gray = {src} if len({src}.shape) == 2 else cv2.cvtColor({src}, cv2.COLOR_BGR2GRAY)",
+            "_bp = cv2.SimpleBlobDetector_Params()",
+            "_bp.filterByArea = True",
+            f"_bp.minArea = {float(params['min_area'])}",
+            f"_bp.maxArea = {float(params['max_area'])}",
+            "_bp.filterByCircularity = True",
+            f"_bp.minCircularity = {float(params['min_circularity'])}",
+            "_bp.filterByConvexity = True",
+            f"_bp.minConvexity = {float(params['min_convexity'])}",
+            "_bp.filterByInertia = True",
+            f"_bp.minInertiaRatio = {float(params['min_inertia'])}",
+            "_bp.filterByColor = False",
+            "_det = cv2.SimpleBlobDetector_create(_bp)",
+            "_kps = _det.detect(_gray)",
+            (
+                "_base = np.zeros((_gray.shape[0], _gray.shape[1], 3), dtype='uint8')"
+                if blank
+                else (
+                    f"_base = {src}.copy() if len({src}.shape) == 3 else "
+                    f"cv2.cvtColor({src}, cv2.COLOR_GRAY2BGR)"
+                )
+            ),
+            (
+                f"{dst} = cv2.drawKeypoints(_base, _kps, np.array([]), (0, 140, 255), "
+                "cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)"
+            ),
         ]

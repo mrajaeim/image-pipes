@@ -36,6 +36,7 @@ def test_builtin_nodes_registered() -> None:
         "convex_hull",
         "moments",
         "connected_components",
+        "blob_detect",
         "erode",
         "dilate",
         "morphology_ex",

@@ -30,6 +30,7 @@ from app.nodes.io import LoadImageNode, PreviewNode, SaveImageNode
 from app.nodes.morphology import DilateNode, ErodeNode, MorphologyExNode
 from app.nodes.stochastic import GaussianNoiseNode, RandomBrightnessContrastNode
 from app.nodes.structure import (
+    BlobDetectNode,
     ConnectedComponentsNode,
     ConvexHullNode,
     FindContoursNode,
@@ -69,6 +70,7 @@ def register_builtin_nodes() -> None:
         ConvexHullNode(),
         ImageMomentsNode(),
         ConnectedComponentsNode(),
+        BlobDetectNode(),
         ErodeNode(),
         DilateNode(),
         MorphologyExNode(),
