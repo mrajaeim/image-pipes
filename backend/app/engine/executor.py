@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import threading
+import time
 from collections import defaultdict, deque
 from collections.abc import Callable
 from pathlib import Path
@@ -278,6 +279,7 @@ class DagExecutor:
 
                 cache_hit = False
                 produced: dict[str, np.ndarray | list[np.ndarray]]
+                started = time.perf_counter()
                 if request.cache and self.cache.has_outputs(cache_key):
                     cached = self.cache.get_outputs(cache_key)
                     if cached is not None:
@@ -294,6 +296,22 @@ class DagExecutor:
                             produced,
                             meta={"node_id": node_id, "type": instance.type},
                         )
+
+                duration_ms = (time.perf_counter() - started) * 1000.0
+                emit(
+                    ExecutionEvent(
+                        type=ExecutionEventType.PROGRESS,
+                        node_id=node_id,
+                        progress=(index + 1) / len(order),
+                        sample_index=sample_index,
+                        cache_hit=cache_hit,
+                        duration_ms=duration_ms,
+                        message=(
+                            f"Finished {instance.type} in {duration_ms:.1f}ms"
+                            + (" (cache)" if cache_hit else "")
+                        ),
+                    )
+                )
 
                 _emit_port_previews(
                     emit=emit,
