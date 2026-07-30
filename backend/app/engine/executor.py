@@ -21,6 +21,7 @@ from app.models.graph import (
     ExecutionEventType,
     Graph,
     NodeInstance,
+    PortDirection,
 )
 
 
@@ -47,6 +48,14 @@ class CancellationToken:
 ProgressCallback = Callable[[ExecutionEvent], None]
 
 
+def _as_image(value: np.ndarray | list[np.ndarray] | None) -> np.ndarray | None:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        return value[0] if value else None
+    return value
+
+
 def validate_graph(graph: Graph, node_registry: NodeRegistry = registry) -> dict[str, NodeInstance]:
     nodes = {node.id: node for node in graph.nodes}
     if len(nodes) != len(graph.nodes):
@@ -63,6 +72,23 @@ def validate_graph(graph: Graph, node_registry: NodeRegistry = registry) -> dict
             raise DagValidationError(f"Edge target '{edge.target}' not found")
         if edge.source == edge.target:
             raise DagValidationError(f"Self-loop on node '{edge.source}'")
+
+        source_impl = node_registry.get(nodes[edge.source].type)
+        target_impl = node_registry.get(nodes[edge.target].type)
+        source_ports = {
+            port.id for port in source_impl.ports if port.direction == PortDirection.OUTPUT
+        }
+        target_ports = {
+            port.id for port in target_impl.ports if port.direction == PortDirection.INPUT
+        }
+        if source_ports and edge.source_port not in source_ports:
+            raise DagValidationError(
+                f"Unknown source port '{edge.source_port}' on node '{edge.source}'"
+            )
+        if target_ports and edge.target_port not in target_ports:
+            raise DagValidationError(
+                f"Unknown target port '{edge.target_port}' on node '{edge.target}'"
+            )
 
     return nodes
 
@@ -104,6 +130,7 @@ def _collect_inputs(
     node_id: str,
     edges: list[Edge],
     outputs: dict[str, dict[str, np.ndarray | list[np.ndarray]]],
+    sample_index: int = 0,
 ) -> dict[str, np.ndarray | list[np.ndarray] | None]:
     incoming = [edge for edge in edges if edge.target == node_id]
     inputs: dict[str, np.ndarray | list[np.ndarray] | None] = {}
@@ -112,10 +139,15 @@ def _collect_inputs(
     for edge in incoming:
         source_outputs = outputs.get(edge.source, {})
         value = source_outputs.get(edge.source_port)
+        if value is None and edge.source_port == "image" and len(source_outputs) == 1:
+            value = next(iter(source_outputs.values()))
         if value is None:
             continue
+        # Fan-out batch inputs one image per sample so unary nodes keep working.
         if isinstance(value, list):
-            grouped[edge.target_port].extend(value)
+            if not value:
+                continue
+            grouped[edge.target_port].append(value[sample_index % len(value)])
         else:
             grouped[edge.target_port].append(value)
 
@@ -138,6 +170,55 @@ def _input_hashes(
         else:
             hashes[port] = cache.hash_image(value)
     return hashes
+
+
+def _emit_port_previews(
+    *,
+    emit: ProgressCallback,
+    node_id: str,
+    produced: dict[str, np.ndarray | list[np.ndarray]],
+    sample_index: int,
+    cache_hit: bool,
+    sample_previews: dict[str, Any],
+) -> None:
+    port_previews: dict[str, Any] = {}
+    for port_id, value in produced.items():
+        if isinstance(value, list):
+            encoded_list: list[str] = []
+            for index, image in enumerate(value):
+                preview = _encode_preview(image)
+                encoded_list.append(preview)
+                emit(
+                    ExecutionEvent(
+                        type=ExecutionEventType.PREVIEW,
+                        node_id=node_id,
+                        port_id=port_id,
+                        image_b64=preview,
+                        sample_index=index,
+                        cache_hit=cache_hit,
+                    )
+                )
+            if encoded_list:
+                port_previews[port_id] = encoded_list
+            continue
+
+        image = _as_image(value)
+        if image is None:
+            continue
+        preview = _encode_preview(image)
+        port_previews[port_id] = preview
+        emit(
+            ExecutionEvent(
+                type=ExecutionEventType.PREVIEW,
+                node_id=node_id,
+                port_id=port_id,
+                image_b64=preview,
+                sample_index=sample_index,
+                cache_hit=cache_hit,
+            )
+        )
+    if port_previews:
+        sample_previews[node_id] = port_previews
 
 
 class DagExecutor:
@@ -169,14 +250,19 @@ class DagExecutor:
             cancel.check()
             sample_seed = request.seed + sample_index
             outputs: dict[str, dict[str, np.ndarray | list[np.ndarray]]] = {}
-            sample_previews: dict[str, str] = {}
+            sample_previews: dict[str, Any] = {}
 
             for index, node_id in enumerate(order):
                 cancel.check()
                 instance = nodes[node_id]
                 node_impl = self.registry.get(instance.type)
                 params = node_impl.validate_params(instance.params)
-                inputs = _collect_inputs(node_id, request.graph.edges, outputs)
+                inputs = _collect_inputs(
+                    node_id,
+                    request.graph.edges,
+                    outputs,
+                    sample_index=sample_index,
+                )
                 input_hash_map = _input_hashes(inputs, self.cache)
                 cache_key = self.cache.make_key(instance.type, params, input_hash_map, sample_seed)
 
@@ -191,41 +277,32 @@ class DagExecutor:
                 )
 
                 cache_hit = False
-                primary: np.ndarray | None = None
-                if request.cache and self.cache.has(cache_key):
-                    cached = self.cache.get(cache_key)
+                produced: dict[str, np.ndarray | list[np.ndarray]]
+                if request.cache and self.cache.has_outputs(cache_key):
+                    cached = self.cache.get_outputs(cache_key)
                     if cached is not None:
-                        outputs[node_id] = {"image": cached}
-                        primary = cached
+                        produced = cached
+                        outputs[node_id] = produced
                         cache_hit = True
 
                 if not cache_hit:
                     produced = node_impl.execute(inputs, params, seed=sample_seed)
                     outputs[node_id] = produced
-                    primary_value = produced.get("image")
-                    if isinstance(primary_value, list) and primary_value:
-                        primary = primary_value[0]
-                    elif isinstance(primary_value, np.ndarray):
-                        primary = primary_value
-                    if request.cache and primary is not None:
-                        self.cache.put(
+                    if request.cache:
+                        self.cache.put_outputs(
                             cache_key,
-                            primary,
+                            produced,
                             meta={"node_id": node_id, "type": instance.type},
                         )
 
-                if primary is not None:
-                    preview = _encode_preview(primary)
-                    sample_previews[node_id] = preview
-                    emit(
-                        ExecutionEvent(
-                            type=ExecutionEventType.PREVIEW,
-                            node_id=node_id,
-                            image_b64=preview,
-                            sample_index=sample_index,
-                            cache_hit=cache_hit,
-                        )
-                    )
+                _emit_port_previews(
+                    emit=emit,
+                    node_id=node_id,
+                    produced=produced,
+                    sample_index=sample_index,
+                    cache_hit=cache_hit,
+                    sample_previews=sample_previews,
+                )
 
             results["samples"].append(
                 {
