@@ -1,0 +1,63 @@
+---
+description: Commit incrementally with atomic conventional commits; forbid big-bang drops
+alwaysApply: true
+---
+
+# Incremental Commits (No Big Bang)
+
+Ship reviewable progress. Never dump a large unfinished or multi-layer change in one commit or one unreviewed blob.
+
+## Execution loop
+
+1. Pick the **smallest logical slice** that still leaves the tree green.
+2. Change only that slice (prefer ≤5 files; exception: renames/refactors).
+3. Run the relevant checks for what you touched.
+4. `git add` only those files, then commit.
+5. Move to the next slice.
+
+## Slice order (feature work)
+
+Prefer this layering—**one layer per commit**:
+
+1. Types / schemas
+2. Core logic
+3. Tests
+4. API / WebSocket
+5. Store / hooks
+6. UI
+
+Do **not** mix backend engine work and frontend components in the same commit unless the change is a shared type/schema only.
+
+## Quality gate before every commit
+
+- Backend touched: `uv run ruff check` and `uv run pytest` (from `backend/`)
+- Frontend touched: `npm run typecheck` and `npm run lint` (from `frontend/`)
+- Never commit a knowingly broken build, lint, or test state
+
+## Commit messages
+
+Use Conventional Commits:
+
+```text
+<type>(<scope>): <imperative summary>
+```
+
+Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`  
+Scopes (examples): `backend/engine`, `backend/nodes`, `backend/api`, `frontend/canvas`, `frontend/store`, `shared/types`
+
+```text
+# ✅ GOOD
+feat(backend/engine): cache multi-port node outputs
+fix(frontend/canvas): refresh handle internals after run
+
+# ❌ BAD
+feat: finish playground
+chore: lots of updates
+```
+
+## Anti-patterns
+
+- One mega-commit for an entire feature or phase
+- Staging unrelated files “while we’re here”
+- Leaving WIP that does not compile or fails tests
+- Amending or force-pushing unless the user explicitly asks
