@@ -131,18 +131,24 @@ class SaveImageNode(BaseNode):
     label = "Save Image"
     category = "io"
     description = (
-        "Write image(s) to disk. Path supports templates: "
-        "{filename}, {time}, {index}."
+        "Write image(s) into a selected output folder. "
+        "Filename supports templates: {filename}, {time}, {index}."
     )
     cacheable = False
     ports = [image_in(), image_out()]
     params = [
         string_param(
-            "path",
-            "Path",
-            "output/{filename}_{index}.png",
+            "directory",
+            "Output folder",
+            "",
+            description="Required. Choose a root folder to save into.",
+        ),
+        string_param(
+            "filename",
+            "Filename",
+            "{filename}_{index}.png",
             description="Templates: {filename}, {time}, {index}",
-        )
+        ),
     ]
 
     def execute(
@@ -151,10 +157,14 @@ class SaveImageNode(BaseNode):
         params: dict[str, Any],
         seed: int = 0,
     ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        directory = str(params.get("directory", "")).strip()
+        if not directory:
+            raise ValueError("Save Image requires an output folder — choose one in the inspector")
         image = require_image(inputs)
         sample_index = current_sample_index.get()
         path = resolve_save_path(
-            str(params["path"]),
+            directory,
+            str(params.get("filename") or "{filename}_{index}.png"),
             index=sample_index,
             filename=source_stem_for_sample(sample_index),
             when=datetime.now(),
@@ -171,24 +181,30 @@ class SaveImageNode(BaseNode):
         input_vars: dict[str, str],
         output_vars: dict[str, str],
     ) -> list[str]:
-        template = str(params["path"])
+        directory = str(params.get("directory", "")).strip()
+        name_template = str(params.get("filename") or "{filename}_{index}.png")
         src = input_vars["image"]
         dst = output_vars["image"]
         return [
             "from datetime import datetime",
-            f"_template = {template!r}",
+            f"_dir = Path({directory!r})",
+            f"_name_template = {name_template!r}",
             "_index = 0  # set per sample when batching",
             "_filename = 'image'",
             "_time = datetime.now().strftime('%Y%m%d_%H%M%S')",
             (
-                "_path = Path(_template.replace('{filename}', _filename)"
+                "_name = (_name_template.replace('{filename}', _filename)"
                 ".replace('{time}', _time).replace('{index}', str(_index)))"
             ),
+            "_name = Path(_name).name",
             (
-                "if _index > 0 and '{index}' not in _template "
-                "and '{time}' not in _template and '{filename}' not in _template:"
+                "if _index > 0 and '{index}' not in _name_template "
+                "and '{time}' not in _name_template and '{filename}' not in _name_template:"
             ),
-            "    _path = _path.with_name(f'{_path.stem}_{_index}{_path.suffix}')",
+            "    _stem = Path(_name).stem",
+            "    _suffix = Path(_name).suffix",
+            "    _name = f'{_stem}_{_index}{_suffix}'",
+            "_path = _dir / _name",
             "_path.parent.mkdir(parents=True, exist_ok=True)",
             f"cv2.imwrite(str(_path), {src})",
             f"{dst} = {src}",
@@ -196,29 +212,34 @@ class SaveImageNode(BaseNode):
 
 
 def resolve_save_path(
-    template: str,
+    directory: str,
+    name_template: str,
     *,
     index: int,
     filename: str,
     when: datetime,
 ) -> Path:
-    """Expand {filename}, {time}, {index} in a save path template."""
+    """Join a root folder with an expanded filename template."""
+    root = str(directory).strip()
+    if not root:
+        raise ValueError("Output folder is required")
     safe_name = Path(filename).stem or "image"
-    # Strip path separators from injected filename so templates stay under the intended folder.
     safe_name = safe_name.replace("/", "_").replace("\\", "_")
     time_token = when.strftime("%Y%m%d_%H%M%S")
     expanded = (
-        template.replace("{filename}", safe_name)
+        name_template.replace("{filename}", safe_name)
         .replace("{time}", time_token)
         .replace("{index}", str(index))
     )
-    path = Path(expanded)
+    # Filename only — ignore any directory components in the template.
+    name = Path(expanded).name or f"image_{index}.png"
     has_unique_token = any(
-        token in template for token in ("{index}", "{time}", "{filename}")
+        token in name_template for token in ("{index}", "{time}", "{filename}")
     )
     if index > 0 and not has_unique_token:
-        path = path.with_name(f"{path.stem}_{index}{path.suffix}")
-    return path
+        path_name = Path(name)
+        name = f"{path_name.stem}_{index}{path_name.suffix}"
+    return Path(root) / name
 
 
 class PreviewNode(BaseNode):
