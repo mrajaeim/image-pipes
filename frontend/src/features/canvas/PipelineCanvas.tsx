@@ -1,10 +1,11 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import {
   Background,
   Controls,
   MiniMap,
   ReactFlow,
   reconnectEdge,
+  useReactFlow,
   type Connection,
   type Edge,
   type EdgeTypes,
@@ -16,6 +17,22 @@ import { useGraphStore } from '../../store/graphStore'
 import { PipelineNodeView } from './PipelineNode'
 import { EditableEdge } from './EditableEdge'
 import type { NodeMetadata } from '../../types'
+
+function FitViewOnGraphChange() {
+  const { fitView } = useReactFlow()
+  const graphRevision = useGraphStore((s) => s.graphRevision)
+  const nodeCount = useGraphStore((s) => s.nodes.length)
+
+  useEffect(() => {
+    if (graphRevision === 0 || nodeCount === 0) return
+    const timer = window.setTimeout(() => {
+      void fitView({ padding: 0.2, duration: 220 })
+    }, 30)
+    return () => window.clearTimeout(timer)
+  }, [fitView, graphRevision, nodeCount])
+
+  return null
+}
 
 export function PipelineCanvas() {
   const nodes = useGraphStore((s) => s.nodes)
@@ -121,6 +138,7 @@ export function PipelineCanvas() {
           data: { waypoints: [] },
         }}
       >
+        <FitViewOnGraphChange />
         <MiniMap
           pannable
           zoomable

@@ -39,6 +39,8 @@ interface GraphState {
   isExecuting: boolean
   seed: number
   sampleCount: number
+  /** Bumped on loadWorkflow so the canvas can refit the viewport. */
+  graphRevision: number
   setNodeCatalog: (catalog: NodeMetadata[]) => void
   onNodesChange: (changes: NodeChange<PipelineNode>[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
@@ -127,6 +129,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   isExecuting: false,
   seed: 0,
   sampleCount: 1,
+  graphRevision: 0,
 
   setNodeCatalog: (catalog) => set({ nodeCatalog: catalog }),
 
@@ -519,10 +522,16 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
     syncNodeCounter(nodes.map((node) => node.id))
 
+    const preferred =
+      nodes.find((node) => node.data.type === 'load_image')?.id ?? nodes[0]?.id ?? null
+
     set({
-      nodes,
+      nodes: nodes.map((node) => ({
+        ...node,
+        selected: node.id === preferred,
+      })),
       edges,
-      selectedNodeId: null,
+      selectedNodeId: preferred,
       activeNodeId: null,
       previews: [],
       nodeImages: {},
@@ -531,6 +540,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       generatedCode: '# Run codegen to export a Python script\n',
       seed: doc.seed,
       sampleCount: Math.max(1, doc.sampleCount),
+      graphRevision: get().graphRevision + 1,
     })
 
     return { skippedTypes: [...skipped].sort() }
