@@ -60,6 +60,7 @@ class ExecutionEventType(StrEnum):
 class ExecutionEvent(BaseModel):
     type: ExecutionEventType
     node_id: str | None = None
+    port_id: str | None = None
     message: str | None = None
     progress: float | None = None
     image_b64: str | None = None
