@@ -1,6 +1,20 @@
-# Image Pipeline Playground
+# Image Pipes
 
-Visual node editor for OpenCV image-preprocessing pipelines. Build a DAG in the browser, execute it with caching and live previews, and export a runnable Python script.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-mrajaeim%2Fimage--pipes-181717?logo=github)](https://github.com/mrajaeim/image-pipes)
+
+Visual node editor for OpenCV image-preprocessing pipelines. Build a DAG in the browser, execute it with caching and live previews, save/load workflows as JSON, and export a runnable Python script.
+
+**Repository:** [https://github.com/mrajaeim/image-pipes](https://github.com/mrajaeim/image-pipes)
+
+## Features
+
+- Drag-and-drop OpenCV nodes (color, filters, morphology, contours, histograms, clustering, and more)
+- Live WebSocket execution with per-node previews and result caching
+- Seeded stochastic nodes for reproducible experiments
+- **Export** / **Load** workflow JSON from the header
+- **Export Python** to a standalone script in the Monaco panel
+- Catalog-driven nodes — new backend nodes appear in the UI automatically
 
 ## Stack
 
@@ -63,9 +77,11 @@ docker compose up --build
 
 1. Drag nodes from the palette onto the canvas.
 2. Connect ports, select a node, and edit parameters in the inspector.
-3. For `Load Image`, set `path` to a file accessible by the backend (for example `uploads/input.png`).
+3. For **Load Images**, pick files or a folder (uploaded to the backend).
 4. Click **Run** to execute over WebSocket and watch previews fill in.
-5. Click **Export Python** to fill the Monaco panel with a standalone script.
+5. Use **Export** / **Load** to save or restore a workflow JSON file.
+6. Click **Export Python** to fill the Monaco panel with a standalone script.
+7. Open **About** (info button next to the brand) for project description, license, and GitHub.
 
 Example graph JSON lives in [`backend/examples/blur_canny.json`](backend/examples/blur_canny.json).
 
@@ -78,3 +94,7 @@ See [docs/architecture.md](docs/architecture.md) for the registration guide. In 
 3. Register the instance in `backend/app/nodes/__init__.py`.
 
 No frontend changes are required beyond what the `/api/nodes` metadata already drives.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
