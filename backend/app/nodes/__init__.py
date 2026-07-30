@@ -9,6 +9,7 @@ from app.nodes.analysis import (
     HistogramEqualizeNode,
     NormalizeNode,
 )
+from app.nodes.clustering import DominantColorsHistNode, KMeansColorsNode
 from app.nodes.color import (
     BrightnessContrastNode,
     ClaheNode,
@@ -84,6 +85,8 @@ def register_builtin_nodes() -> None:
         DrawHistogramNode(),
         NormalizeNode(),
         CompareHistNode(),
+        KMeansColorsNode(),
+        DominantColorsHistNode(),
         FindContoursNode(),
         ConvexHullNode(),
         ImageMomentsNode(),
