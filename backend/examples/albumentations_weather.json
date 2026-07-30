@@ -10,7 +10,7 @@
         "id": "load-1",
         "type": "load_image",
         "params": { "path": "examples/lena.png" },
-        "position": { "x": 0, "y": 0 }
+        "position": { "x": 0, "y": 40 }
       },
       {
         "id": "fog-1",
@@ -21,13 +21,13 @@
           "alpha_coef": 0.08,
           "p": 1.0
         },
-        "position": { "x": 260, "y": 0 }
+        "position": { "x": 420, "y": 40 }
       },
       {
         "id": "rain-1",
         "type": "albu_random_rain",
         "params": { "p": 1.0 },
-        "position": { "x": 520, "y": 0 }
+        "position": { "x": 840, "y": 40 }
       }
     ],
     "edges": [

@@ -10,7 +10,7 @@
         "id": "load-1",
         "type": "load_image",
         "params": { "path": "examples/lena.png" },
-        "position": { "x": 0, "y": 0 }
+        "position": { "x": 0, "y": 40 }
       },
       {
         "id": "noise-1",
@@ -21,13 +21,13 @@
           "per_channel": "true",
           "p": 1.0
         },
-        "position": { "x": 260, "y": 0 }
+        "position": { "x": 420, "y": 40 }
       },
       {
         "id": "blur-1",
         "type": "albu_motion_blur",
         "params": { "blur_limit": 9, "p": 1.0 },
-        "position": { "x": 520, "y": 0 }
+        "position": { "x": 840, "y": 40 }
       }
     ],
     "edges": [

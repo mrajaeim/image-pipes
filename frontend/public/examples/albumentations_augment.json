@@ -10,7 +10,7 @@
         "id": "load-1",
         "type": "load_image",
         "params": { "path": "examples/lena.png" },
-        "position": { "x": 0, "y": 80 }
+        "position": { "x": 0, "y": 40 }
       },
       {
         "id": "ann-1",
@@ -19,7 +19,7 @@
           "bboxes_json": "[[180, 80, 380, 320, \"face\"]]",
           "keypoints_json": "[[230, 180], [320, 180], [275, 250]]"
         },
-        "position": { "x": 0, "y": 320 }
+        "position": { "x": 0, "y": 420 }
       },
       {
         "id": "jitter-1",
@@ -31,13 +31,13 @@
           "hue": 0.05,
           "p": 1.0
         },
-        "position": { "x": 280, "y": 120 }
+        "position": { "x": 420, "y": 100 }
       },
       {
         "id": "flip-1",
         "type": "albu_horizontal_flip",
         "params": { "p": 1.0 },
-        "position": { "x": 560, "y": 120 }
+        "position": { "x": 840, "y": 100 }
       }
     ],
     "edges": [
