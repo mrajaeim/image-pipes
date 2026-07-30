@@ -59,6 +59,9 @@ def generate_python(graph: Graph, seed: int = 0) -> str:
         primary = output_vars.get("image")
         if primary:
             lines.append(f"    print('produced', '{node_id}', {primary}.shape)")
+        else:
+            for port, var_name in output_vars.items():
+                lines.append(f"    print('produced', '{node_id}:{port}', {var_name}.shape)")
 
     lines.extend(
         [
