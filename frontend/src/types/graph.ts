@@ -40,6 +40,8 @@ export interface GraphNodeData {
   active?: boolean
   /** Local previews for Load Images before execution */
   localPreviewUrls?: string[]
+  /** Server paths for each local preview (same order as localPreviewUrls) */
+  uploadedFiles?: string[]
   [key: string]: unknown
 }
 
