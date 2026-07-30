@@ -12,6 +12,7 @@ dependencies = [
     "pydantic>=2.9.0",
     "python-multipart>=0.0.12",
     "websockets>=13.0",
+    "albumentations==2.0.8",
 ]
 
 [dependency-groups]
