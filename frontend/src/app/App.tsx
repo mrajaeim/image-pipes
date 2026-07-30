@@ -2,7 +2,6 @@ import {
   AppBar,
   Box,
   Button,
-  Divider,
   Stack,
   TextField,
   Toolbar,
@@ -14,6 +13,7 @@ import { NodeInspector } from '../features/inspector/NodeInspector'
 import { PreviewGrid } from '../features/preview/PreviewGrid'
 import { CodePanel } from '../features/code/CodePanel'
 import { useGraphStore } from '../store/graphStore'
+import { requestCodegen, useExecutionSocket } from '../hooks/useExecutionSocket'
 
 export default function App() {
   const seed = useGraphStore((s) => s.seed)
@@ -21,6 +21,18 @@ export default function App() {
   const setSeed = useGraphStore((s) => s.setSeed)
   const setSampleCount = useGraphStore((s) => s.setSampleCount)
   const isExecuting = useGraphStore((s) => s.isExecuting)
+  const setGeneratedCode = useGraphStore((s) => s.setGeneratedCode)
+  const appendLog = useGraphStore((s) => s.appendLog)
+  const { run, cancel } = useExecutionSocket()
+
+  const onExport = async () => {
+    try {
+      const code = await requestCodegen()
+      setGeneratedCode(code)
+    } catch (error) {
+      appendLog(error instanceof Error ? error.message : 'Codegen failed')
+    }
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -58,10 +70,15 @@ export default function App() {
             sx={{ width: 110 }}
           />
           <Stack direction="row" spacing={1}>
-            <Button variant="contained" disabled={isExecuting}>
+            <Button variant="contained" disabled={isExecuting} onClick={run}>
               Run
             </Button>
-            <Button variant="outlined" disabled={isExecuting}>
+            {isExecuting && (
+              <Button variant="outlined" color="warning" onClick={cancel}>
+                Cancel
+              </Button>
+            )}
+            <Button variant="outlined" disabled={isExecuting} onClick={() => void onExport()}>
               Export Python
             </Button>
           </Stack>
@@ -93,7 +110,6 @@ export default function App() {
           <CodePanel />
         </Box>
       </Box>
-      <Divider />
     </Box>
   )
 }
