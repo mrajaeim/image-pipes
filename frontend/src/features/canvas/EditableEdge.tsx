@@ -179,6 +179,16 @@ export function EditableEdge({
     [points, sourcePosition, targetPosition],
   )
 
+  // Keep the × next to a real bend handle after reshape; path midpoints lag behind
+  // dragged waypoints and leave the button floating in empty space.
+  const removeAnchor = useMemo(() => {
+    if (waypoints.length === 0) {
+      return { x: labelX, y: labelY - 18 }
+    }
+    const focus = waypoints[Math.floor((waypoints.length - 1) / 2)]
+    return { x: focus.x, y: focus.y - 18 }
+  }, [waypoints, labelX, labelY])
+
   const startDragExisting = useCallback(
     (index: number, event: ReactPointerEvent<HTMLButtonElement>) => {
       event.stopPropagation()
@@ -289,7 +299,7 @@ export function EditableEdge({
           }}
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY - 18}px)`,
+            transform: `translate(-50%, -50%) translate(${removeAnchor.x}px, ${removeAnchor.y}px)`,
             pointerEvents: 'all',
             zIndex: 2,
             width: 22,
