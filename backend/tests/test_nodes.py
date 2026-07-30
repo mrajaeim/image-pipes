@@ -34,6 +34,7 @@ def test_builtin_nodes_registered() -> None:
         "histogram_equalize",
         "find_contours",
         "convex_hull",
+        "moments",
         "erode",
         "dilate",
         "morphology_ex",
