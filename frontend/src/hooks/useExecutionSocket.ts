@@ -3,6 +3,10 @@ import { useGraphStore } from '../store/graphStore'
 import { notifyError, notifyInfo, notifySuccess } from '../notify'
 import type { ExecutionEvent } from '../types'
 
+export type RunOptions = {
+  targetNodeId?: string
+}
+
 export function useExecutionSocket() {
   const socketRef = useRef<WebSocket | null>(null)
   const clearExecution = useGraphStore((s) => s.clearExecution)
@@ -14,6 +18,7 @@ export function useExecutionSocket() {
   const toGraphPayload = useGraphStore((s) => s.toGraphPayload)
   const seed = useGraphStore((s) => s.seed)
   const sampleCount = useGraphStore((s) => s.sampleCount)
+  const targetLabelRef = useRef<string | null>(null)
 
   const cancel = useCallback(() => {
     socketRef.current?.send(JSON.stringify({ action: 'cancel' }))
@@ -23,97 +28,110 @@ export function useExecutionSocket() {
     notifyInfo('Pipeline cancelled')
   }, [setIsExecuting])
 
-  const run = useCallback(() => {
-    clearExecution()
-    setIsExecuting(true)
+  const run = useCallback(
+    (options?: RunOptions) => {
+      clearExecution()
+      setIsExecuting(true)
+      targetLabelRef.current = options?.targetNodeId ?? null
 
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/execute`)
-    socketRef.current = socket
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+      const socket = new WebSocket(`${protocol}://${window.location.host}/ws/execute`)
+      socketRef.current = socket
 
-    socket.onopen = () => {
-      socket.send(
-        JSON.stringify({
-          graph: toGraphPayload(),
-          seed,
-          sample_count: sampleCount,
-          cache: true,
-        }),
-      )
-    }
+      socket.onopen = () => {
+        socket.send(
+          JSON.stringify({
+            graph: toGraphPayload(),
+            seed,
+            sample_count: sampleCount,
+            cache: true,
+            ...(options?.targetNodeId
+              ? { target_node_id: options.targetNodeId }
+              : {}),
+          }),
+        )
+      }
 
-    socket.onmessage = (message) => {
-      const event = JSON.parse(message.data) as ExecutionEvent
-      if (event.type === 'progress' && event.node_id) {
-        setActiveNodeId(event.node_id)
-        if (event.duration_ms != null) {
-          setNodeTiming(event.node_id, {
-            ms: event.duration_ms,
-            cacheHit: Boolean(event.cache_hit),
+      socket.onmessage = (message) => {
+        const event = JSON.parse(message.data) as ExecutionEvent
+        if (event.type === 'progress' && event.node_id) {
+          setActiveNodeId(event.node_id)
+          if (event.duration_ms != null) {
+            setNodeTiming(event.node_id, {
+              ms: event.duration_ms,
+              cacheHit: Boolean(event.cache_hit),
+            })
+            appendLog(
+              event.message ??
+                `${event.node_id} ${event.duration_ms.toFixed(1)}ms` +
+                  (event.cache_hit ? ' (cache)' : ''),
+            )
+          } else if (event.message) {
+            appendLog(event.message)
+          }
+        }
+        if (event.type === 'preview' && event.node_id && event.image_b64) {
+          addPreview({
+            nodeId: event.node_id,
+            sampleIndex: event.sample_index ?? 0,
+            imageB64: event.image_b64,
+            portId: event.port_id,
+            cacheHit: event.cache_hit,
           })
-          appendLog(
-            event.message ??
-              `${event.node_id} ${event.duration_ms.toFixed(1)}ms` +
-                (event.cache_hit ? ' (cache)' : ''),
+        }
+        if (event.type === 'log' && event.message) appendLog(event.message)
+        if (event.type === 'error') {
+          const detail = event.message ?? 'Execution failed'
+          appendLog(detail)
+          notifyError(detail)
+          setIsExecuting(false)
+          setActiveNodeId(null)
+        }
+        if (event.type === 'done') {
+          appendLog(event.message ?? 'done')
+          const target = targetLabelRef.current
+          notifySuccess(
+            target
+              ? `Ran to ${target}`
+              : (event.message ?? 'Pipeline finished'),
           )
-        } else if (event.message) {
-          appendLog(event.message)
+          targetLabelRef.current = null
+          setIsExecuting(false)
+          setActiveNodeId(null)
+          socket.close()
+        }
+        if (event.type === 'cancelled') {
+          appendLog(event.message ?? 'cancelled')
+          notifyInfo(event.message ?? 'Pipeline cancelled')
+          setIsExecuting(false)
+          setActiveNodeId(null)
+          socket.close()
         }
       }
-      if (event.type === 'preview' && event.node_id && event.image_b64) {
-        addPreview({
-          nodeId: event.node_id,
-          sampleIndex: event.sample_index ?? 0,
-          imageB64: event.image_b64,
-          portId: event.port_id,
-          cacheHit: event.cache_hit,
-        })
-      }
-      if (event.type === 'log' && event.message) appendLog(event.message)
-      if (event.type === 'error') {
-        const detail = event.message ?? 'Execution failed'
-        appendLog(detail)
-        notifyError(detail)
-        setIsExecuting(false)
-        setActiveNodeId(null)
-      }
-      if (event.type === 'done') {
-        appendLog(event.message ?? 'done')
-        notifySuccess(event.message ?? 'Pipeline finished')
-        setIsExecuting(false)
-        setActiveNodeId(null)
-        socket.close()
-      }
-      if (event.type === 'cancelled') {
-        appendLog(event.message ?? 'cancelled')
-        notifyInfo(event.message ?? 'Pipeline cancelled')
-        setIsExecuting(false)
-        setActiveNodeId(null)
-        socket.close()
-      }
-    }
 
-    socket.onerror = () => {
-      appendLog('WebSocket error')
-      notifyError('Could not connect to the execution server')
-      setIsExecuting(false)
-    }
+      socket.onerror = () => {
+        appendLog('WebSocket error')
+        notifyError('Could not connect to the execution server')
+        setIsExecuting(false)
+      }
 
-    socket.onclose = () => {
-      setIsExecuting(false)
-      socketRef.current = null
-    }
-  }, [
-    addPreview,
-    appendLog,
-    clearExecution,
-    sampleCount,
-    seed,
-    setActiveNodeId,
-    setIsExecuting,
-    setNodeTiming,
-    toGraphPayload,
-  ])
+      socket.onclose = () => {
+        setIsExecuting(false)
+        socketRef.current = null
+      }
+    },
+    [
+      addPreview,
+      appendLog,
+      clearExecution,
+      sampleCount,
+      seed,
+      setActiveNodeId,
+      setIsExecuting,
+      setNodeTiming,
+      toGraphPayload,
+    ],
+  )
 
   return { run, cancel }
 }
