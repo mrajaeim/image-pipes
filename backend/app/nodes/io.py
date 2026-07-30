@@ -141,11 +141,7 @@ class SaveImageNode(BaseNode):
             "path",
             "Path",
             "output/{filename}_{index}.png",
-            description=(
-                "Output path template. Placeholders: "
-                "{filename} source stem, {time} YYYYmmdd_HHMMSS, {index} sample index. "
-                "If {index} is omitted, it is appended for sample index > 0."
-            ),
+            description="Templates: {filename}, {time}, {index}",
         )
     ]
 

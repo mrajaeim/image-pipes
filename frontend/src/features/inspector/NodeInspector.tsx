@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Box,
+  Button,
   MenuItem,
   TextField,
   Typography,
@@ -11,6 +12,12 @@ import {
 import { useGraphStore } from '../../store/graphStore'
 import type { ParamField } from '../../types'
 import { FileParamInput } from './FileParamInput'
+
+const SAVE_PATH_TEMPLATES = [
+  { token: '{filename}', hint: 'source stem' },
+  { token: '{time}', hint: 'YYYYmmdd_HHMMSS' },
+  { token: '{index}', hint: 'sample index' },
+] as const
 
 function buildSchema(fields: ParamField[]) {
   const shape: Record<string, z.ZodTypeAny> = {}
@@ -43,7 +50,7 @@ export function NodeInspector() {
   const fields = meta?.params ?? []
   const schema = buildSchema(fields)
 
-  const { register, handleSubmit, reset, setValue, formState } = useForm({
+  const { register, handleSubmit, reset, setValue, getValues, formState } = useForm({
     resolver: zodResolver(schema),
     defaultValues: selected?.data.params ?? {},
   })
@@ -86,6 +93,13 @@ export function NodeInspector() {
   }
 
   const commit = handleSubmit((values) => updateNodeParams(selected.id, values))
+
+  const insertPathTemplate = (token: string) => {
+    const current = String(getValues('path') ?? '')
+    const next = `${current}${token}`
+    setValue('path', next, { shouldDirty: true, shouldValidate: true })
+    updateNodeParams(selected.id, { path: next })
+  }
 
   return (
     <Box sx={{ p: 2, height: '100%', overflow: 'auto' }}>
@@ -141,6 +155,7 @@ export function NodeInspector() {
                 select
                 size="small"
                 label={field.label}
+                helperText={field.description ?? undefined}
                 defaultValue={String(selected.data.params[field.name] ?? field.default ?? '')}
                 {...register(field.name)}
               >
@@ -152,15 +167,78 @@ export function NodeInspector() {
               </TextField>
             )
           }
+
+          const showSaveTemplates =
+            selected.data.type === 'save_image' && field.name === 'path'
+          const errorText = formState.errors[field.name]?.message as string | undefined
+
           return (
-            <TextField
-              key={field.name}
-              size="small"
-              label={field.label}
-              type={field.type === 'string' ? 'text' : 'number'}
-              helperText={formState.errors[field.name]?.message as string | undefined}
-              {...register(field.name)}
-            />
+            <Box key={field.name} sx={{ display: 'grid', gap: 0.75 }}>
+              <TextField
+                size="small"
+                label={field.label}
+                type={field.type === 'string' ? 'text' : 'number'}
+                helperText={errorText ?? field.description ?? undefined}
+                {...register(field.name)}
+              />
+              {showSaveTemplates && (
+                <Box>
+                  <Typography
+                    sx={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      color: 'rgba(244,241,234,0.4)',
+                      mb: 0.5,
+                    }}
+                  >
+                    Available templates
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                    {SAVE_PATH_TEMPLATES.map((item) => (
+                      <Button
+                        key={item.token}
+                        size="small"
+                        variant="outlined"
+                        className="nodrag nopan"
+                        onClick={() => insertPathTemplate(item.token)}
+                        sx={{
+                          textTransform: 'none',
+                          minWidth: 0,
+                          px: 1,
+                          py: 0.25,
+                          borderColor: 'rgba(125,206,160,0.35)',
+                          color: '#7dcea0',
+                          fontFamily:
+                            'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+                          fontSize: 11,
+                          '&:hover': {
+                            borderColor: 'rgba(125,206,160,0.6)',
+                            bgcolor: 'rgba(125,206,160,0.08)',
+                          },
+                        }}
+                        title={item.hint}
+                      >
+                        {item.token}
+                        <Box
+                          component="span"
+                          sx={{
+                            ml: 0.75,
+                            color: 'rgba(244,241,234,0.4)',
+                            fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif',
+                            fontSize: 10,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {item.hint}
+                        </Box>
+                      </Button>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Box>
           )
         })}
       </Box>
