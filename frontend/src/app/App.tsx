@@ -1,10 +1,11 @@
-import { Box } from '@mui/material'
+import { Box, Tab, Tabs } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
 import { PipelineCanvas } from '../features/canvas/PipelineCanvas'
 import { NodePalette } from '../features/palette/NodePalette'
 import { NodeInspector } from '../features/inspector/NodeInspector'
 import { CodePanel } from '../features/code/CodePanel'
 import { ExecutionLogPanel } from '../features/execution/ExecutionLogPanel'
+import { PreviewGrid } from '../features/preview/PreviewGrid'
 import { TemplateGallery } from '../features/templates/TemplateGallery'
 import { useGraphStore } from '../store/graphStore'
 import {
@@ -27,6 +28,7 @@ export default function App() {
   const { run, cancel } = useExecutionSocket()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [sideTab, setSideTab] = useState(0)
 
   useEffect(() => bindExecutionRunner(run), [run])
 
@@ -162,15 +164,46 @@ export default function App() {
             borderLeft: '1px solid rgba(255,255,255,0.08)',
             bgcolor: '#141414',
             display: 'grid',
-            gridTemplateRows: '1fr 220px',
+            gridTemplateRows: '1fr 260px',
             minHeight: 0,
           }}
         >
           <Box sx={{ minHeight: 0, overflow: 'auto' }}>
             <NodeInspector />
           </Box>
-          <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.08)', minHeight: 0 }}>
-            <CodePanel />
+          <Box
+            sx={{
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <Tabs
+              value={sideTab}
+              onChange={(_, value: number) => setSideTab(value)}
+              sx={{
+                minHeight: 36,
+                px: 1,
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                '& .MuiTab-root': {
+                  minHeight: 36,
+                  py: 0.5,
+                  textTransform: 'none',
+                  fontWeight: 650,
+                  fontSize: 12,
+                  color: 'rgba(244,241,234,0.45)',
+                },
+                '& .Mui-selected': { color: '#7dcea0' },
+                '& .MuiTabs-indicator': { bgcolor: '#7dcea0', height: 2 },
+              }}
+            >
+              <Tab label="Code" />
+              <Tab label="Results" />
+            </Tabs>
+            <Box sx={{ flex: 1, minHeight: 0 }}>
+              {sideTab === 0 ? <CodePanel /> : <PreviewGrid />}
+            </Box>
           </Box>
         </Box>
       </Box>
