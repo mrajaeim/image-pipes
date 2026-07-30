@@ -26,6 +26,12 @@ export type NodeImageState = {
   portSamples: Record<string, string[]>
 }
 
+/** Latest measured execution duration per node id. */
+export type NodeTiming = {
+  ms: number
+  cacheHit: boolean
+}
+
 interface GraphState {
   nodes: PipelineNode[]
   edges: Edge[]
@@ -35,6 +41,7 @@ interface GraphState {
   previews: ExecutionPreview[]
   nodeImages: Record<string, NodeImageState>
   logs: string[]
+  nodeTimings: Record<string, NodeTiming>
   generatedCode: string
   isExecuting: boolean
   seed: number
@@ -62,6 +69,7 @@ interface GraphState {
   addPreview: (preview: ExecutionPreview) => void
   clearExecution: () => void
   appendLog: (message: string) => void
+  setNodeTiming: (nodeId: string, timing: NodeTiming) => void
   setGeneratedCode: (code: string) => void
   setIsExecuting: (value: boolean) => void
   setSeed: (seed: number) => void
@@ -125,6 +133,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   previews: [],
   nodeImages: {},
   logs: [],
+  nodeTimings: {},
   generatedCode: '# Run codegen to export a Python script\n',
   isExecuting: false,
   seed: 0,
@@ -401,6 +410,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       previews: [],
       nodeImages: {},
       logs: [],
+      nodeTimings: {},
       activeNodeId: null,
       nodes: get().nodes.map((node) => ({
         ...node,
@@ -409,6 +419,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     }),
 
   appendLog: (message) => set({ logs: [...get().logs, message] }),
+  setNodeTiming: (nodeId, timing) =>
+    set({
+      nodeTimings: { ...get().nodeTimings, [nodeId]: timing },
+    }),
   setGeneratedCode: (code) => set({ generatedCode: code }),
   setIsExecuting: (value) => set({ isExecuting: value }),
   setSeed: (seed) => set({ seed }),
@@ -536,6 +550,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       previews: [],
       nodeImages: {},
       logs: [],
+      nodeTimings: {},
       isExecuting: false,
       generatedCode: '# Run codegen to export a Python script\n',
       seed: doc.seed,
