@@ -1,149 +1,496 @@
 # Image Pipes
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![GitHub](https://img.shields.io/badge/GitHub-mrajaeim%2Fimage--pipes-181717?logo=github)](https://github.com/mrajaeim/image-pipes)
+A visual workflow editor for computer vision pipelines powered by **OpenCV** and **Albumentations**.
 
-**A visual IDE for computer vision pipelines.**
+Instead of writing hundreds of lines of preprocessing code, build your image processing pipeline visually, inspect every intermediate transformation in real time, and export clean, production-ready Python code.
 
-Build, debug, and export OpenCV workflows without writing preprocessing code by hand.
+---
 
-## Why Image Pipes?
+## 📚 Table of Contents
 
-Computer vision preprocessing is usually hidden inside long Python scripts. Changing the pipeline often means editing code, re-running everything, and debugging intermediate images manually.
+- [Overview](#overview)
+- [Demo](#demo)
+- [Why Image Pipes?](#why-image-pipes)
+- [Key Features](#key-features)
+- [How It Works](#how-it-works)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Backend Setup](#backend-setup)
+  - [Frontend Setup](#frontend-setup)
+  - [Docker Setup](#docker-setup)
+- [Quality Checks](#quality-checks)
+- [Adding a New Node](#adding-a-new-node)
+- [Exporting Code](#exporting-code)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [FAQ](#faq)
+- [License](#license)
 
-Image Pipes makes that process visual: compose an OpenCV DAG in the browser, execute it live, inspect every step, and export runnable Python when you’re ready.
+---
 
-It is useful for:
+# Overview
 
-- experimenting with preprocessing techniques
-- debugging computer vision pipelines
-- teaching OpenCV concepts
-- rapidly prototyping image workflows
-- exporting pipelines into production-ready Python code
+Image Pipes is a visual workflow editor for computer vision powered by **OpenCV** and **Albumentations**.
 
-## Features
+Instead of writing hundreds of lines of boilerplate preprocessing scripts, you compose your workflow visually, inspect intermediate frame transformations in real time, and export deterministic, production-ready Python code.
 
-- Drag-and-drop OpenCV nodes (color, filters, morphology, contours, histograms, clustering, and more)
-- **Albumentations augment** nodes (catalog-driven) with multi-target ports: image, optional mask, bboxes, keypoints
-- Live WebSocket execution with per-node previews, timings, and an execution log
-- Result caching and seeded stochastic nodes for reproducible experiments
-- **Run to selected** — execute only ancestors of a node while tuning parameters
-- **Starters** palette group for source nodes (Load Images, Blank Image, Annotations, …)
-- **Export** / **Load** workflow JSON; **Templates** gallery includes Blur & Canny, Hist Equalize, Morphology, Contours, and Albu Augment
-- **Export Python** to a standalone script in the Monaco panel
-- Catalog-driven UI — the frontend does not hard-code nodes; `/api/nodes` metadata builds the palette automatically
+```text
+┌──────────────┐     ┌──────────────┐     ┌───────────────┐     ┌──────────────┐
+│  Load Image  │ ──► │  Grayscale   │ ──► │ Gaussian Blur │ ──► │    Canny     │
+└──────────────┘     └──────────────┘     └───────────────┘     └──────────────┘
+                                                                        │
+                                                                        ▼
+                                                                ┌──────────────┐
+                                                                │ Find Contours│
+                                                                └──────────────┘
+```
 
-## Architecture highlights
+---
 
-Capabilities that matter beyond “React + OpenCV”:
+# Demo
 
-- DAG-based execution engine with topological validation
-- Metadata-driven UI (dynamic node registration)
-- Live WebSocket progress, previews, and per-node duration
-- Deterministic execution with seeded randomness
-- Result caching across runs
-- Code generation (`emit_python` → standalone script)
-- Full-stack architecture: React Flow editor + FastAPI + OpenCV
+> [!NOTE]
+> **Demo Coming Soon**
 
-## Stack
+A short GIF/video will showcase:
 
-- **Frontend:** React 19, Vite, TypeScript, MUI, React Flow, Zustand, TanStack Query, React Hook Form, Zod, Monaco
-- **Backend:** FastAPI, OpenCV, NumPy, Pillow, Albumentations 2.0.8 (MIT), Pydantic v2, WebSockets
-- **Tooling:** `uv`, `npm`, optional Docker
+- Drag-and-drop workflow editing
+- Live parameter tuning
+- Real-time execution previews
+- Python code generation
+- Interactive debugging
 
-## Demo
+---
 
-> **Tip:** A short GIF of canvas editing → Run → previews → Export Python converts more visitors than any feature list. Record from the local app and drop files under `docs/demo/` (e.g. `edit.gif`, `run.gif`, `export.gif`), then link them here.
+# Why Image Pipes?
 
-## Local development
+Traditional computer vision experimentation is repetitive:
 
-### Backend
+1. Edit Python script
+2. Run the program
+3. Save temporary images
+4. Compare outputs
+5. Tune parameters
+6. Repeat dozens of times
+
+## Traditional Workflow vs Image Pipes
+
+| Traditional | Image Pipes |
+|------------|-------------|
+| Hundreds of lines of boilerplate | Visual node graph |
+| `cv2.imshow()` debugging | Live previews |
+| Manual parameter tuning | Interactive controls |
+| Hidden intermediate states | Inspect every node |
+| Script-only workflow | Export clean Python code |
+
+---
+
+# Key Features
+
+## 🎨 Visual Workflow Editor
+
+- React Flow powered canvas
+- Smooth zoom & pan
+- Dynamic grid snapping
+- Automatic connection validation
+- Rich node controls
+  - sliders
+  - dropdowns
+  - switches
+  - numeric inputs
+
+---
+
+## 👁️ Real-Time Preview
+
+- Low-latency WebSocket execution
+- Live intermediate images
+- Bounding box overlays
+- Mask visualization
+- Keypoint visualization
+- Execution timing
+- Runtime logs
+
+---
+
+## 🧪 Rich Processing Library
+
+### OpenCV
+
+- Color conversions
+- Blur & filtering
+- Thresholding
+- Morphological operations
+- Histograms
+- Edge detection
+- Contours
+- Geometric transforms
+- K-Means clustering
+
+### Albumentations
+
+Supports:
+
+- Image transforms
+- Bounding boxes
+- Segmentation masks
+- Keypoints
+- Multi-target augmentation
+
+Deterministic seeded execution enables reproducible experiments.
+
+---
+
+## ⚡ Smart Execution Engine
+
+- DAG validation
+- Topological sorting
+- Partial execution
+- Run-to-selected-node
+- In-memory caching
+- Incremental recomputation
+
+---
+
+## 📦 Metadata-Driven Design
+
+New processing nodes are automatically discovered.
+
+Adding a backend node requires **zero frontend changes**.
+
+Features include:
+
+- Automatic node discovery
+- Dynamic UI generation
+- JSON workspace import/export
+
+---
+
+# How It Works
+
+```text
+Image
+   │
+   ▼
+Visual Graph
+   │
+   ▼
+Validate DAG
+   │
+   ▼
+Execute Nodes
+   │
+   ▼
+Preview Every Step
+   │
+   ▼
+Export Native Python
+```
+
+---
+
+# Architecture
+
+```text
+                       ┌─────────────────────────┐
+                       │    React Flow Editor    │
+                       └────────────┬────────────┘
+                                    │
+                            WebSocket / REST
+                                    │
+                                    ▼
+                       ┌─────────────────────────┐
+                       │  DAG Execution Engine   │
+                       └────────────┬────────────┘
+                                    │
+              ┌─────────────────────┴─────────────────────┐
+              ▼                                           ▼
+   ┌────────────────────┐                      ┌────────────────────┐
+   │    OpenCV Nodes    │                      │   Albumentations   │
+   └──────────┬─────────┘                      └──────────┬─────────┘
+              │                                           │
+              └─────────────────────┬─────────────────────┘
+                                    │
+                                    ▼
+                       ┌─────────────────────────┐
+                       │   Previews & Export     │
+                       └────────────┬────────────┘
+```
+
+---
+
+# Tech Stack
+
+## Frontend
+
+| Technology | Purpose |
+|------------|---------|
+| React 19 | UI |
+| TypeScript | Type safety |
+| Vite | Build tool |
+| React Flow | Graph editor |
+| Zustand | State management |
+| TanStack Query | Server state |
+| Material UI | Components |
+| Monaco Editor | Code editor |
+| React Hook Form | Forms |
+| Zod | Validation |
+
+---
+
+## Backend
+
+| Technology | Purpose |
+|------------|---------|
+| FastAPI | API |
+| WebSockets | Live execution |
+| Pydantic v2 | Data validation |
+| OpenCV | Image processing |
+| Albumentations | Data augmentation |
+| Pillow | Image loading |
+| NumPy | Numerical operations |
+| Custom DAG Engine | Workflow execution |
+
+---
+
+## Tooling
+
+- Python 3.12+
+- uv
+- Node.js 20+
+- npm
+- Docker
+- Docker Compose
+
+---
+
+# Quick Start
+
+## Prerequisites
+
+- Python **3.12+**
+- Node.js **20+**
+- **uv** (recommended)
+
+---
+
+## Backend Setup
 
 ```bash
 cd backend
+
 uv sync
-uv run uvicorn app.main:app --reload --port 8000
+
+uv run uvicorn app.main:app \
+    --reload \
+    --port 8000
 ```
 
-Health check: [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
+Verify backend:
 
-### Frontend
+```
+http://127.0.0.1:8000/api/health
+```
+
+---
+
+## Frontend Setup
 
 ```bash
 cd frontend
+
 npm install
+
 npm run dev
 ```
 
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173). Vite proxies `/api` and `/ws` to the FastAPI server.
+Open:
 
-### Quality checks
-
-```bash
-# backend
-cd backend
-uv run ruff check
-uv run pytest
-
-# frontend
-cd frontend
-npm run typecheck
-npm run lint
+```
+http://127.0.0.1:5173
 ```
 
-## Production (single process)
+The Vite development server automatically proxies:
 
-Build the frontend, then serve it from FastAPI:
+- `/api`
+- `/ws`
 
-```bash
-cd frontend && npm run build && cd ../backend
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+to the backend.
 
-Or with Docker:
+---
+
+## Docker Setup
 
 ```bash
 docker compose up --build
 ```
 
-## Usage
+---
 
-1. Drag nodes from the **Starters** / palette onto the canvas (or click **Example**).
-2. Connect matching port types (image / mask / bboxes / keypoints), select a node, and edit parameters in the inspector.
-3. For **Load Images**, pick files or a folder (uploaded to the backend).
-4. For augmentation with labels, add an **Annotations** starter (Pascal VOC bboxes + xy keypoints) and optionally wire a mask image into the `mask` port.
-5. Click **Run** for the full graph, or **Run to selected** / node menu **Run to here** for a partial DAG.
-6. Watch live previews (bboxes/keypoints are overlaid on the image) and the execution log.
-7. Use **Export** / **Load** for workflow JSON; **Export Python** for a standalone script.
-8. Open **About** (info button next to the brand) for license and GitHub.
+# Quality Checks
 
-Example workflows live under [`backend/examples/`](backend/examples/) (e.g. Blur & Canny, Albu Augment, HSV Color Mask, CLAHE & Sharpen, K-Means Palette; image: [`lena.png`](backend/examples/lena.png)).
+## Backend
 
-## Albumentations augments
+```bash
+cd backend
 
-The **augment** palette category exposes Albumentations transforms via a backend catalog (color, blur/noise, weather, normalize/channels, and dual geometry). Every augment node shares the same ports:
+uv run ruff check
 
-| Port | Required | Notes |
-|------|----------|--------|
-| `image` | yes | OpenCV BGR; converted to RGB for Albumentations |
-| `mask` | no | Same H×W; stays aligned under Dual transforms |
-| `bboxes` | no | Pascal VOC `[x_min, y_min, x_max, y_max, label]` |
-| `keypoints` | no | `[x, y]` lists |
+uv run pytest
+```
 
-Image-only transforms pass annotations through unchanged. Dual geometry transforms (flips, rotates, affine, crops, …) update mask/bboxes/keypoints together. Runs are seeded from the global seed / sample index.
+## Frontend
 
-**Dependency note:** Image Pipes pins the MIT-licensed [`albumentations==2.0.8`](https://pypi.org/project/albumentations/2.0.8/) package so this project stays MIT-clean. The newer maintained `albumentationsx` line is AGPL and is intentionally not used here.
+```bash
+cd frontend
 
-## Adding a node
+npm run lint
 
-See [docs/architecture.md](docs/architecture.md) for the registration guide. In short:
+npm run typecheck
+```
 
-1. Subclass `BaseNode` in `backend/app/nodes/`.
-2. Implement `execute()` and `emit_python()`.
-3. Register the instance in `backend/app/nodes/__init__.py`.
+---
 
-No frontend changes are required beyond what the `/api/nodes` metadata already drives.
+# Adding a New Node
 
-## License
+Image Pipes uses a metadata-driven architecture.
 
-This project is licensed under the [MIT License](LICENSE).
+Adding a custom node requires **zero frontend modifications**.
+
+## 1. Create a Node
+
+```python
+from app.nodes.base import BaseNode
+import cv2
+
+class GaussianBlurNode(BaseNode):
+    category = "Filters"
+    display_name = "Gaussian Blur"
+
+    def execute(self, inputs: dict, params: dict):
+        kernel_size = params.get("kernel_size", 5)
+        k = kernel_size if kernel_size % 2 else kernel_size + 1
+        output = cv2.GaussianBlur(inputs["image"], (k, k), 0)
+        return {"image": output}
+
+    def emit_python(self, inputs, params):
+        k = params.get("kernel_size", 5)
+        return (
+            f"blurred = cv2.GaussianBlur("
+            f"{inputs['image']}, ({k}, {k}), 0)"
+        )
+```
+
+---
+
+## 2. Register the Node
+
+Register it in the node catalog.
+
+The frontend automatically:
+
+- discovers the node
+- renders its controls
+- exposes it in the palette
+
+No frontend code changes required.
+
+> [!TIP]
+> See `docs/architecture.md` for the complete node schema.
+
+---
+
+# Exporting Code
+
+Image Pipes generates standalone Python without proprietary runtime dependencies.
+
+```python
+import cv2
+
+image = cv2.imread("input.jpg")
+
+gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+blur = cv2.GaussianBlur(gray, (5, 5), 0)
+edges = cv2.Canny(blur, 50, 150)
+
+cv2.imwrite("output_edges.png", edges)
+```
+
+---
+
+# Roadmap
+
+- [ ] Video pipeline support
+- [ ] Camera streaming
+- [ ] ONNX Runtime nodes
+- [ ] PyTorch inference nodes
+- [ ] Custom Python nodes
+- [ ] CUDA acceleration
+- [ ] Batch processing
+- [ ] Plugin SDK
+- [ ] Cloud workspace synchronization
+
+---
+
+# Contributing
+
+Contributions are welcome!
+
+```bash
+# Fork the repository
+
+# Create a feature branch
+git checkout -b feature/amazing-node
+
+# Commit your changes
+git commit -m "Add custom threshold node"
+
+# Push
+git push origin feature/amazing-node
+```
+
+Then open a Pull Request.
+
+For larger changes, please open an issue first to discuss the proposal.
+
+---
+
+# FAQ
+
+### Is Image Pipes only a visual wrapper?
+
+No.
+
+The exported pipeline consists entirely of standard Python and OpenCV code and runs independently without Image Pipes installed.
+
+---
+
+### Does it support bounding boxes and segmentation masks?
+
+Yes.
+
+Albumentations dual transforms automatically keep:
+
+- bounding boxes
+- segmentation masks
+- keypoints
+
+synchronized throughout the pipeline.
+
+---
+
+### Can I use it offline?
+
+Yes.
+
+Everything runs locally on your machine.
+
+---
+
+# License
+
+Distributed under the **MIT License**.
+
+See the **LICENSE** file for details.
