@@ -1,6 +1,7 @@
 """Register all built-in OpenCV nodes."""
 
 from app.engine.registry import registry
+from app.nodes.albumentations_aug import build_albumentations_nodes
 from app.nodes.analysis import (
     AdaptiveThresholdNode,
     BlurDetectNode,
@@ -10,6 +11,7 @@ from app.nodes.analysis import (
     HistogramEqualizeNode,
     NormalizeNode,
 )
+from app.nodes.annotations import AnnotationsNode
 from app.nodes.clustering import DominantColorsHistNode, KMeansColorsNode
 from app.nodes.color import (
     BrightnessContrastNode,
@@ -68,6 +70,7 @@ def register_builtin_nodes() -> None:
     for node in (
         LoadImageNode(),
         BlankImageNode(),
+        AnnotationsNode(),
         SaveImageNode(),
         PreviewNode(),
         ToGrayNode(),
@@ -122,6 +125,7 @@ def register_builtin_nodes() -> None:
         FlipNode(),
         RandomBrightnessContrastNode(),
         GaussianNoiseNode(),
+        *build_albumentations_nodes(),
     ):
         if not registry.has(node.type):
             registry.register(node)
