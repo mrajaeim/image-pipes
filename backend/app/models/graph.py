@@ -67,6 +67,7 @@ class ExecutionEvent(BaseModel):
     image_b64: str | None = None
     sample_index: int | None = None
     cache_hit: bool | None = None
+    duration_ms: float | None = None
     data: dict[str, Any] | None = None
 
 

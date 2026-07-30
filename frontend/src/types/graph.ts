@@ -71,4 +71,5 @@ export interface ExecutionEvent {
   image_b64?: string | null
   sample_index?: number | null
   cache_hit?: boolean | null
+  duration_ms?: number | null
 }
