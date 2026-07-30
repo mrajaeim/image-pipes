@@ -61,6 +61,50 @@ function portLabel(portId: string | undefined, ports: PortSpec[]): string | unde
   return ports.find((port) => port.id === portId)?.name ?? portId.toUpperCase()
 }
 
+function sideHandleTop(index: number, total: number, contentHeight: number): number {
+  if (total <= 1) return HEADER_HEIGHT + contentHeight / 2
+  const slot = contentHeight / total
+  return HEADER_HEIGHT + slot * index + slot / 2
+}
+
+function PortTag({
+  label,
+  top,
+  side,
+}: {
+  label: string
+  top: number
+  side: 'left' | 'right'
+}) {
+  return (
+    <Typography
+      component="span"
+      sx={{
+        position: 'absolute',
+        top,
+        ...(side === 'right'
+          ? { left: '100%', ml: 1.25, transform: 'translateY(-50%)' }
+          : { right: '100%', mr: 1.25, transform: 'translateY(-50%)' }),
+        px: 0.7,
+        py: 0.15,
+        borderRadius: 0.75,
+        bgcolor: 'rgba(0,0,0,0.78)',
+        color: '#f0f0f0',
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: '0.04em',
+        textTransform: 'uppercase',
+        whiteSpace: 'nowrap',
+        pointerEvents: 'none',
+        zIndex: 1004,
+        border: '1px solid rgba(255,255,255,0.12)',
+      }}
+    >
+      {label}
+    </Typography>
+  )
+}
+
 function imagesForPort(entry: NodeImageState, portId: string): string[] {
   const stacked = entry.portSamples[portId]
   if (stacked && stacked.some(Boolean)) return stacked
@@ -73,43 +117,73 @@ function imagesForPort(entry: NodeImageState, portId: string): string[] {
   return []
 }
 
-function buildPreviewGrid(
-  entry: NodeImageState | undefined,
-  outputPorts: PortSpec[],
-  localPreviewUrls: string[],
-): { columns: string[]; rows: ImageItem[][] } {
-  const columns =
-    outputPorts.length > 0 ? outputPorts.map((port) => port.id) : (['image'] as string[])
+function buildRowsFromColumns(
+  columns: string[],
+  columnImages: string[][],
+  sectionPorts: PortSpec[],
+): ImageItem[][] {
+  const totalRows = Math.max(1, ...columnImages.map((images) => images.length))
+  const hasAny = columnImages.some((images) => images.some(Boolean))
+  if (!hasAny) return []
+
+  const visibleRows = Math.min(totalRows, MAX_VISIBLE_ROWS)
+  const rows: ImageItem[][] = []
+  for (let row = 0; row < visibleRows; row += 1) {
+    rows.push(
+      columns.map((portId, col) => {
+        const src = columnImages[col][row] ?? ''
+        const overflow =
+          totalRows > visibleRows && row === visibleRows - 1
+            ? `+${totalRows - visibleRows + 1} more`
+            : undefined
+        const channel = portLabel(portId, sectionPorts)
+        const sampleTag = totalRows > 1 ? `In ${row + 1}` : undefined
+        const parts = [sampleTag, channel].filter(Boolean)
+        return {
+          src,
+          portId,
+          sampleIndex: row,
+          label: overflow ?? (parts.length > 0 ? parts.join(' · ') : undefined),
+        }
+      }),
+    )
+  }
+  return rows
+}
+
+function buildPreviewGrid({
+  entry,
+  outputPorts,
+  localPreviewUrls,
+}: {
+  entry: NodeImageState | undefined
+  outputPorts: PortSpec[]
+  localPreviewUrls: string[]
+}): { columns: string[]; rows: ImageItem[][]; sectionPorts: PortSpec[] } {
+  // Only multi-output nodes (e.g. Split) get one column per port.
+  // Multi-input nodes (e.g. Merge) stay a single preview body.
+  const multiOut = outputPorts.length > 1
+  const sectionPorts = multiOut
+    ? outputPorts
+    : outputPorts.length > 0
+      ? outputPorts
+      : [
+          {
+            id: 'image',
+            name: 'Image',
+            direction: 'output' as const,
+            data_type: 'image',
+            multiple: false,
+          },
+        ]
+  const columns = multiOut
+    ? sectionPorts.map((port) => port.id)
+    : [sectionPorts[0]?.id ?? 'image']
 
   if (entry) {
     const columnImages = columns.map((portId) => imagesForPort(entry, portId))
-    const totalRows = Math.max(1, ...columnImages.map((images) => images.length))
-    const hasAny = columnImages.some((images) => images.some(Boolean))
-    if (hasAny) {
-      const visibleRows = Math.min(totalRows, MAX_VISIBLE_ROWS)
-      const rows: ImageItem[][] = []
-      for (let row = 0; row < visibleRows; row += 1) {
-        rows.push(
-          columns.map((portId, col) => {
-            const src = columnImages[col][row] ?? ''
-            const overflow =
-              totalRows > visibleRows && row === visibleRows - 1
-                ? `+${totalRows - visibleRows + 1} more`
-                : undefined
-            const channel = portLabel(portId, outputPorts)
-            const sampleTag = totalRows > 1 ? `In ${row + 1}` : undefined
-            const parts = [sampleTag, channel].filter(Boolean)
-            return {
-              src,
-              portId,
-              sampleIndex: row,
-              label: overflow ?? (parts.length > 0 ? parts.join(' · ') : undefined),
-            }
-          }),
-        )
-      }
-      return { columns, rows }
-    }
+    const rows = buildRowsFromColumns(columns, columnImages, sectionPorts)
+    if (rows.length > 0) return { columns, rows, sectionPorts }
   }
 
   if (localPreviewUrls.length > 0) {
@@ -127,11 +201,12 @@ function buildPreviewGrid(
               : undefined,
       },
     ])
-    return { columns: [columns[0]], rows }
+    return { columns: [columns[0]], rows, sectionPorts }
   }
 
-  return { columns, rows: [] }
+  return { columns, rows: [], sectionPorts }
 }
+
 
 function NodeActions({ nodeId }: { nodeId: string }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
@@ -220,17 +295,21 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
   )
 
   const grid = useMemo(
-    () => buildPreviewGrid(nodeImages[id], outputPorts, localPreviewUrls),
+    () =>
+      buildPreviewGrid({
+        entry: nodeImages[id],
+        outputPorts,
+        localPreviewUrls,
+      }),
     [id, localPreviewUrls, nodeImages, outputPorts],
   )
 
-  const columnCount = Math.max(1, grid.columns.length, outputPorts.length || 1)
-  const rowCount = Math.max(
-    1,
-    grid.rows.length,
-    inputPorts.length > 1 ? inputPorts.length : 1,
-  )
-  const contentHeight = rowCount * IMAGE_HEIGHT
+  const sectionPorts = grid.sectionPorts
+  const columnCount = Math.max(1, grid.columns.length)
+  const rowCount = Math.max(1, grid.rows.length)
+  // Keep enough height for stacked multi-input/output port handles without fake body sections.
+  const portCount = Math.max(inputPorts.length, outputPorts.length, 1)
+  const contentHeight = Math.max(rowCount * IMAGE_HEIGHT, portCount > 1 ? portCount * 52 : IMAGE_HEIGHT)
   const nodeWidth = columnCount * CELL_WIDTH
 
   useEffect(() => {
@@ -320,22 +399,20 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
           }}
         >
           {grid.rows.length === 0
-            ? Array.from({ length: rowCount }).map((_, row) => (
+            ? (
                 <Box
-                  key={`empty-row-${row}`}
                   sx={{
                     display: 'grid',
                     gridTemplateColumns: `repeat(${columnCount}, ${CELL_WIDTH}px)`,
-                    height: IMAGE_HEIGHT,
-                    borderTop: row === 0 ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                    height: contentHeight,
                   }}
                 >
                   {Array.from({ length: columnCount }).map((__, col) => (
                     <Box
-                      key={`empty-${row}-${col}`}
+                      key={`empty-0-${col}`}
                       sx={{
                         position: 'relative',
-                        height: IMAGE_HEIGHT,
+                        height: contentHeight,
                         borderLeft: col === 0 ? 'none' : '1px solid rgba(255,255,255,0.08)',
                         display: 'grid',
                         placeItems: 'center',
@@ -344,7 +421,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                           'repeating-linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 10px, transparent 10px, transparent 20px)',
                       }}
                     >
-                      {row === 0 && col === Math.floor((columnCount - 1) / 2) && (
+                      {col === Math.floor((columnCount - 1) / 2) && (
                         <Typography
                           sx={{
                             color: 'rgba(255,255,255,0.45)',
@@ -357,7 +434,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                           {emptyHint}
                         </Typography>
                       )}
-                      {row === 0 && columnCount > 1 && outputPorts[col] && (
+                      {columnCount > 1 && sectionPorts[col] && (
                         <Typography
                           sx={{
                             position: 'absolute',
@@ -374,13 +451,13 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                             textTransform: 'uppercase',
                           }}
                         >
-                          {outputPorts[col].name}
+                          {sectionPorts[col].name}
                         </Typography>
                       )}
                     </Box>
                   ))}
                 </Box>
-              ))
+              )
             : grid.rows.map((rowItems, row) => (
                 <Box
                   key={`row-${row}`}
@@ -442,7 +519,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                           }}
                         >
                           {item.label ??
-                            portLabel(item.portId, outputPorts) ??
+                            portLabel(item.portId, sectionPorts) ??
                             `Out ${col + 1}`}
                         </Typography>
                       )}
@@ -452,40 +529,47 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               ))}
         </Box>
 
-        {inputPorts.map((port, index) => (
-          <Handle
-            key={`in-${port.id}`}
-            type="target"
-            position={Position.Left}
-            id={port.id}
-            style={{
-              ...handleBaseStyle,
-              top:
-                inputPorts.length <= 1
-                  ? HEADER_HEIGHT + contentHeight / 2
-                  : HEADER_HEIGHT +
-                    (contentHeight / inputPorts.length) * index +
-                    contentHeight / inputPorts.length / 2,
-              background: '#7dcea0',
-            }}
-          />
-        ))}
-        {outputPorts.map((port, index) => (
-          <Handle
-            key={`out-${port.id}`}
-            type="source"
-            position={Position.Right}
-            id={port.id}
-            style={{
-              ...handleBaseStyle,
-              // Align each output handle with its column (horizontal multiport layout).
-              top: HEADER_HEIGHT + contentHeight / 2,
-              right: (columnCount - 1 - index) * CELL_WIDTH - 7,
-              left: 'auto',
-              background: '#e67e22',
-            }}
-          />
-        ))}
+        {inputPorts.map((port, index) => {
+          const top = sideHandleTop(index, Math.max(inputPorts.length, 1), contentHeight)
+          const showLabel = inputPorts.length > 1 || port.id !== 'image'
+          return (
+            <Box key={`in-${port.id}`}>
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={port.id}
+                style={{
+                  ...handleBaseStyle,
+                  top,
+                  left: -7,
+                  background: '#7dcea0',
+                }}
+              />
+              {showLabel && <PortTag label={port.name} top={top} side="left" />}
+            </Box>
+          )
+        })}
+        {outputPorts.map((port, index) => {
+          const top = sideHandleTop(index, Math.max(outputPorts.length, 1), contentHeight)
+          const showLabel = outputPorts.length > 1 || port.id !== 'image'
+          return (
+            <Box key={`out-${port.id}`}>
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={port.id}
+                style={{
+                  ...handleBaseStyle,
+                  top,
+                  right: -7,
+                  left: 'auto',
+                  background: '#e67e22',
+                }}
+              />
+              {showLabel && <PortTag label={port.name} top={top} side="right" />}
+            </Box>
+          )
+        })}
         {outputPorts.length === 0 && (
           <Handle
             type="source"
@@ -493,7 +577,9 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
             id="image"
             style={{
               ...handleBaseStyle,
-              top: HEADER_HEIGHT + contentHeight / 2,
+              top: sideHandleTop(0, 1, contentHeight),
+              right: -7,
+              left: 'auto',
               background: '#e67e22',
             }}
           />
