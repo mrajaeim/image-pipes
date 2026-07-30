@@ -33,6 +33,7 @@ def test_builtin_nodes_registered() -> None:
         "distance_transform",
         "histogram_equalize",
         "find_contours",
+        "convex_hull",
         "erode",
         "dilate",
         "morphology_ex",
