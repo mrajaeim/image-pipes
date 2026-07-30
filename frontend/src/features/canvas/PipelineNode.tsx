@@ -11,16 +11,12 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  IconButton,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
   Stack,
   Typography,
 } from '@mui/material'
 import type { GraphNodeData, PortSpec } from '../../types'
 import { useGraphStore, type NodeImageState } from '../../store/graphStore'
+import { useNodeMenu } from './NodeMenu'
 
 type PipelineFlowNode = Node<GraphNodeData, 'pipeline'>
 
@@ -207,70 +203,6 @@ function buildPreviewGrid({
   return { columns, rows: [], sectionPorts }
 }
 
-
-function NodeActions({ nodeId }: { nodeId: string }) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-  const removeNode = useGraphStore((state) => state.removeNode)
-  const duplicateNode = useGraphStore((state) => state.duplicateNode)
-  const selectNode = useGraphStore((state) => state.selectNode)
-
-  return (
-    <>
-      <IconButton
-        size="small"
-        className="nodrag nopan"
-        aria-label="Node actions"
-        onClick={(event) => {
-          event.stopPropagation()
-          selectNode(nodeId)
-          setAnchor(event.currentTarget)
-        }}
-        sx={{ width: 26, height: 26, color: 'rgba(255,255,255,0.75)' }}
-      >
-        <Box component="span" sx={{ fontSize: 16, lineHeight: 1, fontWeight: 700 }}>
-          ⋮
-        </Box>
-      </IconButton>
-      <Menu
-        anchorEl={anchor}
-        open={Boolean(anchor)}
-        onClose={() => setAnchor(null)}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <MenuItem
-          className="nodrag nopan"
-          onClick={() => {
-            duplicateNode(nodeId)
-            setAnchor(null)
-          }}
-        >
-          <ListItemIcon>
-            <Box component="span" sx={{ fontSize: 14 }}>
-              ⎘
-            </Box>
-          </ListItemIcon>
-          <ListItemText>Duplicate</ListItemText>
-        </MenuItem>
-        <MenuItem
-          className="nodrag nopan"
-          onClick={() => {
-            removeNode(nodeId)
-            setAnchor(null)
-          }}
-          sx={{ color: 'error.main' }}
-        >
-          <ListItemIcon>
-            <Box component="span" sx={{ fontSize: 14, color: 'error.main' }}>
-              ⌫
-            </Box>
-          </ListItemIcon>
-          <ListItemText>Delete</ListItemText>
-        </MenuItem>
-      </Menu>
-    </>
-  )
-}
-
 export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowNode>) {
   const [viewer, setViewer] = useState<ImageItem | null>(null)
   const updateNodeInternals = useUpdateNodeInternals()
@@ -279,6 +211,11 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
   const localPreviewUrls = useGraphStore(
     (state) => state.nodes.find((node) => node.id === id)?.data.localPreviewUrls ?? [],
   )
+  const { menu: nodeMenu, openFromContext } = useNodeMenu({
+    nodeId: id,
+    label: data.label,
+    category: data.category,
+  })
 
   const ports = useMemo(() => {
     if (data.ports?.length) return data.ports
@@ -333,6 +270,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
   return (
     <>
       <Box
+        onContextMenu={openFromContext}
         sx={{
           position: 'relative',
           width: nodeWidth,
@@ -388,7 +326,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               {data.label}
             </Typography>
           </Box>
-          <NodeActions nodeId={id} />
+          {nodeMenu}
         </Stack>
 
         <Box

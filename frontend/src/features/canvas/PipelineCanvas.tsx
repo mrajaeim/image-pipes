@@ -25,6 +25,8 @@ export function PipelineCanvas() {
   const onConnect = useGraphStore((s) => s.onConnect)
   const selectNode = useGraphStore((s) => s.selectNode)
   const addNodeFromType = useGraphStore((s) => s.addNodeFromType)
+  const duplicateNode = useGraphStore((s) => s.duplicateNode)
+  const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
 
   const nodeTypes: NodeTypes = useMemo(() => ({ pipeline: PipelineNodeView }), [])
   const edgeTypes: EdgeTypes = useMemo(() => ({ editable: EditableEdge }), [])
@@ -59,12 +61,25 @@ export function PipelineCanvas() {
     [],
   )
 
+  const onKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'd') return
+      if (!selectedNodeId) return
+      event.preventDefault()
+      duplicateNode(selectedNodeId)
+    },
+    [duplicateNode, selectedNodeId],
+  )
+
   return (
     <Box
+      tabIndex={0}
+      onKeyDown={onKeyDown}
       sx={{
         width: '100%',
         height: '100%',
         bgcolor: '#0c0c0c',
+        outline: 'none',
         // Connectors above node bodies; bend/remove controls stay on top.
         '& .react-flow__nodes': { zIndex: 1 },
         '& .react-flow__edges': { zIndex: 1000 },
