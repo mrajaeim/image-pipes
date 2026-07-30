@@ -29,7 +29,7 @@ It is useful for:
 - Result caching and seeded stochastic nodes for reproducible experiments
 - **Run to selected** — execute only ancestors of a node while tuning parameters
 - **Starters** palette group for source nodes (Load Images, Blank Image, Annotations, …)
-- **Export** / **Load** workflow JSON; **Example** loads the bundled Lena blur→Canny pipeline
+- **Export** / **Load** workflow JSON; **Templates** gallery includes Blur & Canny, Hist Equalize, Morphology, Contours, and Albu Augment
 - **Export Python** to a standalone script in the Monaco panel
 - Catalog-driven UI — the frontend does not hard-code nodes; `/api/nodes` metadata builds the palette automatically
 
@@ -117,7 +117,7 @@ docker compose up --build
 7. Use **Export** / **Load** for workflow JSON; **Export Python** for a standalone script.
 8. Open **About** (info button next to the brand) for license and GitHub.
 
-Example workflow: [`backend/examples/blur_canny.json`](backend/examples/blur_canny.json) (uses [`backend/examples/lena.png`](backend/examples/lena.png)).
+Example workflows live under [`backend/examples/`](backend/examples/) (e.g. [`blur_canny.json`](backend/examples/blur_canny.json), [`albumentations_augment.json`](backend/examples/albumentations_augment.json); image: [`lena.png`](backend/examples/lena.png)).
 
 ## Albumentations augments
 

@@ -31,4 +31,10 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     description: 'Threshold then find contours for structure analysis.',
     path: '/examples/contour_detect.json',
   },
+  {
+    id: 'albumentations_augment',
+    name: 'Albu Augment',
+    description: 'Annotations + color jitter + flip with synced bboxes/keypoints.',
+    path: '/examples/albumentations_augment.json',
+  },
 ]

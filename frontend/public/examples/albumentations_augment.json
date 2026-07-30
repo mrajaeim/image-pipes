@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "name": "albumentations-augment",
+  "description": "Load Lena with annotations, apply Albumentations color jitter then horizontal flip (synced bboxes/keypoints).",
+  "seed": 0,
+  "sampleCount": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "load-1",
+        "type": "load_image",
+        "params": { "path": "examples/lena.png" },
+        "position": { "x": 0, "y": 80 }
+      },
+      {
+        "id": "ann-1",
+        "type": "annotations",
+        "params": {
+          "bboxes_json": "[[180, 80, 380, 320, \"face\"]]",
+          "keypoints_json": "[[230, 180], [320, 180], [275, 250]]"
+        },
+        "position": { "x": 0, "y": 320 }
+      },
+      {
+        "id": "jitter-1",
+        "type": "albu_color_jitter",
+        "params": {
+          "brightness": 0.25,
+          "contrast": 0.2,
+          "saturation": 0.3,
+          "hue": 0.05,
+          "p": 1.0
+        },
+        "position": { "x": 280, "y": 120 }
+      },
+      {
+        "id": "flip-1",
+        "type": "albu_horizontal_flip",
+        "params": { "p": 1.0 },
+        "position": { "x": 560, "y": 120 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e-img-jitter",
+        "source": "load-1",
+        "source_port": "image",
+        "target": "jitter-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e-bbox-jitter",
+        "source": "ann-1",
+        "source_port": "bboxes",
+        "target": "jitter-1",
+        "target_port": "bboxes"
+      },
+      {
+        "id": "e-kp-jitter",
+        "source": "ann-1",
+        "source_port": "keypoints",
+        "target": "jitter-1",
+        "target_port": "keypoints"
+      },
+      {
+        "id": "e-img-flip",
+        "source": "jitter-1",
+        "source_port": "image",
+        "target": "flip-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e-bbox-flip",
+        "source": "jitter-1",
+        "source_port": "bboxes",
+        "target": "flip-1",
+        "target_port": "bboxes"
+      },
+      {
+        "id": "e-kp-flip",
+        "source": "jitter-1",
+        "source_port": "keypoints",
+        "target": "flip-1",
+        "target_port": "keypoints"
+      }
+    ]
+  }
+}
