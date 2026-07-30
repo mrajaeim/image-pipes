@@ -1,6 +1,11 @@
 """Register all built-in OpenCV nodes."""
 
 from app.engine.registry import registry
+from app.nodes.analysis import (
+    AdaptiveThresholdNode,
+    DistanceTransformNode,
+    HistogramEqualizeNode,
+)
 from app.nodes.color import (
     BrightnessContrastNode,
     ClaheNode,
@@ -51,6 +56,9 @@ def register_builtin_nodes() -> None:
         SobelNode(),
         LaplacianNode(),
         ThresholdNode(),
+        AdaptiveThresholdNode(),
+        DistanceTransformNode(),
+        HistogramEqualizeNode(),
         ErodeNode(),
         DilateNode(),
         MorphologyExNode(),
