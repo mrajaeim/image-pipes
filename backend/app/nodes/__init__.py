@@ -26,6 +26,7 @@ from app.nodes.filters import (
     GaussianBlurNode,
     LaplacianNode,
     MedianBlurNode,
+    SharpenNode,
     SobelNode,
     ThresholdNode,
 )
@@ -69,6 +70,7 @@ def register_builtin_nodes() -> None:
         MedianBlurNode(),
         BoxBlurNode(),
         BilateralFilterNode(),
+        SharpenNode(),
         CannyNode(),
         SobelNode(),
         LaplacianNode(),

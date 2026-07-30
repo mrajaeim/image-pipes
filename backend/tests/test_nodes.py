@@ -29,6 +29,7 @@ def test_builtin_nodes_registered() -> None:
         "median_blur",
         "box_blur",
         "bilateral_filter",
+        "sharpen",
         "canny",
         "sobel",
         "laplacian",
