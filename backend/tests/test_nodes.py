@@ -17,6 +17,8 @@ def test_builtin_nodes_registered() -> None:
         "preview",
         "to_gray",
         "to_hsv",
+        "to_rgb",
+        "to_bgr",
         "to_lab",
         "to_yuv",
         "to_ycrcb",
