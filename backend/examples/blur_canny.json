@@ -1,8 +1,9 @@
 {
+  "version": 1,
   "name": "blur-and-canny",
   "description": "Load an image, blur it, then extract Canny edges.",
   "seed": 0,
-  "sample_count": 1,
+  "sampleCount": 1,
   "graph": {
     "nodes": [
       {

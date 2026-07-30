@@ -23,13 +23,92 @@ export interface WorkflowDocument {
   graph: WorkflowGraphPayload
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isGraphPayload(value: unknown): value is WorkflowGraphPayload {
+  if (!isRecord(value)) return false
+  return Array.isArray(value.nodes) && Array.isArray(value.edges)
+}
+
+function normalizeGraph(graph: WorkflowGraphPayload): WorkflowGraphPayload {
+  return {
+    nodes: graph.nodes.map((node) => {
+      const record = node as unknown as Record<string, unknown>
+      const position = isRecord(record.position) ? record.position : {}
+      const params = isRecord(record.params) ? { ...record.params } : {}
+      return {
+        id: String(record.id ?? ''),
+        type: String(record.type ?? ''),
+        params,
+        position: {
+          x: Number(position.x ?? 0),
+          y: Number(position.y ?? 0),
+        },
+      }
+    }),
+    edges: graph.edges.map((edge) => {
+      const record = edge as unknown as Record<string, unknown>
+      return {
+        id: String(record.id ?? ''),
+        source: String(record.source ?? ''),
+        source_port: String(record.source_port ?? 'image'),
+        target: String(record.target ?? ''),
+        target_port: String(record.target_port ?? 'image'),
+      }
+    }),
+  }
+}
+
+function readSampleCount(value: Record<string, unknown>): number {
+  const raw =
+    typeof value.sampleCount === 'number'
+      ? value.sampleCount
+      : typeof value.sample_count === 'number'
+        ? value.sample_count
+        : 1
+  return Math.max(1, raw)
+}
+
+/** Accept versioned docs, example wrappers, or bare `{ nodes, edges }` graphs. */
+export function coerceWorkflowDocument(value: unknown): WorkflowDocument {
+  if (!isRecord(value)) {
+    throw new Error('Not a valid Image Pipes workflow')
+  }
+
+  if (value.version != null && value.version !== 1) {
+    throw new Error(`Unsupported workflow version: ${String(value.version)}`)
+  }
+
+  let graph: WorkflowGraphPayload | null = null
+  if (isGraphPayload(value.graph)) {
+    graph = value.graph
+  } else if (isGraphPayload(value)) {
+    graph = value
+  }
+
+  if (!graph) {
+    throw new Error(
+      'Not a valid Image Pipes workflow (need graph.nodes / graph.edges)',
+    )
+  }
+
+  return {
+    version: 1,
+    seed: typeof value.seed === 'number' ? value.seed : 0,
+    sampleCount: readSampleCount(value),
+    graph: normalizeGraph(graph),
+  }
+}
+
 export function isWorkflowDocument(value: unknown): value is WorkflowDocument {
-  if (!value || typeof value !== 'object') return false
-  const doc = value as Record<string, unknown>
-  if (doc.version !== 1) return false
-  if (!doc.graph || typeof doc.graph !== 'object') return false
-  const graph = doc.graph as Record<string, unknown>
-  return Array.isArray(graph.nodes) && Array.isArray(graph.edges)
+  try {
+    coerceWorkflowDocument(value)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function parseWorkflowJson(text: string): WorkflowDocument {
@@ -39,36 +118,7 @@ export function parseWorkflowJson(text: string): WorkflowDocument {
   } catch {
     throw new Error('Invalid JSON file')
   }
-  if (!isWorkflowDocument(parsed)) {
-    throw new Error('Not a valid Image Pipes workflow (expected version 1)')
-  }
-  return {
-    version: 1,
-    seed: typeof parsed.seed === 'number' ? parsed.seed : 0,
-    sampleCount:
-      typeof parsed.sampleCount === 'number' ? Math.max(1, parsed.sampleCount) : 1,
-    graph: {
-      nodes: parsed.graph.nodes.map((node) => ({
-        id: String(node.id),
-        type: String(node.type),
-        params:
-          node.params && typeof node.params === 'object'
-            ? { ...(node.params as Record<string, unknown>) }
-            : {},
-        position: {
-          x: Number(node.position?.x ?? 0),
-          y: Number(node.position?.y ?? 0),
-        },
-      })),
-      edges: parsed.graph.edges.map((edge) => ({
-        id: String(edge.id),
-        source: String(edge.source),
-        source_port: String(edge.source_port ?? 'image'),
-        target: String(edge.target),
-        target_port: String(edge.target_port ?? 'image'),
-      })),
-    },
-  }
+  return coerceWorkflowDocument(parsed)
 }
 
 export function downloadWorkflowJson(doc: WorkflowDocument, filename = 'workflow.json') {
