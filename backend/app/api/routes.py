@@ -6,6 +6,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.engine.executor import DagExecutor
@@ -154,12 +155,33 @@ def delete_uploaded_file(path: str) -> dict[str, str]:
 
 @router.post("/outputs", response_model=OutputDirResponse)
 def create_output_directory() -> OutputDirResponse:
-    """Create a new root folder under outputs/ for Save Image nodes."""
+    """Create a new root folder under outputs/ (legacy helper)."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     name = uuid.uuid4().hex[:12]
     folder = OUTPUT_DIR / name
     folder.mkdir(parents=True, exist_ok=False)
     return OutputDirResponse(path=str(folder.resolve()), name=name)
+
+
+@router.get("/downloads/{filename}")
+def download_result_archive(filename: str) -> FileResponse:
+    """Serve a ZIP produced by Save Image nodes during a pipeline run."""
+    from app.engine.save_bundle import DOWNLOAD_DIR
+
+    safe_name = Path(filename).name
+    if safe_name != filename or not safe_name.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Invalid download name")
+    target = (DOWNLOAD_DIR / safe_name).resolve()
+    downloads_root = DOWNLOAD_DIR.resolve()
+    if downloads_root not in target.parents and target != downloads_root:
+        raise HTTPException(status_code=400, detail="Path is outside downloads directory")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="Download not found")
+    return FileResponse(
+        path=target,
+        media_type="application/zip",
+        filename=safe_name,
+    )
 
 
 @router.post("/execute")

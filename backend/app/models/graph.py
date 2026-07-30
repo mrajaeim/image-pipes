@@ -59,6 +59,7 @@ class ExecutionEventType(StrEnum):
     ERROR = "error"
     DONE = "done"
     CANCELLED = "cancelled"
+    DOWNLOAD = "download"
 
 
 class ExecutionEvent(BaseModel):
@@ -72,6 +73,8 @@ class ExecutionEvent(BaseModel):
     cache_hit: bool | None = None
     duration_ms: float | None = None
     data: dict[str, Any] | None = None
+    download_url: str | None = None
+    download_filename: str | None = None
 
 
 class ParamField(BaseModel):

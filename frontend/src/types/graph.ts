@@ -61,6 +61,7 @@ export type ExecutionEventType =
   | 'error'
   | 'done'
   | 'cancelled'
+  | 'download'
 
 export interface ExecutionEvent {
   type: ExecutionEventType
@@ -72,4 +73,7 @@ export interface ExecutionEvent {
   sample_index?: number | null
   cache_hit?: boolean | null
   duration_ms?: number | null
+  data?: Record<string, unknown> | null
+  download_url?: string | null
+  download_filename?: string | null
 }

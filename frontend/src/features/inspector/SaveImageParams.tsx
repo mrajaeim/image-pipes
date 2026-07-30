@@ -1,6 +1,4 @@
-import { useState } from 'react'
 import { Box, Button, TextField, Typography } from '@mui/material'
-import { notifyError, notifySuccess } from '../../notify'
 
 const SAVE_PATH_TEMPLATES = [
   { token: '{filename}', hint: 'source stem' },
@@ -9,93 +7,21 @@ const SAVE_PATH_TEMPLATES = [
 ] as const
 
 type SaveImageParamsProps = {
-  directory: string
   filename: string
-  onDirectoryChange: (directory: string) => void
   onFilenameChange: (filename: string) => void
 }
 
-export function SaveImageParams({
-  directory,
-  filename,
-  onDirectoryChange,
-  onFilenameChange,
-}: SaveImageParamsProps) {
-  const [busy, setBusy] = useState(false)
-  const folderLabel = directory
-    ? directory.replace(/\\/g, '/').split('/').filter(Boolean).at(-1) ?? directory
-    : null
-
-  const chooseFolder = async () => {
-    setBusy(true)
-    try {
-      const response = await fetch('/api/outputs', { method: 'POST' })
-      if (!response.ok) {
-        throw new Error((await response.text()) || 'Could not create output folder')
-      }
-      const body = (await response.json()) as { path: string; name: string }
-      onDirectoryChange(body.path)
-      notifySuccess(`Output folder ready: ${body.name}`)
-    } catch (error) {
-      notifyError(error instanceof Error ? error.message : 'Folder selection failed')
-    } finally {
-      setBusy(false)
-    }
-  }
-
+export function SaveImageParams({ filename, onFilenameChange }: SaveImageParamsProps) {
   const insertTemplate = (token: string) => {
     onFilenameChange(`${filename}${token}`)
   }
 
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }}>
-      <Box sx={{ display: 'grid', gap: 0.75 }}>
-        <Typography
-          sx={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            color: 'rgba(244,241,234,0.4)',
-          }}
-        >
-          Output folder (required)
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-          <Button
-            size="small"
-            variant="outlined"
-            disabled={busy}
-            onClick={() => void chooseFolder()}
-            sx={{ textTransform: 'none' }}
-          >
-            {directory ? 'Change folder' : 'Choose folder'}
-          </Button>
-          <Typography
-            sx={{
-              fontSize: 12,
-              color: directory ? 'rgba(244,241,234,0.75)' : '#ff8a80',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-              wordBreak: 'break-all',
-            }}
-          >
-            {directory ? folderLabel : 'No folder selected'}
-          </Typography>
-        </Box>
-        {directory && (
-          <Typography
-            sx={{
-              fontSize: 11,
-              color: 'rgba(244,241,234,0.4)',
-              wordBreak: 'break-all',
-              lineHeight: 1.4,
-            }}
-            title={directory}
-          >
-            {directory}
-          </Typography>
-        )}
-      </Box>
+      <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.55)', lineHeight: 1.45 }}>
+        After Run, images are packed into a ZIP and your browser downloads it. No local folder
+        access is required.
+      </Typography>
 
       <TextField
         size="small"

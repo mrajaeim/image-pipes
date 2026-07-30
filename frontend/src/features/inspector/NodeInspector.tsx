@@ -104,14 +104,9 @@ export function NodeInspector() {
       >
         {isSaveImage ? (
           <SaveImageParams
-            directory={String(selected.data.params.directory ?? '')}
             filename={String(
               selected.data.params.filename ?? '{filename}_{index}.png',
             )}
-            onDirectoryChange={(directory) => {
-              setValue('directory', directory, { shouldDirty: true, shouldValidate: true })
-              updateNodeParams(selected.id, { directory })
-            }}
             onFilenameChange={(filename) => {
               setValue('filename', filename, { shouldDirty: true, shouldValidate: true })
               updateNodeParams(selected.id, { filename })

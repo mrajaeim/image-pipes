@@ -15,6 +15,7 @@ from app.engine.run_context import (
     current_source_stems,
     source_stem_for_sample,
 )
+from app.engine.save_bundle import get_save_bundle
 from app.nodes.common import (
     IMAGE_EXTENSIONS,
     file_param,
@@ -131,18 +132,12 @@ class SaveImageNode(BaseNode):
     label = "Save Image"
     category = "io"
     description = (
-        "Write image(s) into a selected output folder. "
+        "Collect image(s) into a ZIP download after the run. "
         "Filename supports templates: {filename}, {time}, {index}."
     )
     cacheable = False
     ports = [image_in(), image_out()]
     params = [
-        string_param(
-            "directory",
-            "Output folder",
-            "",
-            description="Required. Choose a root folder to save into.",
-        ),
         string_param(
             "filename",
             "Filename",
@@ -157,21 +152,15 @@ class SaveImageNode(BaseNode):
         params: dict[str, Any],
         seed: int = 0,
     ) -> dict[str, np.ndarray | list[np.ndarray]]:
-        directory = str(params.get("directory", "")).strip()
-        if not directory:
-            raise ValueError("Save Image requires an output folder — choose one in the inspector")
         image = require_image(inputs)
         sample_index = current_sample_index.get()
-        path = resolve_save_path(
-            directory,
+        name = resolve_save_filename(
             str(params.get("filename") or "{filename}_{index}.png"),
             index=sample_index,
             filename=source_stem_for_sample(sample_index),
             when=datetime.now(),
         )
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if not cv2.imwrite(str(path), image):
-            raise RuntimeError(f"Failed to write image to '{path}'")
+        get_save_bundle().add_image(name, image)
         return {"image": image}
 
     def emit_python(
@@ -181,13 +170,14 @@ class SaveImageNode(BaseNode):
         input_vars: dict[str, str],
         output_vars: dict[str, str],
     ) -> list[str]:
-        directory = str(params.get("directory", "")).strip()
         name_template = str(params.get("filename") or "{filename}_{index}.png")
         src = input_vars["image"]
         dst = output_vars["image"]
         return [
             "from datetime import datetime",
-            f"_dir = Path({directory!r})",
+            "from pathlib import Path",
+            "_out_dir = Path('output')",
+            "_out_dir.mkdir(parents=True, exist_ok=True)",
             f"_name_template = {name_template!r}",
             "_index = 0  # set per sample when batching",
             "_filename = 'image'",
@@ -202,27 +192,21 @@ class SaveImageNode(BaseNode):
                 "and '{time}' not in _name_template and '{filename}' not in _name_template:"
             ),
             "    _stem = Path(_name).stem",
-            "    _suffix = Path(_name).suffix",
+            "    _suffix = Path(_name).suffix or '.png'",
             "    _name = f'{_stem}_{_index}{_suffix}'",
-            "_path = _dir / _name",
-            "_path.parent.mkdir(parents=True, exist_ok=True)",
-            f"cv2.imwrite(str(_path), {src})",
+            "cv2.imwrite(str(_out_dir / _name), " + src + ")",
             f"{dst} = {src}",
         ]
 
 
-def resolve_save_path(
-    directory: str,
+def resolve_save_filename(
     name_template: str,
     *,
     index: int,
     filename: str,
     when: datetime,
-) -> Path:
-    """Join a root folder with an expanded filename template."""
-    root = str(directory).strip()
-    if not root:
-        raise ValueError("Output folder is required")
+) -> str:
+    """Expand {filename}, {time}, {index} into a ZIP entry filename."""
     safe_name = Path(filename).stem or "image"
     safe_name = safe_name.replace("/", "_").replace("\\", "_")
     time_token = when.strftime("%Y%m%d_%H%M%S")
@@ -231,15 +215,16 @@ def resolve_save_path(
         .replace("{time}", time_token)
         .replace("{index}", str(index))
     )
-    # Filename only — ignore any directory components in the template.
     name = Path(expanded).name or f"image_{index}.png"
+    if not Path(name).suffix:
+        name = f"{name}.png"
     has_unique_token = any(
         token in name_template for token in ("{index}", "{time}", "{filename}")
     )
     if index > 0 and not has_unique_token:
         path_name = Path(name)
         name = f"{path_name.stem}_{index}{path_name.suffix}"
-    return Path(root) / name
+    return name
 
 
 class PreviewNode(BaseNode):

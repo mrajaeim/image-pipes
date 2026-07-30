@@ -106,6 +106,18 @@ export function useExecutionSocket() {
           setIsExecuting(false)
           setActiveNodeId(null)
         }
+        if (event.type === 'download' && event.download_url) {
+          const filename = event.download_filename ?? 'results.zip'
+          appendLog(event.message ?? `Download ready: ${filename}`)
+          const anchor = document.createElement('a')
+          anchor.href = event.download_url
+          anchor.download = filename
+          anchor.rel = 'noopener'
+          document.body.appendChild(anchor)
+          anchor.click()
+          anchor.remove()
+          notifySuccess(event.message ?? `Downloading ${filename}`)
+        }
         if (event.type === 'done') {
           appendLog(event.message ?? 'done')
           const target = targetLabelRef.current
