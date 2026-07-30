@@ -33,3 +33,12 @@ app.include_router(ws_router)
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+def _maybe_mount_frontend() -> None:
+    from app.services.static import mount_frontend
+
+    mount_frontend(app)
+
+
+_maybe_mount_frontend()

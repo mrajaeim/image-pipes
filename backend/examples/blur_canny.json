@@ -1,0 +1,44 @@
+{
+  "name": "blur-and-canny",
+  "description": "Load an image, blur it, then extract Canny edges.",
+  "seed": 0,
+  "sample_count": 1,
+  "graph": {
+    "nodes": [
+      {
+        "id": "load-1",
+        "type": "load_image",
+        "params": { "path": "uploads/input.png" },
+        "position": { "x": 0, "y": 0 }
+      },
+      {
+        "id": "blur-1",
+        "type": "gaussian_blur",
+        "params": { "ksize": 5, "sigma": 0 },
+        "position": { "x": 220, "y": 0 }
+      },
+      {
+        "id": "canny-1",
+        "type": "canny",
+        "params": { "threshold1": 80, "threshold2": 160 },
+        "position": { "x": 440, "y": 0 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "load-1",
+        "source_port": "image",
+        "target": "blur-1",
+        "target_port": "image"
+      },
+      {
+        "id": "e2",
+        "source": "blur-1",
+        "source_port": "image",
+        "target": "canny-1",
+        "target_port": "image"
+      }
+    ]
+  }
+}
