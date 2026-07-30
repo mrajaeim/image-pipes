@@ -2,7 +2,15 @@
 
 from app.engine.registry import registry
 from app.nodes.color import MergeChannelsNode, SplitChannelsNode, ToGrayNode, ToHsvNode
-from app.nodes.filters import CannyNode, GaussianBlurNode, MedianBlurNode, ThresholdNode
+from app.nodes.filters import (
+    BilateralFilterNode,
+    CannyNode,
+    GaussianBlurNode,
+    LaplacianNode,
+    MedianBlurNode,
+    SobelNode,
+    ThresholdNode,
+)
 from app.nodes.geometry import CropNode, FlipNode, ResizeNode, RotateNode
 from app.nodes.io import LoadImageNode, PreviewNode, SaveImageNode
 from app.nodes.morphology import DilateNode, ErodeNode, MorphologyExNode
@@ -25,7 +33,10 @@ def register_builtin_nodes() -> None:
         MergeChannelsNode(),
         GaussianBlurNode(),
         MedianBlurNode(),
+        BilateralFilterNode(),
         CannyNode(),
+        SobelNode(),
+        LaplacianNode(),
         ThresholdNode(),
         ErodeNode(),
         DilateNode(),
