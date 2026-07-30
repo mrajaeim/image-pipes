@@ -129,7 +129,7 @@ interface AppHeaderProps {
   onExportPython: () => void
   onExportWorkflow: () => void
   onLoadWorkflow: () => void
-  onLoadExample: () => void
+  onOpenTemplates: () => void
 }
 
 const outlineBtnSx = {
@@ -157,7 +157,7 @@ export function AppHeader({
   onExportPython,
   onExportWorkflow,
   onLoadWorkflow,
-  onLoadExample,
+  onOpenTemplates,
 }: AppHeaderProps) {
   const seed = useGraphStore((s) => s.seed)
   const sampleCount = useGraphStore((s) => s.sampleCount)
@@ -383,10 +383,10 @@ export function AppHeader({
         <Button
           variant="outlined"
           disabled={isExecuting}
-          onClick={onLoadExample}
+          onClick={onOpenTemplates}
           sx={outlineBtnSx}
         >
-          Example
+          Templates
         </Button>
 
         <Button

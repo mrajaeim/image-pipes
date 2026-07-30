@@ -1,10 +1,11 @@
 import { Box } from '@mui/material'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PipelineCanvas } from '../features/canvas/PipelineCanvas'
 import { NodePalette } from '../features/palette/NodePalette'
 import { NodeInspector } from '../features/inspector/NodeInspector'
 import { CodePanel } from '../features/code/CodePanel'
 import { ExecutionLogPanel } from '../features/execution/ExecutionLogPanel'
+import { TemplateGallery } from '../features/templates/TemplateGallery'
 import { useGraphStore } from '../store/graphStore'
 import {
   bindExecutionRunner,
@@ -13,6 +14,7 @@ import {
 } from '../hooks/useExecutionSocket'
 import { notifyError, notifyInfo, notifySuccess } from '../notify'
 import { downloadWorkflowJson, parseWorkflowJson } from '../workflow/io'
+import type { WorkflowTemplate } from '../workflow/templates'
 import { AppHeader } from './AppHeader'
 
 export default function App() {
@@ -21,8 +23,10 @@ export default function App() {
   const loadWorkflow = useGraphStore((s) => s.loadWorkflow)
   const nodeCatalog = useGraphStore((s) => s.nodeCatalog)
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
+  const isExecuting = useGraphStore((s) => s.isExecuting)
   const { run, cancel } = useExecutionSocket()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [templatesOpen, setTemplatesOpen] = useState(false)
 
   useEffect(() => bindExecutionRunner(run), [run])
 
@@ -76,20 +80,25 @@ export default function App() {
     }
   }
 
-  const onLoadExample = async () => {
+  const onOpenTemplates = () => {
     if (nodeCatalog.length === 0) {
       notifyError('Node catalog is still loading — try again in a moment')
       return
     }
+    setTemplatesOpen(true)
+  }
+
+  const onSelectTemplate = async (template: WorkflowTemplate) => {
     try {
-      const response = await fetch('/examples/blur_canny.json')
+      const response = await fetch(template.path)
       if (!response.ok) {
-        throw new Error(`Could not fetch example (${response.status})`)
+        throw new Error(`Could not fetch template (${response.status})`)
       }
       const text = await response.text()
-      applyLoadedWorkflow(text, 'Example workflow loaded')
+      applyLoadedWorkflow(text, `Loaded “${template.name}”`)
+      setTemplatesOpen(false)
     } catch (error) {
-      notifyError(error instanceof Error ? error.message : 'Example load failed')
+      notifyError(error instanceof Error ? error.message : 'Template load failed')
     }
   }
 
@@ -115,7 +124,13 @@ export default function App() {
         onExportPython={() => void onExportPython()}
         onExportWorkflow={onExportWorkflow}
         onLoadWorkflow={onLoadWorkflowClick}
-        onLoadExample={() => void onLoadExample()}
+        onOpenTemplates={onOpenTemplates}
+      />
+      <TemplateGallery
+        open={templatesOpen}
+        onClose={() => setTemplatesOpen(false)}
+        onSelect={(template) => void onSelectTemplate(template)}
+        disabled={isExecuting}
       />
 
       <Box
