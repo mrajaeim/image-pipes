@@ -6,6 +6,8 @@ interface FileParamInputProps {
   field: ParamField
   value: string
   onChange: (path: string) => void
+  onPreviews?: (dataUrls: string[]) => void
+  onBatchCount?: (count: number) => void
 }
 
 interface UploadResponse {
@@ -52,7 +54,22 @@ async function uploadFiles(files: File[], asFolder: boolean): Promise<UploadResp
   return response.json() as Promise<UploadResponse>
 }
 
-export function FileParamInput({ field, value, onChange }: FileParamInputProps) {
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error('Could not read image preview'))
+    reader.readAsDataURL(file)
+  })
+}
+
+export function FileParamInput({
+  field,
+  value,
+  onChange,
+  onPreviews,
+  onBatchCount,
+}: FileParamInputProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
@@ -67,7 +84,9 @@ export function FileParamInput({ field, value, onChange }: FileParamInputProps) 
   }, [])
 
   const handleFiles = async (fileList: FileList | null, asFolder: boolean) => {
-    const files = filterImageFiles(fileList, field)
+    const files = filterImageFiles(fileList, field).sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true }),
+    )
     if (files.length === 0) {
       setError(`No supported images selected (${acceptAttr(field)})`)
       return
@@ -75,14 +94,21 @@ export function FileParamInput({ field, value, onChange }: FileParamInputProps) 
     setBusy(true)
     setError(null)
     try {
-      const result = await uploadFiles(files, asFolder)
+      if (onPreviews) {
+        const urls = await Promise.all(files.map((file) => readFileAsDataUrl(file)))
+        onPreviews(urls)
+      }
+      const batch = asFolder || files.length > 1
+      const result = await uploadFiles(files, batch)
       onChange(result.path)
+      onBatchCount?.(result.count)
       setSummary(
-        result.kind === 'folder'
-          ? `Folder selected · ${result.count} image${result.count === 1 ? '' : 's'}`
-          : `File selected · ${files[0]?.name ?? 'image'}`,
+        result.count > 1
+          ? `${result.count} images selected`
+          : `1 image selected · ${files[0]?.name ?? 'image'}`,
       )
     } catch (err) {
+      onPreviews?.([])
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setBusy(false)
@@ -98,14 +124,14 @@ export function FileParamInput({ field, value, onChange }: FileParamInputProps) 
         onChange={(event) => onChange(event.target.value)}
         helperText={field.description ?? `Allowed: ${acceptAttr(field)}`}
       />
-      <Stack direction="row" spacing={1}>
+      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
         <Button
           size="small"
           variant="outlined"
           disabled={busy}
           onClick={() => fileRef.current?.click()}
         >
-          Choose file
+          Choose images
         </Button>
         <Button
           size="small"
@@ -120,6 +146,7 @@ export function FileParamInput({ field, value, onChange }: FileParamInputProps) 
         ref={fileRef}
         type="file"
         hidden
+        multiple
         accept={acceptAttr(field)}
         onChange={(event) => {
           void handleFiles(event.target.files, false)

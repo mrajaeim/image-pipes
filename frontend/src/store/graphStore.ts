@@ -13,6 +13,13 @@ import type { ExecutionPreview, GraphNodeData, NodeMetadata } from '../types'
 
 type PipelineNode = Node<GraphNodeData>
 
+/** Latest execution images keyed by node id for canvas thumbnails. */
+export type NodeImageState = {
+  result: string | null
+  samples: string[]
+  ports: Record<string, string>
+}
+
 interface GraphState {
   nodes: PipelineNode[]
   edges: Edge[]
@@ -20,6 +27,7 @@ interface GraphState {
   nodeCatalog: NodeMetadata[]
   activeNodeId: string | null
   previews: ExecutionPreview[]
+  nodeImages: Record<string, NodeImageState>
   logs: string[]
   generatedCode: string
   isExecuting: boolean
@@ -29,9 +37,14 @@ interface GraphState {
   onNodesChange: (changes: NodeChange<PipelineNode>[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
   onConnect: (connection: Connection) => void
+  onReconnect: (oldEdge: Edge, connection: Connection) => void
   addNodeFromType: (meta: NodeMetadata, position: { x: number; y: number }) => void
+  removeNode: (nodeId: string) => void
+  duplicateNode: (nodeId: string) => void
   selectNode: (nodeId: string | null) => void
   updateNodeParams: (nodeId: string, params: Record<string, unknown>) => void
+  setLocalPreview: (nodeId: string, dataUrl: string | null) => void
+  setLocalPreviews: (nodeId: string, dataUrls: string[]) => void
   setActiveNodeId: (nodeId: string | null) => void
   addPreview: (preview: ExecutionPreview) => void
   clearExecution: () => void
@@ -40,6 +53,8 @@ interface GraphState {
   setIsExecuting: (value: boolean) => void
   setSeed: (seed: number) => void
   setSampleCount: (count: number) => void
+  getInputImages: (nodeId: string) => string[]
+  getResultImages: (nodeId: string) => string[]
   toGraphPayload: () => {
     nodes: Array<{
       id: string
@@ -59,6 +74,15 @@ interface GraphState {
 
 let nodeCounter = 1
 
+function resultForNode(
+  nodeImages: Record<string, NodeImageState>,
+  nodeId: string,
+): string | null {
+  const entry = nodeImages[nodeId]
+  if (!entry) return null
+  return entry.ports.image ?? entry.result ?? entry.samples.at(-1) ?? null
+}
+
 export const useGraphStore = create<GraphState>((set, get) => ({
   nodes: [],
   edges: [],
@@ -66,6 +90,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   nodeCatalog: [],
   activeNodeId: null,
   previews: [],
+  nodeImages: {},
   logs: [],
   generatedCode: '# Run codegen to export a Python script\n',
   isExecuting: false,
@@ -74,14 +99,72 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
   setNodeCatalog: (catalog) => set({ nodeCatalog: catalog }),
 
-  onNodesChange: (changes) =>
-    set({ nodes: applyNodeChanges(changes, get().nodes) }),
+  onNodesChange: (changes) => {
+    const removedIds = changes
+      .filter((change) => change.type === 'remove')
+      .map((change) => change.id)
+
+    set((state) => {
+      const nodes = applyNodeChanges(changes, state.nodes)
+      if (removedIds.length === 0) {
+        return { nodes }
+      }
+
+      const removed = new Set(removedIds)
+      const nodeImages = { ...state.nodeImages }
+      for (const id of removedIds) {
+        delete nodeImages[id]
+      }
+
+      return {
+        nodes,
+        edges: state.edges.filter(
+          (edge) => !removed.has(edge.source) && !removed.has(edge.target),
+        ),
+        nodeImages,
+        previews: state.previews.filter((preview) => !removed.has(preview.nodeId)),
+        selectedNodeId:
+          state.selectedNodeId && removed.has(state.selectedNodeId)
+            ? null
+            : state.selectedNodeId,
+        activeNodeId:
+          state.activeNodeId && removed.has(state.activeNodeId) ? null : state.activeNodeId,
+      }
+    })
+  },
 
   onEdgesChange: (changes) =>
     set({ edges: applyEdgeChanges(changes, get().edges) }),
 
   onConnect: (connection) =>
-    set({ edges: addEdge({ ...connection, id: `e-${crypto.randomUUID()}` }, get().edges) }),
+    set({
+      edges: addEdge(
+        {
+          ...connection,
+          id: `e-${crypto.randomUUID()}`,
+          reconnectable: true,
+          selectable: true,
+        },
+        get().edges,
+      ),
+    }),
+
+  onReconnect: (oldEdge, connection) => {
+    const next = get().edges
+      .filter((edge) => edge.id !== oldEdge.id)
+      .concat({
+        ...oldEdge,
+        ...connection,
+        id: oldEdge.id,
+        source: connection.source ?? oldEdge.source,
+        target: connection.target ?? oldEdge.target,
+        sourceHandle: connection.sourceHandle ?? oldEdge.sourceHandle,
+        targetHandle: connection.targetHandle ?? oldEdge.targetHandle,
+        reconnectable: true,
+        selectable: true,
+      })
+    set({ edges: next })
+  },
 
   addNodeFromType: (meta, position) => {
     const id = `${meta.type}-${nodeCounter++}`
@@ -95,9 +178,40 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         label: meta.label,
         category: meta.category,
         params: defaults,
+        ports: meta.ports,
+        localPreviewUrls: [],
       },
     }
     set({ nodes: [...get().nodes, node], selectedNodeId: id })
+  },
+
+  removeNode: (nodeId) => {
+    get().onNodesChange([{ type: 'remove', id: nodeId }])
+  },
+
+  duplicateNode: (nodeId) => {
+    const source = get().nodes.find((node) => node.id === nodeId)
+    if (!source) return
+    const id = `${source.data.type}-${nodeCounter++}`
+    const copy: PipelineNode = {
+      ...source,
+      id,
+      selected: false,
+      position: {
+        x: source.position.x + 48,
+        y: source.position.y + 48,
+      },
+      data: {
+        ...source.data,
+        params: { ...source.data.params },
+        active: false,
+        localPreviewUrls: [...(source.data.localPreviewUrls ?? [])],
+      },
+    }
+    set({
+      nodes: [...get().nodes.map((node) => ({ ...node, selected: false })), copy],
+      selectedNodeId: id,
+    })
   },
 
   selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
@@ -111,6 +225,30 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       ),
     }),
 
+  setLocalPreview: (nodeId, dataUrl) =>
+    set({
+      nodes: get().nodes.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                localPreviewUrls: dataUrl ? [dataUrl] : [],
+              },
+            }
+          : node,
+      ),
+    }),
+
+  setLocalPreviews: (nodeId, dataUrls) =>
+    set({
+      nodes: get().nodes.map((node) =>
+        node.id === nodeId
+          ? { ...node, data: { ...node.data, localPreviewUrls: dataUrls } }
+          : node,
+      ),
+    }),
+
   setActiveNodeId: (nodeId) =>
     set({
       activeNodeId: nodeId,
@@ -120,11 +258,40 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       })),
     }),
 
-  addPreview: (preview) => set({ previews: [...get().previews, preview] }),
+  addPreview: (preview) => {
+    const portId = preview.portId ?? 'image'
+    const existing = get().nodeImages[preview.nodeId] ?? {
+      result: null,
+      samples: [],
+      ports: {},
+    }
+    const ports = { ...existing.ports, [portId]: preview.imageB64 }
+    let nextSamples = existing.samples
+    if (portId === 'image' || Object.keys(ports).length === 1) {
+      nextSamples = [...existing.samples]
+      while (nextSamples.length <= preview.sampleIndex) {
+        nextSamples.push('')
+      }
+      nextSamples[preview.sampleIndex] = preview.imageB64
+    }
+
+    set({
+      previews: [...get().previews, preview],
+      nodeImages: {
+        ...get().nodeImages,
+        [preview.nodeId]: {
+          result: ports.image ?? Object.values(ports)[0] ?? preview.imageB64,
+          samples: nextSamples,
+          ports,
+        },
+      },
+    })
+  },
 
   clearExecution: () =>
     set({
       previews: [],
+      nodeImages: {},
       logs: [],
       activeNodeId: null,
       nodes: get().nodes.map((node) => ({
@@ -138,6 +305,34 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setIsExecuting: (value) => set({ isExecuting: value }),
   setSeed: (seed) => set({ seed }),
   setSampleCount: (count) => set({ sampleCount: Math.max(1, count) }),
+
+  getInputImages: (nodeId) => {
+    const { edges, nodeImages, nodes } = get()
+    const incoming = edges.filter((edge) => edge.target === nodeId)
+    const fromUpstream = incoming
+      .map((edge) => {
+        const entry = nodeImages[edge.source]
+        if (!entry) return null
+        const port = edge.sourceHandle ?? 'image'
+        return entry.ports[port] ?? resultForNode(nodeImages, edge.source)
+      })
+      .filter((value): value is string => Boolean(value))
+    if (fromUpstream.length > 0) return fromUpstream
+
+    const node = nodes.find((item) => item.id === nodeId)
+    if (node?.data.localPreviewUrls?.length) return node.data.localPreviewUrls
+    return []
+  },
+
+  getResultImages: (nodeId) => {
+    const entry = get().nodeImages[nodeId]
+    if (!entry) return []
+    const portImages = Object.values(entry.ports).filter(Boolean)
+    if (portImages.length > 1) return portImages
+    const samples = entry.samples.filter(Boolean)
+    if (samples.length > 0) return samples
+    return entry.result ? [entry.result] : []
+  },
 
   toGraphPayload: () => {
     const { nodes, edges } = get()

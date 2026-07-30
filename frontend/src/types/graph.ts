@@ -36,7 +36,10 @@ export interface GraphNodeData {
   label: string
   params: Record<string, unknown>
   category: string
+  ports: PortSpec[]
   active?: boolean
+  /** Local previews for Load Images before execution */
+  localPreviewUrls?: string[]
   [key: string]: unknown
 }
 
@@ -44,6 +47,7 @@ export interface ExecutionPreview {
   nodeId: string
   sampleIndex: number
   imageB64: string
+  portId?: string | null
   cacheHit?: boolean | null
 }
 
@@ -58,6 +62,7 @@ export type ExecutionEventType =
 export interface ExecutionEvent {
   type: ExecutionEventType
   node_id?: string | null
+  port_id?: string | null
   message?: string | null
   progress?: number | null
   image_b64?: string | null

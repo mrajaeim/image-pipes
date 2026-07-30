@@ -34,6 +34,8 @@ export function NodeInspector() {
   const nodes = useGraphStore((s) => s.nodes)
   const catalog = useGraphStore((s) => s.nodeCatalog)
   const updateNodeParams = useGraphStore((s) => s.updateNodeParams)
+  const setLocalPreviews = useGraphStore((s) => s.setLocalPreviews)
+  const setSampleCount = useGraphStore((s) => s.setSampleCount)
 
   const selected = nodes.find((node) => node.id === selectedNodeId) ?? null
   const meta = catalog.find((item) => item.type === selected?.data.type)
@@ -92,6 +94,10 @@ export function NodeInspector() {
                 onChange={(path) => {
                   setValue(field.name, path, { shouldDirty: true, shouldValidate: true })
                   updateNodeParams(selected.id, { [field.name]: path })
+                }}
+                onPreviews={(urls) => setLocalPreviews(selected.id, urls)}
+                onBatchCount={(count) => {
+                  if (count > 1) setSampleCount(count)
                 }}
               />
             )
