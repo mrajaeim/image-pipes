@@ -7,6 +7,25 @@ export type RunOptions = {
   targetNodeId?: string
 }
 
+type Runner = (options?: RunOptions) => void
+
+let sharedRunner: Runner | null = null
+
+/** Bind the App-level socket runner so menus can trigger targeted runs. */
+export function bindExecutionRunner(run: Runner) {
+  sharedRunner = run
+  return () => {
+    if (sharedRunner === run) sharedRunner = null
+  }
+}
+
+export function runPipeline(options?: RunOptions) {
+  if (!sharedRunner) {
+    throw new Error('Execution runner is not ready')
+  }
+  sharedRunner(options)
+}
+
 export function useExecutionSocket() {
   const socketRef = useRef<WebSocket | null>(null)
   const clearExecution = useGraphStore((s) => s.clearExecution)
@@ -90,11 +109,15 @@ export function useExecutionSocket() {
         if (event.type === 'done') {
           appendLog(event.message ?? 'done')
           const target = targetLabelRef.current
-          notifySuccess(
-            target
-              ? `Ran to ${target}`
-              : (event.message ?? 'Pipeline finished'),
-          )
+          if (target) {
+            const node = useGraphStore
+              .getState()
+              .nodes.find((item) => item.id === target)
+            const label = node?.data.label ?? target
+            notifySuccess(`Ran to ${label}`)
+          } else {
+            notifySuccess(event.message ?? 'Pipeline finished')
+          }
           targetLabelRef.current = null
           setIsExecuting(false)
           setActiveNodeId(null)

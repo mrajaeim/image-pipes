@@ -124,6 +124,7 @@ function StatPill({ label, value }: { label: string; value: number }) {
 
 interface AppHeaderProps {
   onRun: () => void
+  onRunToSelected: () => void
   onCancel: () => void
   onExportPython: () => void
   onExportWorkflow: () => void
@@ -151,6 +152,7 @@ const outlineBtnSx = {
 
 export function AppHeader({
   onRun,
+  onRunToSelected,
   onCancel,
   onExportPython,
   onExportWorkflow,
@@ -162,6 +164,7 @@ export function AppHeader({
   const setSeed = useGraphStore((s) => s.setSeed)
   const setSampleCount = useGraphStore((s) => s.setSampleCount)
   const isExecuting = useGraphStore((s) => s.isExecuting)
+  const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
   const nodeCount = useGraphStore((s) => s.nodes.length)
   const edgeCount = useGraphStore((s) => s.edges.length)
   const [infoOpen, setInfoOpen] = useState(false)
@@ -366,6 +369,15 @@ export function AppHeader({
             )}
             {isExecuting ? 'Running…' : 'Run'}
           </Box>
+        </Button>
+
+        <Button
+          variant="outlined"
+          disabled={isExecuting || !selectedNodeId}
+          onClick={onRunToSelected}
+          sx={outlineBtnSx}
+        >
+          Run to selected
         </Button>
 
         <Button

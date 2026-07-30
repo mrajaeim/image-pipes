@@ -1,12 +1,16 @@
 import { Box } from '@mui/material'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { PipelineCanvas } from '../features/canvas/PipelineCanvas'
 import { NodePalette } from '../features/palette/NodePalette'
 import { NodeInspector } from '../features/inspector/NodeInspector'
 import { CodePanel } from '../features/code/CodePanel'
 import { ExecutionLogPanel } from '../features/execution/ExecutionLogPanel'
 import { useGraphStore } from '../store/graphStore'
-import { requestCodegen, useExecutionSocket } from '../hooks/useExecutionSocket'
+import {
+  bindExecutionRunner,
+  requestCodegen,
+  useExecutionSocket,
+} from '../hooks/useExecutionSocket'
 import { notifyError, notifyInfo, notifySuccess } from '../notify'
 import { downloadWorkflowJson, parseWorkflowJson } from '../workflow/io'
 import { AppHeader } from './AppHeader'
@@ -16,8 +20,11 @@ export default function App() {
   const toWorkflowDocument = useGraphStore((s) => s.toWorkflowDocument)
   const loadWorkflow = useGraphStore((s) => s.loadWorkflow)
   const nodeCatalog = useGraphStore((s) => s.nodeCatalog)
+  const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
   const { run, cancel } = useExecutionSocket()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => bindExecutionRunner(run), [run])
 
   const onExportPython = async () => {
     try {
@@ -96,7 +103,14 @@ export default function App() {
         onChange={(event) => void onLoadWorkflowFile(event.target.files)}
       />
       <AppHeader
-        onRun={run}
+        onRun={() => run()}
+        onRunToSelected={() => {
+          if (!selectedNodeId) {
+            notifyError('Select a node first')
+            return
+          }
+          run({ targetNodeId: selectedNodeId })
+        }}
         onCancel={cancel}
         onExportPython={() => void onExportPython()}
         onExportWorkflow={onExportWorkflow}

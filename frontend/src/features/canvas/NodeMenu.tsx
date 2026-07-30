@@ -11,6 +11,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
+import { runPipeline } from '../../hooks/useExecutionSocket'
 
 type MenuAnchor =
   | { kind: 'element'; el: HTMLElement }
@@ -69,6 +70,7 @@ export function useNodeMenu({
   const removeNode = useGraphStore((state) => state.removeNode)
   const duplicateNode = useGraphStore((state) => state.duplicateNode)
   const selectNode = useGraphStore((state) => state.selectNode)
+  const isExecuting = useGraphStore((state) => state.isExecuting)
   const open = Boolean(anchor)
   const isMac =
     typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -95,6 +97,12 @@ export function useNodeMenu({
     },
     [nodeId, selectNode],
   )
+
+  const runToHere = useCallback(() => {
+    close()
+    if (isExecuting) return
+    runPipeline({ targetNodeId: nodeId })
+  }, [close, isExecuting, nodeId])
 
   const runDuplicate = useCallback(() => {
     duplicateNode(nodeId)
@@ -225,6 +233,27 @@ export function useNodeMenu({
               {label}
             </Typography>
           </Box>
+
+          <MenuItem
+            className="nodrag nopan"
+            disabled={isExecuting}
+            onClick={runToHere}
+            sx={{
+              mx: 0.5,
+              mt: 0.5,
+              borderRadius: 1,
+              py: 1,
+              '&:hover': { bgcolor: 'rgba(230,126,34,0.14)' },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <MenuGlyph>▶</MenuGlyph>
+            </ListItemIcon>
+            <ListItemText
+              primary="Run to here"
+              slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 600 } } }}
+            />
+          </MenuItem>
 
           <MenuItem
             className="nodrag nopan"
