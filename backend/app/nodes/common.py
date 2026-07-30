@@ -104,6 +104,26 @@ def string_param(
     )
 
 
+IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".webp", ".gif"]
+
+
+def file_param(
+    name: str,
+    label: str,
+    default: str = "",
+    accept: list[str] | None = None,
+    description: str | None = None,
+) -> ParamField:
+    return ParamField(
+        name=name,
+        label=label,
+        type="file",
+        default=default,
+        accept=accept or list(IMAGE_EXTENSIONS),
+        description=description,
+    )
+
+
 def format_params(params: dict[str, Any]) -> str:
     items = ", ".join(f"{key}={value!r}" for key, value in sorted(params.items()))
     return items

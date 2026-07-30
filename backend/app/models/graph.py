@@ -77,6 +77,7 @@ class ParamField(BaseModel):
     maximum: float | None = None
     step: float | None = None
     options: list[str] | None = None
+    accept: list[str] | None = None
     description: str | None = None
 
 
