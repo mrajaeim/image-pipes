@@ -120,6 +120,27 @@ def topological_sort(graph: Graph) -> list[str]:
     return order
 
 
+def ancestors_through_target(graph: Graph, target_node_id: str) -> set[str]:
+    """Return target plus all upstream ancestors (via incoming edges)."""
+    node_ids = {node.id for node in graph.nodes}
+    if target_node_id not in node_ids:
+        raise DagValidationError(f"Unknown target node '{target_node_id}'")
+
+    parents: dict[str, list[str]] = defaultdict(list)
+    for edge in graph.edges:
+        parents[edge.target].append(edge.source)
+
+    keep: set[str] = set()
+    stack = [target_node_id]
+    while stack:
+        current = stack.pop()
+        if current in keep:
+            continue
+        keep.add(current)
+        stack.extend(parents.get(current, []))
+    return keep
+
+
 def _encode_preview(image: np.ndarray) -> str:
     success, buffer = cv2.imencode(".png", image)
     if not success:
@@ -240,6 +261,9 @@ class DagExecutor:
         cancel = cancel or CancellationToken()
         nodes = validate_graph(request.graph, self.registry)
         order = topological_sort(request.graph)
+        if request.target_node_id:
+            keep = ancestors_through_target(request.graph, request.target_node_id)
+            order = [node_id for node_id in order if node_id in keep]
         sample_count = max(1, request.sample_count)
         results: dict[str, Any] = {"order": order, "samples": []}
 
