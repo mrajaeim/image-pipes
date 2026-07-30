@@ -1,18 +1,24 @@
 import { Box } from '@mui/material'
+import { useRef } from 'react'
 import { PipelineCanvas } from '../features/canvas/PipelineCanvas'
 import { NodePalette } from '../features/palette/NodePalette'
 import { NodeInspector } from '../features/inspector/NodeInspector'
 import { CodePanel } from '../features/code/CodePanel'
 import { useGraphStore } from '../store/graphStore'
 import { requestCodegen, useExecutionSocket } from '../hooks/useExecutionSocket'
-import { notifyError, notifySuccess } from '../notify'
+import { notifyError, notifyInfo, notifySuccess } from '../notify'
+import { downloadWorkflowJson, parseWorkflowJson } from '../workflow/io'
 import { AppHeader } from './AppHeader'
 
 export default function App() {
   const setGeneratedCode = useGraphStore((s) => s.setGeneratedCode)
+  const toWorkflowDocument = useGraphStore((s) => s.toWorkflowDocument)
+  const loadWorkflow = useGraphStore((s) => s.loadWorkflow)
+  const nodeCatalog = useGraphStore((s) => s.nodeCatalog)
   const { run, cancel } = useExecutionSocket()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const onExport = async () => {
+  const onExportPython = async () => {
     try {
       const code = await requestCodegen()
       setGeneratedCode(code)
@@ -22,12 +28,57 @@ export default function App() {
     }
   }
 
+  const onExportWorkflow = () => {
+    try {
+      downloadWorkflowJson(toWorkflowDocument())
+      notifySuccess('Workflow exported')
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : 'Export failed')
+    }
+  }
+
+  const onLoadWorkflowClick = () => {
+    if (nodeCatalog.length === 0) {
+      notifyError('Node catalog is still loading — try again in a moment')
+      return
+    }
+    fileInputRef.current?.click()
+  }
+
+  const onLoadWorkflowFile = async (fileList: FileList | null) => {
+    const file = fileList?.[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      const doc = parseWorkflowJson(text)
+      const { skippedTypes } = loadWorkflow(doc)
+      if (skippedTypes.length > 0) {
+        notifyInfo(`Workflow loaded (skipped unknown nodes: ${skippedTypes.join(', ')})`)
+      } else {
+        notifySuccess('Workflow loaded')
+      }
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : 'Load failed')
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#0f0f0f' }}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={(event) => void onLoadWorkflowFile(event.target.files)}
+      />
       <AppHeader
         onRun={run}
         onCancel={cancel}
-        onExport={() => void onExport()}
+        onExportPython={() => void onExportPython()}
+        onExportWorkflow={onExportWorkflow}
+        onLoadWorkflow={onLoadWorkflowClick}
       />
 
       <Box

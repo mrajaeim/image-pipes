@@ -122,10 +122,36 @@ function StatPill({ label, value }: { label: string; value: number }) {
 interface AppHeaderProps {
   onRun: () => void
   onCancel: () => void
-  onExport: () => void
+  onExportPython: () => void
+  onExportWorkflow: () => void
+  onLoadWorkflow: () => void
 }
 
-export function AppHeader({ onRun, onCancel, onExport }: AppHeaderProps) {
+const outlineBtnSx = {
+  height: 36,
+  px: 1.75,
+  borderRadius: 1.25,
+  textTransform: 'none',
+  fontWeight: 650,
+  color: '#f0ebe3',
+  borderColor: 'rgba(255,255,255,0.16)',
+  '&:hover': {
+    borderColor: 'rgba(125,206,160,0.45)',
+    bgcolor: 'rgba(125,206,160,0.08)',
+  },
+  '&.Mui-disabled': {
+    color: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+} as const
+
+export function AppHeader({
+  onRun,
+  onCancel,
+  onExportPython,
+  onExportWorkflow,
+  onLoadWorkflow,
+}: AppHeaderProps) {
   const seed = useGraphStore((s) => s.seed)
   const sampleCount = useGraphStore((s) => s.sampleCount)
   const setSeed = useGraphStore((s) => s.setSeed)
@@ -291,24 +317,26 @@ export function AppHeader({ onRun, onCancel, onExport }: AppHeaderProps) {
         <Button
           variant="outlined"
           disabled={isExecuting}
-          onClick={onExport}
-          sx={{
-            height: 36,
-            px: 1.75,
-            borderRadius: 1.25,
-            textTransform: 'none',
-            fontWeight: 650,
-            color: '#f0ebe3',
-            borderColor: 'rgba(255,255,255,0.16)',
-            '&:hover': {
-              borderColor: 'rgba(125,206,160,0.45)',
-              bgcolor: 'rgba(125,206,160,0.08)',
-            },
-            '&.Mui-disabled': {
-              color: 'rgba(255,255,255,0.3)',
-              borderColor: 'rgba(255,255,255,0.08)',
-            },
-          }}
+          onClick={onLoadWorkflow}
+          sx={outlineBtnSx}
+        >
+          Load
+        </Button>
+
+        <Button
+          variant="outlined"
+          disabled={isExecuting}
+          onClick={onExportWorkflow}
+          sx={outlineBtnSx}
+        >
+          Export
+        </Button>
+
+        <Button
+          variant="outlined"
+          disabled={isExecuting}
+          onClick={onExportPython}
+          sx={outlineBtnSx}
         >
           Export Python
         </Button>
