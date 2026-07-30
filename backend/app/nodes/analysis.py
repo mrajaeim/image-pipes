@@ -198,18 +198,51 @@ class HistogramEqualizeNode(BaseNode):
         ]
 
 
-def _draw_hist_curve(canvas: np.ndarray, hist: np.ndarray, color: tuple[int, int, int]) -> None:
+def _as_hist_image(image: np.ndarray) -> np.ndarray:
+    """Ensure uint8 image suitable for cv2.calcHist ranges [0, 256)."""
+    if image.dtype == np.uint8:
+        return image
+    if np.issubdtype(image.dtype, np.floating):
+        finite = np.nan_to_num(image, nan=0.0, posinf=0.0, neginf=0.0)
+        max_val = float(finite.max()) if finite.size else 0.0
+        if max_val <= 1.0:
+            finite = finite * 255.0
+        return np.clip(finite, 0, 255).astype(np.uint8)
+    info = np.iinfo(image.dtype) if np.issubdtype(image.dtype, np.integer) else None
+    if info is not None and info.max > 255:
+        scaled = image.astype(np.float32) * (255.0 / float(info.max))
+        return np.clip(scaled, 0, 255).astype(np.uint8)
+    return np.clip(image, 0, 255).astype(np.uint8)
+
+
+def _draw_hist_bars(
+    canvas: np.ndarray,
+    hist: np.ndarray,
+    color: tuple[int, int, int],
+    *,
+    filled: bool = True,
+) -> None:
     height, width = canvas.shape[:2]
-    if hist.max() <= 0:
+    values = np.asarray(hist, dtype=np.float64).reshape(-1)
+    if values.size == 0:
         return
-    norm = hist * ((height - 1) / hist.max())
-    bin_w = width / 256.0
-    for i in range(1, 256):
-        x1 = int((i - 1) * bin_w)
-        x2 = int(i * bin_w)
-        y1 = height - 1 - int(norm[i - 1])
-        y2 = height - 1 - int(norm[i])
-        cv2.line(canvas, (x1, y1), (x2, y2), color, 1, cv2.LINE_AA)
+    peak = float(values.max())
+    if peak <= 0:
+        return
+    scale = (height - 1) / peak
+    bin_w = max(1, int(width / max(1, values.size)))
+    for i, raw in enumerate(values):
+        bar_h = int(float(raw) * scale)
+        if bar_h <= 0:
+            continue
+        x1 = int(i * width / values.size)
+        x2 = min(width - 1, x1 + bin_w)
+        y1 = height - 1 - bar_h
+        y2 = height - 1
+        if filled:
+            cv2.rectangle(canvas, (x1, y1), (x2, y2), color, thickness=-1)
+        else:
+            cv2.line(canvas, (x1, y2), (x1, y1), color, 2, cv2.LINE_AA)
 
 
 class DrawHistogramNode(BaseNode):
@@ -230,19 +263,28 @@ class DrawHistogramNode(BaseNode):
         params: dict[str, Any],
         seed: int = 0,
     ) -> dict[str, np.ndarray | list[np.ndarray]]:
-        image = require_image(inputs)
+        image = _as_hist_image(require_image(inputs))
         height = int(params["height"])
         width = int(params["width"])
-        canvas = np.full((height, width, 3), 30, dtype=np.uint8)
-        if str(params["mode"]) == "gray" or len(image.shape) == 2:
+        canvas = np.full((height, width, 3), 24, dtype=np.uint8)
+        # Subtle grid so empty-looking previews are still readable when scaled down.
+        for frac in (0.25, 0.5, 0.75):
+            y = int(height * (1.0 - frac))
+            cv2.line(canvas, (0, y), (width - 1, y), (40, 40, 40), 1)
+
+        mode = str(params["mode"])
+        if mode == "gray" or len(image.shape) == 2:
             gray = image if len(image.shape) == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            hist = cv2.calcHist([gray], [0], None, [256], [0, 256]).flatten()
-            _draw_hist_curve(canvas, hist, (220, 220, 220))
+            hist = cv2.calcHist([gray], [0], None, [256], [0, 256]).ravel()
+            _draw_hist_bars(canvas, hist, (230, 230, 230))
         else:
-            colors = ((255, 80, 80), (80, 255, 80), (80, 80, 255))  # B,G,R
+            if image.shape[2] == 4:
+                image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+            # Draw B, G, R with alpha-like stacking via lighter overdraw.
+            colors = ((255, 90, 90), (90, 220, 90), (90, 90, 255))
             for channel_idx, color in enumerate(colors):
-                hist = cv2.calcHist([image], [channel_idx], None, [256], [0, 256]).flatten()
-                _draw_hist_curve(canvas, hist, color)
+                hist = cv2.calcHist([image], [channel_idx], None, [256], [0, 256]).ravel()
+                _draw_hist_bars(canvas, hist, color)
         return {"image": canvas}
 
     def emit_python(
@@ -256,17 +298,47 @@ class DrawHistogramNode(BaseNode):
         dst = output_vars["image"]
         height = int(params["height"])
         width = int(params["width"])
-        return [
-            f"{dst} = np.full(({height}, {width}, 3), 30, dtype='uint8')",
-            f"_h = cv2.calcHist([{src} if len({src}.shape)==2 else "
-            f"cv2.cvtColor({src}, cv2.COLOR_BGR2GRAY)], [0], None, [256], [0, 256]).ravel()",
-            f"_n = _h * (({height}-1) / max(float(_h.max()), 1.0))",
-            f"_bw = {width} / 256.0",
-            "for _i in range(1, 256):",
-            "    _x1 = int((_i-1)*_bw); _x2 = int(_i*_bw)",
-            f"    _y1 = {height}-1-int(_n[_i-1]); _y2 = {height}-1-int(_n[_i])",
-            f"    cv2.line({dst}, (_x1, _y1), (_x2, _y2), (220, 220, 220), 1, cv2.LINE_AA)",
+        mode = str(params["mode"])
+        lines = [
+            f"{dst} = np.full(({height}, {width}, 3), 24, dtype='uint8')",
         ]
+        if mode == "gray":
+            lines.extend(
+                [
+                    (
+                        f"_gray = {src} if len({src}.shape) == 2 else "
+                        f"cv2.cvtColor({src}, cv2.COLOR_BGR2GRAY)"
+                    ),
+                    "_hist = cv2.calcHist([_gray], [0], None, [256], [0, 256]).ravel()",
+                    f"_scale = ({height} - 1) / max(float(_hist.max()), 1.0)",
+                    "for _i, _v in enumerate(_hist):",
+                    "    _h = int(float(_v) * _scale)",
+                    "    if _h <= 0: continue",
+                    f"    _x1 = int(_i * {width} / 256)",
+                    f"    _x2 = min({width} - 1, _x1 + max(1, {width} // 256))",
+                    f"    cv2.rectangle({dst}, (_x1, {height} - 1 - _h), (_x2, {height} - 1), "
+                    "(230, 230, 230), -1)",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    f"_img = {src}",
+                    "if len(_img.shape) == 2: _img = cv2.cvtColor(_img, cv2.COLOR_GRAY2BGR)",
+                    "_colors = [(255, 90, 90), (90, 220, 90), (90, 90, 255)]",
+                    "for _c, _color in enumerate(_colors):",
+                    "    _hist = cv2.calcHist([_img], [_c], None, [256], [0, 256]).ravel()",
+                    f"    _scale = ({height} - 1) / max(float(_hist.max()), 1.0)",
+                    "    for _i, _v in enumerate(_hist):",
+                    "        _h = int(float(_v) * _scale)",
+                    "        if _h <= 0: continue",
+                    f"        _x1 = int(_i * {width} / 256)",
+                    f"        _x2 = min({width} - 1, _x1 + max(1, {width} // 256))",
+                    f"        cv2.rectangle({dst}, (_x1, {height} - 1 - _h), (_x2, {height} - 1), "
+                    "_color, -1)",
+                ]
+            )
+        return lines
 
 
 class NormalizeNode(BaseNode):

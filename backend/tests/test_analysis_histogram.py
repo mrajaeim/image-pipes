@@ -25,4 +25,18 @@ def test_draw_histogram_renders_plot() -> None:
         seed=0,
     )["image"]
     assert result.shape == (128, 256, 3)
-    assert int(result.sum()) > 0
+    # Filled bars should cover more than the dark background alone.
+    assert int(result.sum()) > 24 * 128 * 256
+    assert len(np.unique(result)) >= 5
+
+
+def test_draw_histogram_gray_mode() -> None:
+    register_builtin_nodes()
+    gray = np.full((16, 16), 90, dtype=np.uint8)
+    result = registry.get("draw_histogram").execute(
+        {"image": gray},
+        {"mode": "gray", "height": 64, "width": 128},
+        seed=0,
+    )["image"]
+    assert result.shape == (64, 128, 3)
+    assert int(result.max()) >= 200
