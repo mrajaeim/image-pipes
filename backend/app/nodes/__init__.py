@@ -5,6 +5,7 @@ from app.nodes.color import MergeChannelsNode, SplitChannelsNode, ToGrayNode, To
 from app.nodes.filters import CannyNode, GaussianBlurNode, MedianBlurNode, ThresholdNode
 from app.nodes.geometry import CropNode, FlipNode, ResizeNode, RotateNode
 from app.nodes.io import LoadImageNode, PreviewNode, SaveImageNode
+from app.nodes.morphology import DilateNode, ErodeNode, MorphologyExNode
 from app.nodes.stochastic import GaussianNoiseNode, RandomBrightnessContrastNode
 
 _REGISTERED = False
@@ -26,6 +27,9 @@ def register_builtin_nodes() -> None:
         MedianBlurNode(),
         CannyNode(),
         ThresholdNode(),
+        ErodeNode(),
+        DilateNode(),
+        MorphologyExNode(),
         ResizeNode(),
         RotateNode(),
         CropNode(),
