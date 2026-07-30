@@ -26,6 +26,7 @@ const CATEGORY_ACCENT: Record<string, string> = {
   morphology: '#48c9b0',
   geometry: '#af7ac5',
   analysis: '#5dade2',
+  math: '#58d68d',
   stochastic: '#f5b041',
 }
 
