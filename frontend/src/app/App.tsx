@@ -5,19 +5,20 @@ import { NodeInspector } from '../features/inspector/NodeInspector'
 import { CodePanel } from '../features/code/CodePanel'
 import { useGraphStore } from '../store/graphStore'
 import { requestCodegen, useExecutionSocket } from '../hooks/useExecutionSocket'
+import { notifyError, notifySuccess } from '../notify'
 import { AppHeader } from './AppHeader'
 
 export default function App() {
   const setGeneratedCode = useGraphStore((s) => s.setGeneratedCode)
-  const appendLog = useGraphStore((s) => s.appendLog)
   const { run, cancel } = useExecutionSocket()
 
   const onExport = async () => {
     try {
       const code = await requestCodegen()
       setGeneratedCode(code)
+      notifySuccess('Python script exported')
     } catch (error) {
-      appendLog(error instanceof Error ? error.message : 'Codegen failed')
+      notifyError(error instanceof Error ? error.message : 'Codegen failed')
     }
   }
 

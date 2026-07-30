@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { useGraphStore } from '../store/graphStore'
+import { notifyError, notifyInfo, notifySuccess } from '../notify'
 import type { ExecutionEvent } from '../types'
 
 export function useExecutionSocket() {
@@ -18,6 +19,7 @@ export function useExecutionSocket() {
     socketRef.current?.close()
     socketRef.current = null
     setIsExecuting(false)
+    notifyInfo('Pipeline cancelled')
   }, [setIsExecuting])
 
   const run = useCallback(() => {
@@ -56,12 +58,22 @@ export function useExecutionSocket() {
       }
       if (event.type === 'log' && event.message) appendLog(event.message)
       if (event.type === 'error') {
-        appendLog(event.message ?? 'Execution failed')
+        const detail = event.message ?? 'Execution failed'
+        appendLog(detail)
+        notifyError(detail)
         setIsExecuting(false)
         setActiveNodeId(null)
       }
-      if (event.type === 'done' || event.type === 'cancelled') {
-        appendLog(event.message ?? event.type)
+      if (event.type === 'done') {
+        appendLog(event.message ?? 'done')
+        notifySuccess(event.message ?? 'Pipeline finished')
+        setIsExecuting(false)
+        setActiveNodeId(null)
+        socket.close()
+      }
+      if (event.type === 'cancelled') {
+        appendLog(event.message ?? 'cancelled')
+        notifyInfo(event.message ?? 'Pipeline cancelled')
         setIsExecuting(false)
         setActiveNodeId(null)
         socket.close()
@@ -70,6 +82,7 @@ export function useExecutionSocket() {
 
     socket.onerror = () => {
       appendLog('WebSocket error')
+      notifyError('Could not connect to the execution server')
       setIsExecuting(false)
     }
 

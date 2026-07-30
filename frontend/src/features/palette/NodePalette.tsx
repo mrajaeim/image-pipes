@@ -10,6 +10,7 @@ import {
 } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
 import type { NodeMetadata } from '../../types'
+import { notifyError } from '../../notify'
 
 async function fetchNodes(): Promise<NodeMetadata[]> {
   const response = await fetch('/api/nodes')
@@ -287,6 +288,10 @@ export function NodePalette() {
     if (data) setNodeCatalog(data)
   }, [data, setNodeCatalog])
 
+  useEffect(() => {
+    if (error) notifyError('Could not load node catalog')
+  }, [error])
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
     if (!needle) return catalog
@@ -363,26 +368,28 @@ export function NodePalette() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search nodes…"
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>⌕</Typography>
-              </InputAdornment>
-            ),
-            endAdornment: query ? (
-              <InputAdornment position="end">
-                <IconButton
-                  size="small"
-                  aria-label="Clear search"
-                  onClick={() => setQuery('')}
-                  sx={{ color: 'rgba(255,255,255,0.4)' }}
-                >
-                  <Typography component="span" sx={{ fontSize: 12, lineHeight: 1 }}>
-                    ×
-                  </Typography>
-                </IconButton>
-              </InputAdornment>
-            ) : undefined,
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: 13 }}>⌕</Typography>
+                </InputAdornment>
+              ),
+              endAdornment: query ? (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    aria-label="Clear search"
+                    onClick={() => setQuery('')}
+                    sx={{ color: 'rgba(255,255,255,0.4)' }}
+                  >
+                    <Typography component="span" sx={{ fontSize: 12, lineHeight: 1 }}>
+                      ×
+                    </Typography>
+                  </IconButton>
+                </InputAdornment>
+              ) : undefined,
+            },
           }}
           sx={{
             '& .MuiInputBase-root': {

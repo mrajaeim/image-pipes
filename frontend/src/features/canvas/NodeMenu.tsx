@@ -1,4 +1,5 @@
 import { useCallback, useState, type MouseEvent, type ReactNode } from 'react'
+/* eslint-disable react-refresh/only-export-components -- hook + private menu UI helpers */
 import {
   Box,
   Divider,
@@ -241,7 +242,7 @@ export function useNodeMenu({
             </ListItemIcon>
             <ListItemText
               primary="Duplicate"
-              primaryTypographyProps={{ fontSize: 13, fontWeight: 600 }}
+              slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 600 } } }}
             />
             <ShortcutHint keys={`${modKey}+D`} />
           </MenuItem>
@@ -265,7 +266,7 @@ export function useNodeMenu({
             </ListItemIcon>
             <ListItemText
               primary="Delete"
-              primaryTypographyProps={{ fontSize: 13, fontWeight: 600, color: '#ff8a80' }}
+              slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 600, color: '#ff8a80' } } }}
             />
             <ShortcutHint keys="Del" />
           </MenuItem>

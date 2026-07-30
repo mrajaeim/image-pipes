@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Button, IconButton, Stack, TextField, Typography } from '@mui/material'
 import type { ParamField } from '../../types'
+import { notifyError, notifySuccess } from '../../notify'
 
 interface FileParamInputProps {
   field: ParamField
@@ -97,7 +98,9 @@ export function FileParamInput({
       a.name.localeCompare(b.name, undefined, { numeric: true }),
     )
     if (files.length === 0) {
-      setError(`No supported images selected (${acceptAttr(field)})`)
+      const message = `No supported images selected (${acceptAttr(field)})`
+      setError(message)
+      notifyError(message)
       return
     }
     setBusy(true)
@@ -109,9 +112,14 @@ export function FileParamInput({
       onPreviews?.(urls, result.files)
       onChange(result.path)
       onBatchCount?.(result.count)
+      notifySuccess(
+        result.count > 1 ? `${result.count} images loaded` : 'Image loaded',
+      )
     } catch (err) {
       onPreviews?.([], [])
-      setError(err instanceof Error ? err.message : 'Upload failed')
+      const message = err instanceof Error ? err.message : 'Upload failed'
+      setError(message)
+      notifyError(message)
     } finally {
       setBusy(false)
     }

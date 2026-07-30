@@ -150,7 +150,7 @@ export function AppHeader({ onRun, onCancel, onExport }: AppHeaderProps) {
           'linear-gradient(180deg, rgba(255,255,255,0.03), transparent), radial-gradient(ellipse 50% 120% at 0% 0%, rgba(125,206,160,0.08), transparent 55%)',
       }}
     >
-      <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
+      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: 0 }}>
         <BrandMark />
         <Box sx={{ minWidth: 0 }}>
           <Typography
@@ -193,8 +193,8 @@ export function AppHeader({ onRun, onCancel, onExport }: AppHeaderProps) {
       <Stack
         direction="row"
         spacing={1}
-        alignItems="center"
         sx={{
+          alignItems: 'center',
           px: 1,
           py: 0.5,
           borderRadius: 1.5,
@@ -220,7 +220,7 @@ export function AppHeader({ onRun, onCancel, onExport }: AppHeaderProps) {
         />
       </Stack>
 
-      <Stack direction="row" spacing={1} alignItems="center">
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
         {isExecuting ? (
           <Button
             variant="outlined"
