@@ -19,6 +19,8 @@ backend/cache/*
 !backend/cache/.gitkeep
 backend/uploads/*
 !backend/uploads/.gitkeep
+backend/outputs/*
+!backend/outputs/.gitkeep
 
 # Node / frontend
 node_modules/
