@@ -11,6 +11,7 @@ import {
 import { create } from 'zustand'
 import type { ExecutionPreview, GraphNodeData, NodeMetadata } from '../types'
 import type { WorkflowDocument, WorkflowGraphPayload } from '../workflow/io'
+import { portTypeColor } from '../lib/portTypes'
 
 
 type PipelineNode = Node<GraphNodeData>
@@ -24,6 +25,11 @@ export type NodeImageState = {
   ports: Record<string, string>
   /** Per-port sample stacks: portId → images[sampleIndex]. */
   portSamples: Record<string, string[]>
+  /** Latest bbox / keypoint payloads from preview events. */
+  annotations?: {
+    bboxes?: unknown
+    keypoints?: unknown
+  }
 }
 
 /** Latest measured execution duration per node id. */
@@ -179,7 +185,15 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   onEdgesChange: (changes) =>
     set({ edges: applyEdgeChanges(changes, get().edges) }),
 
-  onConnect: (connection) =>
+  onConnect: (connection) => {
+    const nodes = get().nodes
+    const sourceNode = nodes.find((node) => node.id === connection.source)
+    const sourcePort = sourceNode?.data.ports.find(
+      (port) =>
+        port.direction === 'output' &&
+        port.id === (connection.sourceHandle ?? 'image'),
+    )
+    const stroke = portTypeColor(sourcePort?.data_type ?? 'image', '#7dcea0')
     set({
       edges: addEdge(
         {
@@ -189,11 +203,13 @@ export const useGraphStore = create<GraphState>((set, get) => ({
           zIndex: 1000,
           reconnectable: true,
           selectable: true,
-          data: { waypoints: [] },
+          style: { stroke, strokeWidth: 2 },
+          data: { waypoints: [], dataType: sourcePort?.data_type ?? 'image' },
         },
         get().edges,
       ),
-    }),
+    })
+  },
 
   onReconnect: (oldEdge, connection) => {
     const next = get().edges
@@ -374,21 +390,36 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   addPreview: (preview) => {
     const portId = preview.portId ?? 'image'
     const existing = get().nodeImages[preview.nodeId] ?? emptyNodeImages()
-    const ports = { ...existing.ports, [portId]: preview.imageB64 }
+    const ports = { ...existing.ports }
     const portSamples = { ...existing.portSamples }
-    const portStack = [...(portSamples[portId] ?? [])]
-    while (portStack.length <= preview.sampleIndex) {
-      portStack.push('')
-    }
-    portStack[preview.sampleIndex] = preview.imageB64
-    portSamples[portId] = portStack
-
     const nextSamples = [...existing.samples]
-    if (portId === 'image' || Object.keys(ports).length === 1) {
-      while (nextSamples.length <= preview.sampleIndex) {
-        nextSamples.push('')
+    let annotations = existing.annotations
+
+    if (preview.imageB64) {
+      ports[portId] = preview.imageB64
+      const portStack = [...(portSamples[portId] ?? [])]
+      while (portStack.length <= preview.sampleIndex) {
+        portStack.push('')
       }
-      nextSamples[preview.sampleIndex] = preview.imageB64
+      portStack[preview.sampleIndex] = preview.imageB64
+      portSamples[portId] = portStack
+
+      if (portId === 'image' || Object.keys(ports).length === 1) {
+        while (nextSamples.length <= preview.sampleIndex) {
+          nextSamples.push('')
+        }
+        nextSamples[preview.sampleIndex] = preview.imageB64
+      }
+    }
+
+    if (preview.data) {
+      annotations = {
+        ...annotations,
+        ...(preview.data.bboxes !== undefined ? { bboxes: preview.data.bboxes } : {}),
+        ...(preview.data.keypoints !== undefined
+          ? { keypoints: preview.data.keypoints }
+          : {}),
+      }
     }
 
     set({
@@ -396,10 +427,11 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       nodeImages: {
         ...get().nodeImages,
         [preview.nodeId]: {
-          result: ports.image ?? Object.values(ports)[0] ?? preview.imageB64,
+          result: ports.image ?? Object.values(ports)[0] ?? existing.result,
           samples: nextSamples,
           ports,
           portSamples,
+          annotations,
         },
       },
     })

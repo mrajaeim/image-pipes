@@ -89,14 +89,17 @@ export function useExecutionSocket() {
             appendLog(event.message)
           }
         }
-        if (event.type === 'preview' && event.node_id && event.image_b64) {
-          addPreview({
-            nodeId: event.node_id,
-            sampleIndex: event.sample_index ?? 0,
-            imageB64: event.image_b64,
-            portId: event.port_id,
-            cacheHit: event.cache_hit,
-          })
+        if (event.type === 'preview' && event.node_id) {
+          if (event.image_b64 || event.data) {
+            addPreview({
+              nodeId: event.node_id,
+              sampleIndex: event.sample_index ?? 0,
+              imageB64: event.image_b64 ?? '',
+              portId: event.port_id,
+              cacheHit: event.cache_hit,
+              data: event.data,
+            })
+          }
         }
         if (event.type === 'log' && event.message) appendLog(event.message)
         if (event.type === 'error') {

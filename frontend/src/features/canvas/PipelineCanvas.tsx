@@ -16,7 +16,8 @@ import { Box } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
 import { PipelineNodeView } from './PipelineNode'
 import { EditableEdge } from './EditableEdge'
-import type { NodeMetadata } from '../../types'
+import type { NodeMetadata, PortSpec } from '../../types'
+import { portsCompatible } from '../../lib/portTypes'
 
 function FitViewOnGraphChange() {
   const { fitView } = useReactFlow()
@@ -32,6 +33,19 @@ function FitViewOnGraphChange() {
   }, [fitView, graphRevision, nodeCount])
 
   return null
+}
+
+function findPort(
+  nodes: ReturnType<typeof useGraphStore.getState>['nodes'],
+  nodeId: string | null | undefined,
+  handleId: string | null | undefined,
+  direction: 'input' | 'output',
+): PortSpec | undefined {
+  if (!nodeId) return undefined
+  const node = nodes.find((item) => item.id === nodeId)
+  const ports = node?.data.ports ?? []
+  const portId = handleId ?? 'image'
+  return ports.find((port) => port.id === portId && port.direction === direction)
 }
 
 export function PipelineCanvas() {
@@ -66,7 +80,12 @@ export function PipelineCanvas() {
 
   const isValidConnection = useCallback((connection: Connection | Edge) => {
     if (!connection.source || !connection.target) return false
-    return connection.source !== connection.target
+    if (connection.source === connection.target) return false
+    const nodes = useGraphStore.getState().nodes
+    const sourcePort = findPort(nodes, connection.source, connection.sourceHandle, 'output')
+    const targetPort = findPort(nodes, connection.target, connection.targetHandle, 'input')
+    if (!sourcePort || !targetPort) return true
+    return portsCompatible(sourcePort.data_type, targetPort.data_type)
   }, [])
 
   const onReconnect = useCallback(

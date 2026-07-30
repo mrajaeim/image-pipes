@@ -17,6 +17,7 @@ import {
 import type { GraphNodeData, PortSpec } from '../../types'
 import { useGraphStore, type NodeImageState } from '../../store/graphStore'
 import { useNodeMenu } from './NodeMenu'
+import { isImageLikePort, portTypeColor } from '../../lib/portTypes'
 
 type PipelineFlowNode = Node<GraphNodeData, 'pipeline'>
 
@@ -156,22 +157,25 @@ function buildPreviewGrid({
   outputPorts: PortSpec[]
   localPreviewUrls: string[]
 }): { columns: string[]; rows: ImageItem[][]; sectionPorts: PortSpec[] } {
-  // Only multi-output nodes (e.g. Split) get one column per port.
-  // Multi-input nodes (e.g. Merge) stay a single preview body.
-  const multiOut = outputPorts.length > 1
+  // Prefer image-like output ports for the preview grid; annotation ports are
+  // overlaid on the image by the backend and shown as caption chips.
+  const imagePorts = outputPorts.filter((port) => isImageLikePort(port.data_type))
+  const multiOut = imagePorts.length > 1
   const sectionPorts = multiOut
-    ? outputPorts
-    : outputPorts.length > 0
-      ? outputPorts
-      : [
-          {
-            id: 'image',
-            name: 'Image',
-            direction: 'output' as const,
-            data_type: 'image',
-            multiple: false,
-          },
-        ]
+    ? imagePorts
+    : imagePorts.length > 0
+      ? imagePorts
+      : outputPorts.length > 0 && isImageLikePort(outputPorts[0].data_type)
+        ? [outputPorts[0]]
+        : [
+            {
+              id: 'image',
+              name: 'Image',
+              direction: 'output' as const,
+              data_type: 'image',
+              multiple: false,
+            },
+          ]
   const columns = multiOut
     ? sectionPorts.map((port) => port.id)
     : [sectionPorts[0]?.id ?? 'image']
@@ -266,7 +270,21 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
   const emptyHint =
     data.type === 'load_image' || inputPorts.length === 0
       ? 'Choose images or a folder'
-      : 'Connect upstream, then Run'
+      : data.type === 'annotations'
+        ? 'Edit bboxes & keypoints in the inspector'
+        : 'Connect upstream, then Run'
+
+  const annotationSummary = useMemo(() => {
+    const annotations = nodeImages[id]?.annotations
+    if (!annotations) return null
+    const boxCount = Array.isArray(annotations.bboxes) ? annotations.bboxes.length : 0
+    const kpCount = Array.isArray(annotations.keypoints) ? annotations.keypoints.length : 0
+    if (boxCount === 0 && kpCount === 0) return null
+    const parts: string[] = []
+    if (boxCount > 0) parts.push(`${boxCount} bbox${boxCount === 1 ? '' : 's'}`)
+    if (kpCount > 0) parts.push(`${kpCount} kp`)
+    return parts.join(' · ')
+  }, [id, nodeImages])
 
   return (
     <>
@@ -374,6 +392,31 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               {timing.ms < 10 ? timing.ms.toFixed(1) : Math.round(timing.ms)}
               ms
               {timing.cacheHit ? ' · cache' : ''}
+            </Box>
+          )}
+          {annotationSummary && (
+            <Box
+              component="span"
+              title="Annotation targets from last run"
+              sx={{
+                position: 'absolute',
+                bottom: 6,
+                left: 6,
+                zIndex: 2,
+                px: 0.7,
+                py: 0.25,
+                borderRadius: 0.75,
+                bgcolor: 'rgba(0,0,0,0.72)',
+                border: '1px solid rgba(245,176,65,0.45)',
+                color: '#f5b041',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.02em',
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+              }}
+            >
+              {annotationSummary}
             </Box>
           )}
           {grid.rows.length === 0
@@ -521,7 +564,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                   ...handleBaseStyle,
                   top,
                   left: -7,
-                  background: '#7dcea0',
+                  background: portTypeColor(port.data_type, '#7dcea0'),
                 }}
               />
               {showLabel && (
@@ -548,7 +591,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                   top,
                   right: -7,
                   left: 'auto',
-                  background: '#e67e22',
+                  background: portTypeColor(port.data_type, '#e67e22'),
                 }}
               />
               {showLabel && (

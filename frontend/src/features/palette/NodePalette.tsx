@@ -28,6 +28,7 @@ const CATEGORY_ACCENT: Record<string, string> = {
   analysis: '#5dade2',
   math: '#58d68d',
   stochastic: '#f5b041',
+  augment: '#e74c3c',
 }
 
 function categoryAccent(category: string): string {

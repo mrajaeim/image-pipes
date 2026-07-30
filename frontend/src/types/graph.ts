@@ -52,6 +52,7 @@ export interface ExecutionPreview {
   imageB64: string
   portId?: string | null
   cacheHit?: boolean | null
+  data?: Record<string, unknown> | null
 }
 
 export type ExecutionEventType =

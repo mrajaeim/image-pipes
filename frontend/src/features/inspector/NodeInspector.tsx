@@ -12,6 +12,7 @@ import { useGraphStore } from '../../store/graphStore'
 import type { ParamField } from '../../types'
 import { FileParamInput } from './FileParamInput'
 import { SaveImageParams } from './SaveImageParams'
+import { AnnotationsParams } from './AnnotationsParams'
 
 function buildSchema(fields: ParamField[]) {
   const shape: Record<string, z.ZodTypeAny> = {}
@@ -44,6 +45,7 @@ export function NodeInspector() {
   const fields = meta?.params ?? []
   const schema = buildSchema(fields)
   const isSaveImage = selected?.data.type === 'save_image'
+  const isAnnotations = selected?.data.type === 'annotations'
 
   const { register, handleSubmit, reset, setValue, formState } = useForm({
     resolver: zodResolver(schema),
@@ -79,7 +81,7 @@ export function NodeInspector() {
             lineHeight: 1.7,
           }}
         >
-          <li>Connect green inputs to orange outputs</li>
+          <li>Connect matching port types (image, mask, bboxes, keypoints)</li>
           <li>Press Run to execute with live previews</li>
           <li>Export saves workflow JSON; Export Python codegen</li>
         </Box>
@@ -110,6 +112,27 @@ export function NodeInspector() {
             onFilenameChange={(filename) => {
               setValue('filename', filename, { shouldDirty: true, shouldValidate: true })
               updateNodeParams(selected.id, { filename })
+            }}
+          />
+        ) : isAnnotations ? (
+          <AnnotationsParams
+            key={selected.id}
+            bboxesJson={String(
+              selected.data.params.bboxes_json ?? '[[10, 10, 100, 80, "object"]]',
+            )}
+            keypointsJson={String(
+              selected.data.params.keypoints_json ?? '[[40, 40], [80, 60]]',
+            )}
+            onChange={(next) => {
+              setValue('bboxes_json', next.bboxes_json, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+              setValue('keypoints_json', next.keypoints_json, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+              updateNodeParams(selected.id, next)
             }}
           />
         ) : (
