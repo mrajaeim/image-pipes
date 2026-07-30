@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class PortDirection(str, Enum):
+class PortDirection(StrEnum):
     INPUT = "input"
     OUTPUT = "output"
 
@@ -48,7 +48,7 @@ class ExecuteRequest(BaseModel):
     cache: bool = True
 
 
-class ExecutionEventType(str, Enum):
+class ExecutionEventType(StrEnum):
     PROGRESS = "progress"
     PREVIEW = "preview"
     LOG = "log"
