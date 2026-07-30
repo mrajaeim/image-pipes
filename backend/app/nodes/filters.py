@@ -8,7 +8,14 @@ import cv2
 import numpy as np
 
 from app.engine.registry import BaseNode
-from app.nodes.common import image_in, image_out, int_param, number_param, require_image, select_param
+from app.nodes.common import (
+    image_in,
+    image_out,
+    int_param,
+    number_param,
+    require_image,
+    select_param,
+)
 
 
 def _odd(value: int) -> int:
