@@ -19,6 +19,7 @@ router = APIRouter(prefix="/api")
 
 CACHE_DIR = Path(__file__).resolve().parents[2] / "cache"
 UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads"
+OUTPUT_DIR = Path(__file__).resolve().parents[2] / "outputs"
 
 
 class CodegenBody(BaseModel):
@@ -35,6 +36,11 @@ class UploadResponse(BaseModel):
     kind: str
     files: list[str]
     count: int
+
+
+class OutputDirResponse(BaseModel):
+    path: str
+    name: str
 
 
 def _allowed_extension(filename: str) -> bool:
@@ -144,6 +150,16 @@ def delete_uploaded_file(path: str) -> dict[str, str]:
         raise
     except OSError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/outputs", response_model=OutputDirResponse)
+def create_output_directory() -> OutputDirResponse:
+    """Create a new root folder under outputs/ for Save Image nodes."""
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    name = uuid.uuid4().hex[:12]
+    folder = OUTPUT_DIR / name
+    folder.mkdir(parents=True, exist_ok=False)
+    return OutputDirResponse(path=str(folder.resolve()), name=name)
 
 
 @router.post("/execute")
