@@ -3,6 +3,7 @@
 from app.engine.registry import registry
 from app.nodes.analysis import (
     AdaptiveThresholdNode,
+    BlurDetectNode,
     CompareHistNode,
     DistanceTransformNode,
     DrawHistogramNode,
@@ -85,6 +86,7 @@ def register_builtin_nodes() -> None:
         DrawHistogramNode(),
         NormalizeNode(),
         CompareHistNode(),
+        BlurDetectNode(),
         KMeansColorsNode(),
         DominantColorsHistNode(),
         FindContoursNode(),

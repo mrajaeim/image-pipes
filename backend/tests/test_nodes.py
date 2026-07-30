@@ -40,6 +40,7 @@ def test_builtin_nodes_registered() -> None:
         "draw_histogram",
         "normalize",
         "compare_hist",
+        "blur_detect",
         "kmeans_colors",
         "dominant_colors_hist",
         "find_contours",

@@ -415,3 +415,97 @@ class CompareHistNode(BaseNode):
             f"cv2.putText({dst}, f'{params['method']}: {{_score:.4f}}', (20, 90), "
             "cv2.FONT_HERSHEY_SIMPLEX, 0.8, (220, 220, 220), 2, cv2.LINE_AA)",
         ]
+
+
+class BlurDetectNode(BaseNode):
+    type = "blur_detect"
+    label = "Blur Detect"
+    category = "analysis"
+    description = "Estimate blur / focus via Laplacian variance (autofocus score)."
+    ports = [image_in(), image_out()]
+    params = [
+        int_param("ksize", "Kernel Size", 3, minimum=1, maximum=31),
+        number_param(
+            "threshold",
+            "Blur Threshold",
+            100.0,
+            minimum=0.0,
+            maximum=5000.0,
+            description="Scores below this are labeled blurry.",
+        ),
+        select_param("output", "Output", "overlay", ["overlay", "score_card"]),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        gray = _as_gray(image)
+        ksize = int(params["ksize"])
+        if ksize % 2 == 0:
+            ksize += 1
+        ksize = max(1, ksize)
+        lap = cv2.Laplacian(gray, cv2.CV_64F, ksize=ksize)
+        score = float(lap.var())
+        threshold = float(params["threshold"])
+        label = "sharp" if score >= threshold else "blurry"
+        text = f"focus={score:.1f} ({label})"
+        if str(params["output"]) == "score_card":
+            canvas = np.full((120, 420, 3), 28, dtype=np.uint8)
+            color = (80, 220, 120) if label == "sharp" else (80, 80, 255)
+            cv2.putText(
+                canvas,
+                text,
+                (16, 70),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.75,
+                color,
+                2,
+                cv2.LINE_AA,
+            )
+            return {"image": canvas}
+        if len(image.shape) == 2:
+            canvas = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        elif image.shape[2] == 4:
+            canvas = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+        else:
+            canvas = image.copy()
+        color = (80, 220, 120) if label == "sharp" else (80, 80, 255)
+        cv2.rectangle(canvas, (8, 8), (min(canvas.shape[1] - 8, 360), 42), (0, 0, 0), -1)
+        cv2.putText(
+            canvas,
+            text,
+            (14, 34),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            color,
+            2,
+            cv2.LINE_AA,
+        )
+        return {"image": canvas}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        src = input_vars["image"]
+        dst = output_vars["image"]
+        ksize = int(params["ksize"])
+        if ksize % 2 == 0:
+            ksize += 1
+        return [
+            f"_gray = {src} if len({src}.shape)==2 else cv2.cvtColor({src}, cv2.COLOR_BGR2GRAY)",
+            f"_score = float(cv2.Laplacian(_gray, cv2.CV_64F, ksize={ksize}).var())",
+            (
+                f"{dst} = {src}.copy() if len({src}.shape)==3 else "
+                f"cv2.cvtColor({src}, cv2.COLOR_GRAY2BGR)"
+            ),
+            f"cv2.putText({dst}, f'focus={{_score:.1f}}', (14, 34), "
+            "cv2.FONT_HERSHEY_SIMPLEX, 0.7, (80, 220, 120), 2, cv2.LINE_AA)",
+        ]
