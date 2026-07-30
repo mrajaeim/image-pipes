@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Button, IconButton, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, IconButton, TextField, Typography } from '@mui/material'
 import type { ParamField } from '../../types'
 import { notifyError, notifySuccess } from '../../notify'
 
@@ -166,12 +166,20 @@ export function FileParamInput({
         onChange={(event) => onChange(event.target.value)}
         helperText={field.description ?? `Allowed: ${acceptAttr(field)}`}
       />
-      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 1,
+          alignItems: 'center',
+        }}
+      >
         <Button
           size="small"
           variant="outlined"
           disabled={busy}
           onClick={() => fileRef.current?.click()}
+          sx={{ textTransform: 'none' }}
         >
           Choose images
         </Button>
@@ -180,6 +188,7 @@ export function FileParamInput({
           variant="outlined"
           disabled={busy}
           onClick={() => addRef.current?.click()}
+          sx={{ textTransform: 'none' }}
         >
           Add image
         </Button>
@@ -188,10 +197,11 @@ export function FileParamInput({
           variant="outlined"
           disabled={busy}
           onClick={() => folderRef.current?.click()}
+          sx={{ textTransform: 'none' }}
         >
           Choose folder
         </Button>
-      </Stack>
+      </Box>
       <input
         ref={fileRef}
         type="file"
