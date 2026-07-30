@@ -13,7 +13,7 @@ from typing import Any
 import cv2
 import numpy as np
 
-from app.engine.cache import CacheManager
+from app.engine.cache import CacheManager, is_image_value
 from app.engine.registry import NodeRegistry, registry
 from app.engine.run_context import current_sample_index
 from app.engine.save_bundle import SaveBundle, current_save_bundle
@@ -51,12 +51,47 @@ class CancellationToken:
 ProgressCallback = Callable[[ExecutionEvent], None]
 
 
-def _as_image(value: np.ndarray | list[np.ndarray] | None) -> np.ndarray | None:
-    if value is None:
+def _as_image(value: Any) -> np.ndarray | None:
+    if value is None or not is_image_value(value):
         return None
     if isinstance(value, list):
         return value[0] if value else None
-    return value
+    return value if isinstance(value, np.ndarray) else None
+
+
+def _draw_annotation_overlay(
+    image: np.ndarray,
+    bboxes: list[Any] | None = None,
+    keypoints: list[Any] | None = None,
+) -> np.ndarray:
+    """Draw Pascal-VOC bboxes and xy keypoints onto a BGR copy of image."""
+    canvas = image if image.ndim == 3 else cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    canvas = canvas.copy()
+    if bboxes:
+        for box in bboxes:
+            if not isinstance(box, (list, tuple)) or len(box) < 4:
+                continue
+            x1, y1, x2, y2 = (int(round(float(v))) for v in box[:4])
+            cv2.rectangle(canvas, (x1, y1), (x2, y2), (0, 220, 80), 2)
+            if len(box) >= 5:
+                label = str(box[4])
+                cv2.putText(
+                    canvas,
+                    label,
+                    (x1, max(0, y1 - 4)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.4,
+                    (0, 220, 80),
+                    1,
+                    cv2.LINE_AA,
+                )
+    if keypoints:
+        for point in keypoints:
+            if not isinstance(point, (list, tuple)) or len(point) < 2:
+                continue
+            x, y = int(round(float(point[0]))), int(round(float(point[1])))
+            cv2.circle(canvas, (x, y), 4, (40, 120, 255), -1, lineType=cv2.LINE_AA)
+    return canvas
 
 
 def validate_graph(graph: Graph, node_registry: NodeRegistry = registry) -> dict[str, NodeInstance]:
@@ -153,12 +188,12 @@ def _encode_preview(image: np.ndarray) -> str:
 def _collect_inputs(
     node_id: str,
     edges: list[Edge],
-    outputs: dict[str, dict[str, np.ndarray | list[np.ndarray]]],
+    outputs: dict[str, dict[str, Any]],
     sample_index: int = 0,
-) -> dict[str, np.ndarray | list[np.ndarray] | None]:
+) -> dict[str, Any]:
     incoming = [edge for edge in edges if edge.target == node_id]
-    inputs: dict[str, np.ndarray | list[np.ndarray] | None] = {}
-    grouped: dict[str, list[np.ndarray]] = defaultdict(list)
+    inputs: dict[str, Any] = {}
+    grouped: dict[str, list[Any]] = defaultdict(list)
 
     for edge in incoming:
         source_outputs = outputs.get(edge.source, {})
@@ -167,10 +202,12 @@ def _collect_inputs(
             value = next(iter(source_outputs.values()))
         if value is None:
             continue
-        # Fan-out batch inputs one image per sample so unary nodes keep working.
-        if isinstance(value, list):
-            if not value:
-                continue
+        # Fan-out batch image inputs one image per sample so unary nodes keep working.
+        if (
+            isinstance(value, list)
+            and value
+            and all(isinstance(item, np.ndarray) for item in value)
+        ):
             grouped[edge.target_port].append(value[sample_index % len(value)])
         else:
             grouped[edge.target_port].append(value)
@@ -182,65 +219,86 @@ def _collect_inputs(
 
 
 def _input_hashes(
-    inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+    inputs: dict[str, Any],
     cache: CacheManager,
 ) -> dict[str, str]:
-    hashes: dict[str, str] = {}
-    for port, value in inputs.items():
-        if value is None:
-            hashes[port] = "none"
-        elif isinstance(value, list):
-            hashes[port] = cache.hash_payload([cache.hash_image(item) for item in value])
-        else:
-            hashes[port] = cache.hash_image(value)
-    return hashes
+    return {port: cache.hash_value(value) for port, value in inputs.items()}
 
 
 def _emit_port_previews(
     *,
     emit: ProgressCallback,
     node_id: str,
-    produced: dict[str, np.ndarray | list[np.ndarray]],
+    produced: dict[str, Any],
     sample_index: int,
     cache_hit: bool,
     sample_previews: dict[str, Any],
 ) -> None:
     port_previews: dict[str, Any] = {}
+    annotation_data: dict[str, Any] = {}
+    bboxes = produced.get("bboxes") if isinstance(produced.get("bboxes"), list) else None
+    keypoints = produced.get("keypoints") if isinstance(produced.get("keypoints"), list) else None
+
     for port_id, value in produced.items():
-        if isinstance(value, list):
-            encoded_list: list[str] = []
-            for index, image in enumerate(value):
-                preview = _encode_preview(image)
-                encoded_list.append(preview)
-                emit(
-                    ExecutionEvent(
-                        type=ExecutionEventType.PREVIEW,
-                        node_id=node_id,
-                        port_id=port_id,
-                        image_b64=preview,
-                        sample_index=index,
-                        cache_hit=cache_hit,
+        if is_image_value(value):
+            if isinstance(value, list):
+                encoded_list: list[str] = []
+                for index, image in enumerate(value):
+                    preview = _encode_preview(image)
+                    encoded_list.append(preview)
+                    emit(
+                        ExecutionEvent(
+                            type=ExecutionEventType.PREVIEW,
+                            node_id=node_id,
+                            port_id=port_id,
+                            image_b64=preview,
+                            sample_index=index,
+                            cache_hit=cache_hit,
+                        )
                     )
+                if encoded_list:
+                    port_previews[port_id] = encoded_list
+                continue
+
+            image = _as_image(value)
+            if image is None:
+                continue
+            if port_id == "image" and (bboxes or keypoints):
+                image = _draw_annotation_overlay(image, bboxes=bboxes, keypoints=keypoints)
+            preview = _encode_preview(image)
+            port_previews[port_id] = preview
+            emit(
+                ExecutionEvent(
+                    type=ExecutionEventType.PREVIEW,
+                    node_id=node_id,
+                    port_id=port_id,
+                    image_b64=preview,
+                    sample_index=sample_index,
+                    cache_hit=cache_hit,
+                    data=(
+                        {"bboxes": bboxes, "keypoints": keypoints}
+                        if port_id == "image" and (bboxes or keypoints)
+                        else None
+                    ),
                 )
-            if encoded_list:
-                port_previews[port_id] = encoded_list
+            )
             continue
 
-        image = _as_image(value)
-        if image is None:
-            continue
-        preview = _encode_preview(image)
-        port_previews[port_id] = preview
+        # Annotation payloads (bboxes / keypoints / other JSON-serializable).
+        annotation_data[port_id] = value
         emit(
             ExecutionEvent(
                 type=ExecutionEventType.PREVIEW,
                 node_id=node_id,
                 port_id=port_id,
-                image_b64=preview,
                 sample_index=sample_index,
                 cache_hit=cache_hit,
+                data={port_id: value},
             )
         )
+
+    if annotation_data:
+        port_previews["__annotations__"] = annotation_data
     if port_previews:
         sample_previews[node_id] = port_previews
 
@@ -280,7 +338,7 @@ class DagExecutor:
                 cancel.check()
                 sample_seed = request.seed + sample_index
                 sample_token = current_sample_index.set(sample_index)
-                outputs: dict[str, dict[str, np.ndarray | list[np.ndarray]]] = {}
+                outputs: dict[str, dict[str, Any]] = {}
                 sample_previews: dict[str, Any] = {}
 
                 try:
@@ -312,7 +370,7 @@ class DagExecutor:
                         )
 
                         cache_hit = False
-                        produced: dict[str, np.ndarray | list[np.ndarray]]
+                        produced: dict[str, Any]
                         started = time.perf_counter()
                         use_cache = request.cache and node_impl.cacheable
                         if use_cache and self.cache.has_outputs(cache_key):

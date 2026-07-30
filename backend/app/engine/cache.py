@@ -1,4 +1,4 @@
-"""Content-addressed filesystem cache for intermediate images."""
+"""Content-addressed filesystem cache for intermediate images and annotations."""
 
 from __future__ import annotations
 
@@ -11,15 +11,24 @@ import cv2
 import numpy as np
 
 
+def is_image_value(value: Any) -> bool:
+    """Return True when value is an ndarray or a non-empty list of ndarrays."""
+    if isinstance(value, np.ndarray):
+        return True
+    if isinstance(value, list) and value and all(isinstance(item, np.ndarray) for item in value):
+        return True
+    return False
+
+
 class CacheManager:
-    """Stores and retrieves numpy images keyed by content hashes."""
+    """Stores and retrieves numpy images and JSON annotation payloads."""
 
     def __init__(self, root: Path | str) -> None:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def hash_payload(payload: dict[str, Any]) -> str:
+    def hash_payload(payload: Any) -> str:
         encoded = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
 
@@ -30,6 +39,17 @@ class CacheManager:
         digest.update(str(image.dtype).encode("utf-8"))
         digest.update(np.ascontiguousarray(image).tobytes())
         return digest.hexdigest()
+
+    def hash_value(self, value: Any) -> str:
+        if value is None:
+            return "none"
+        if isinstance(value, np.ndarray):
+            return self.hash_image(value)
+        if isinstance(value, list) and value and all(
+            isinstance(item, np.ndarray) for item in value
+        ):
+            return self.hash_payload([self.hash_image(item) for item in value])
+        return self.hash_payload(value)
 
     def make_key(
         self,
@@ -57,6 +77,9 @@ class CacheManager:
     def _port_path(self, key: str, port: str) -> Path:
         return self._base(key).parent / f"{key}__{port}.png"
 
+    def _annotation_path(self, key: str, port: str) -> Path:
+        return self._base(key).parent / f"{key}__{port}.json"
+
     def get(self, key: str) -> np.ndarray | None:
         image_path, meta_path = self._paths(key)
         if not image_path.exists() or not meta_path.exists():
@@ -78,23 +101,27 @@ class CacheManager:
     def put_outputs(
         self,
         key: str,
-        outputs: dict[str, np.ndarray | list[np.ndarray]],
+        outputs: dict[str, Any],
         meta: dict[str, Any] | None = None,
     ) -> None:
         normalized: dict[str, np.ndarray] = {}
         list_ports: dict[str, int] = {}
+        annotations: dict[str, Any] = {}
+
         for port, value in outputs.items():
-            if isinstance(value, list):
-                if not value:
-                    continue
+            if isinstance(value, np.ndarray):
+                normalized[port] = value
+            elif isinstance(value, list) and value and all(
+                isinstance(item, np.ndarray) for item in value
+            ):
                 list_ports[port] = len(value)
                 for index, image in enumerate(value):
                     normalized[f"{port}#{index}"] = image
             else:
-                normalized[port] = value
+                annotations[port] = value
 
-        if not normalized:
-            raise ValueError(f"No images to cache for key {key}")
+        if not normalized and not annotations:
+            raise ValueError(f"No outputs to cache for key {key}")
 
         base = self._base(key)
         base.parent.mkdir(parents=True, exist_ok=True)
@@ -103,26 +130,32 @@ class CacheManager:
             if not cv2.imwrite(str(path), image):
                 raise RuntimeError(f"Failed to write cache image for key {key} port {port}")
 
-        if "image" in normalized and len(normalized) == 1:
+        for port, payload in annotations.items():
+            path = self._annotation_path(key, port)
+            path.write_text(json.dumps(payload), encoding="utf-8")
+
+        if "image" in normalized and len(normalized) == 1 and not annotations:
             legacy, _ = self._paths(key)
             cv2.imwrite(str(legacy), normalized["image"])
 
-        payload = {
+        meta_payload = {
             "key": key,
             "ports": sorted(normalized.keys()),
             "list_ports": list_ports,
+            "annotation_ports": sorted(annotations.keys()),
             **(meta or {}),
         }
-        base.with_suffix(".json").write_text(json.dumps(payload), encoding="utf-8")
+        base.with_suffix(".json").write_text(json.dumps(meta_payload), encoding="utf-8")
 
-    def get_outputs(self, key: str) -> dict[str, np.ndarray | list[np.ndarray]] | None:
+    def get_outputs(self, key: str) -> dict[str, Any] | None:
         _, meta_path = self._paths(key)
         if not meta_path.exists():
             return None
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
         ports = meta.get("ports") or []
         list_ports = meta.get("list_ports") or {}
-        if not ports:
+        annotation_ports = meta.get("annotation_ports") or []
+        if not ports and not annotation_ports:
             image = self.get(key)
             return {"image": image} if image is not None else None
 
@@ -139,7 +172,7 @@ class CacheManager:
                 return None
             flat[port] = image
 
-        outputs: dict[str, np.ndarray | list[np.ndarray]] = {}
+        outputs: dict[str, Any] = {}
         consumed: set[str] = set()
         for port, count in list_ports.items():
             items: list[np.ndarray] = []
@@ -153,6 +186,13 @@ class CacheManager:
         for port, image in flat.items():
             if port not in consumed:
                 outputs[port] = image
+
+        for port in annotation_ports:
+            path = self._annotation_path(key, port)
+            if not path.exists():
+                return None
+            outputs[port] = json.loads(path.read_text(encoding="utf-8"))
+
         return outputs
 
     def has_outputs(self, key: str) -> bool:

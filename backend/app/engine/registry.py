@@ -5,8 +5,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-import numpy as np
-
 from app.models.graph import NodeMetadata, ParamField, PortSpec
 
 
@@ -58,11 +56,11 @@ class BaseNode(ABC):
     @abstractmethod
     def execute(
         self,
-        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        inputs: dict[str, Any],
         params: dict[str, Any],
         seed: int = 0,
-    ) -> dict[str, np.ndarray | list[np.ndarray]]:
-        """Run the node and return output port mapping."""
+    ) -> dict[str, Any]:
+        """Run the node and return output port mapping (images and/or annotations)."""
 
     @abstractmethod
     def emit_python(

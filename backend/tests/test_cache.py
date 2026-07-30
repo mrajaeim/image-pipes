@@ -29,3 +29,31 @@ def test_cache_key_changes_with_params(tmp_path) -> None:
     key_c = cache.make_key("blur", {"ksize": 3}, inputs, seed=1)
     assert key_a != key_b
     assert key_a != key_c
+
+
+def test_cache_mixed_image_and_annotation_ports(tmp_path) -> None:
+    cache = CacheManager(tmp_path)
+    image = np.zeros((4, 4, 3), dtype=np.uint8)
+    image[:, :] = (1, 2, 3)
+    bboxes = [[0, 0, 2, 2, "cat"]]
+    keypoints = [[1.5, 1.5]]
+    key = cache.make_key(
+        "albu_flip",
+        {"p": 1.0},
+        {
+            "image": cache.hash_value(image),
+            "bboxes": cache.hash_value(bboxes),
+            "keypoints": cache.hash_value(keypoints),
+        },
+        seed=0,
+    )
+    cache.put_outputs(
+        key,
+        {"image": image, "bboxes": bboxes, "keypoints": keypoints},
+        meta={"type": "albu_horizontal_flip"},
+    )
+    loaded = cache.get_outputs(key)
+    assert loaded is not None
+    assert np.array_equal(loaded["image"], image)
+    assert loaded["bboxes"] == bboxes
+    assert loaded["keypoints"] == keypoints
