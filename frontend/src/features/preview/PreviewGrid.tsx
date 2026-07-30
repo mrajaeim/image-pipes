@@ -24,7 +24,7 @@ export function PreviewGrid() {
                 style={{ width: '100%', display: 'block', borderRadius: 4 }}
               />
               <ImageListItemBar
-                title={preview.nodeId}
+                title={preview.portId ? `${preview.nodeId}:${preview.portId}` : preview.nodeId}
                 subtitle={`sample ${preview.sampleIndex}${preview.cacheHit ? ' · cache' : ''}`}
               />
             </ImageListItem>
