@@ -118,6 +118,42 @@ class ToRgbNode(BaseNode):
         return [f"{output_vars['image']} = cv2.cvtColor({input_vars['image']}, cv2.COLOR_BGR2RGB)"]
 
 
+class ToBgrNode(BaseNode):
+    type = "to_bgr"
+    label = "To BGR"
+    category = "color"
+    description = "Convert RGB channel order to BGR (OpenCV default)."
+    ports = [image_in(), image_out()]
+    params = []
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        if len(image.shape) == 2:
+            return {"image": cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)}
+        return {"image": cv2.cvtColor(image, cv2.COLOR_RGB2BGR)}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        src = input_vars["image"]
+        dst = output_vars["image"]
+        return [
+            f"if len({src}.shape) == 2:",
+            f"    {dst} = cv2.cvtColor({src}, cv2.COLOR_GRAY2BGR)",
+            "else:",
+            f"    {dst} = cv2.cvtColor({src}, cv2.COLOR_RGB2BGR)",
+        ]
+
+
 class SplitChannelsNode(BaseNode):
     type = "split_channels"
     label = "Split Channels"

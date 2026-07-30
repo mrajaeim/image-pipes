@@ -29,3 +29,35 @@ def test_to_rgb_from_gray() -> None:
     result = registry.get("to_rgb").execute({"image": gray}, {}, seed=0)["image"]
     assert result.shape == (8, 8, 3)
     assert tuple(result[0, 0]) == (42, 42, 42)
+
+
+def test_to_bgr_registered() -> None:
+    register_builtin_nodes()
+    types = {meta.type for meta in registry.list_metadata()}
+    assert "to_bgr" in types
+
+
+def test_to_bgr_swaps_channels() -> None:
+    register_builtin_nodes()
+    image = np.zeros((8, 8, 3), dtype=np.uint8)
+    image[:, :] = (30, 20, 10)  # R, G, B
+    result = registry.get("to_bgr").execute({"image": image}, {}, seed=0)["image"]
+    assert result.shape == image.shape
+    assert tuple(result[0, 0]) == (10, 20, 30)
+
+
+def test_to_bgr_from_gray() -> None:
+    register_builtin_nodes()
+    gray = np.full((8, 8), 42, dtype=np.uint8)
+    result = registry.get("to_bgr").execute({"image": gray}, {}, seed=0)["image"]
+    assert result.shape == (8, 8, 3)
+    assert tuple(result[0, 0]) == (42, 42, 42)
+
+
+def test_rgb_bgr_roundtrip() -> None:
+    register_builtin_nodes()
+    image = np.zeros((8, 8, 3), dtype=np.uint8)
+    image[:, :] = (10, 20, 30)
+    rgb = registry.get("to_rgb").execute({"image": image}, {}, seed=0)["image"]
+    bgr = registry.get("to_bgr").execute({"image": rgb}, {}, seed=0)["image"]
+    assert np.array_equal(bgr, image)
