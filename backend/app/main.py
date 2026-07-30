@@ -3,8 +3,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import router
+from app.api import router as api_router
 from app.nodes import register_builtin_nodes
+from app.websocket import router as ws_router
 
 register_builtin_nodes()
 
@@ -25,7 +26,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router)
+app.include_router(api_router)
+app.include_router(ws_router)
 
 
 @app.get("/api/health")
