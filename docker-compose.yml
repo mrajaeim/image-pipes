@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/cache:/app/backend/cache
+    environment:
+      - IMAGE_PIPES_CACHE_DIR=/app/backend/cache
