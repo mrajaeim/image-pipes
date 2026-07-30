@@ -3,24 +3,58 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-mrajaeim%2Fimage--pipes-181717?logo=github)](https://github.com/mrajaeim/image-pipes)
 
-Visual node editor for OpenCV image-preprocessing pipelines. Build a DAG in the browser, execute it with caching and live previews, save/load workflows as JSON, and export a runnable Python script.
+**A visual IDE for computer vision pipelines.**
+
+Build, debug, and export OpenCV workflows without writing preprocessing code by hand.
 
 **Repository:** [https://github.com/mrajaeim/image-pipes](https://github.com/mrajaeim/image-pipes)
+
+## Why Image Pipes?
+
+Computer vision preprocessing is usually hidden inside long Python scripts. Changing the pipeline often means editing code, re-running everything, and debugging intermediate images manually.
+
+Image Pipes makes that process visual: compose an OpenCV DAG in the browser, execute it live, inspect every step, and export runnable Python when you’re ready.
+
+It is useful for:
+
+- experimenting with preprocessing techniques
+- debugging computer vision pipelines
+- teaching OpenCV concepts
+- rapidly prototyping image workflows
+- exporting pipelines into production-ready Python code
 
 ## Features
 
 - Drag-and-drop OpenCV nodes (color, filters, morphology, contours, histograms, clustering, and more)
-- Live WebSocket execution with per-node previews and result caching
-- Seeded stochastic nodes for reproducible experiments
-- **Export** / **Load** workflow JSON from the header
+- Live WebSocket execution with per-node previews, timings, and an execution log
+- Result caching and seeded stochastic nodes for reproducible experiments
+- **Run to selected** — execute only ancestors of a node while tuning parameters
+- **Starters** palette group for source nodes (Load Images, Blank Image, …)
+- **Export** / **Load** workflow JSON; **Example** loads the bundled Lena blur→Canny pipeline
 - **Export Python** to a standalone script in the Monaco panel
-- Catalog-driven nodes — new backend nodes appear in the UI automatically
+- Catalog-driven UI — the frontend does not hard-code nodes; `/api/nodes` metadata builds the palette automatically
+
+## Architecture highlights
+
+Capabilities that matter beyond “React + OpenCV”:
+
+- DAG-based execution engine with topological validation
+- Metadata-driven UI (dynamic node registration)
+- Live WebSocket progress, previews, and per-node duration
+- Deterministic execution with seeded randomness
+- Result caching across runs
+- Code generation (`emit_python` → standalone script)
+- Full-stack architecture: React Flow editor + FastAPI + OpenCV
 
 ## Stack
 
 - **Frontend:** React 19, Vite, TypeScript, MUI, React Flow, Zustand, TanStack Query, React Hook Form, Zod, Monaco
 - **Backend:** FastAPI, OpenCV, NumPy, Pillow, Pydantic v2, WebSockets
 - **Tooling:** `uv`, `npm`, optional Docker
+
+## Demo
+
+> **Tip:** A short GIF of canvas editing → Run → previews → Export Python converts more visitors than any feature list. Record from the local app and drop files under `docs/demo/` (e.g. `edit.gif`, `run.gif`, `export.gif`), then link them here.
 
 ## Local development
 
@@ -75,13 +109,13 @@ docker compose up --build
 
 ## Usage
 
-1. Drag nodes from the palette onto the canvas.
+1. Drag nodes from the **Starters** / palette onto the canvas (or click **Example**).
 2. Connect ports, select a node, and edit parameters in the inspector.
 3. For **Load Images**, pick files or a folder (uploaded to the backend).
-4. Click **Run** to execute over WebSocket and watch previews fill in.
-5. Use **Example** for the bundled Lena blur→Canny pipeline, or **Export** / **Load** for your own workflow JSON.
-6. Click **Export Python** (header or code panel) to fill the Monaco panel with a standalone script.
-7. Open **About** (info button next to the brand) for project description, license, and GitHub.
+4. Click **Run** for the full graph, or **Run to selected** / node menu **Run to here** for a partial DAG.
+5. Watch live previews and the execution log (per-node timings).
+6. Use **Export** / **Load** for workflow JSON; **Export Python** for a standalone script.
+7. Open **About** (info button next to the brand) for license and GitHub.
 
 Example workflow: [`backend/examples/blur_canny.json`](backend/examples/blur_canny.json) (uses [`backend/examples/lena.png`](backend/examples/lena.png)).
 
