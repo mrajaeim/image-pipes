@@ -38,6 +38,8 @@ def test_builtin_nodes_registered() -> None:
         "distance_transform",
         "histogram_equalize",
         "draw_histogram",
+        "normalize",
+        "compare_hist",
         "find_contours",
         "convex_hull",
         "moments",

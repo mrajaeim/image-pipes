@@ -267,3 +267,151 @@ class DrawHistogramNode(BaseNode):
             f"    _y1 = {height}-1-int(_n[_i-1]); _y2 = {height}-1-int(_n[_i])",
             f"    cv2.line({dst}, (_x1, _y1), (_x2, _y2), (220, 220, 220), 1, cv2.LINE_AA)",
         ]
+
+
+class NormalizeNode(BaseNode):
+    type = "normalize"
+    label = "Normalize"
+    category = "analysis"
+    description = "Normalize image intensities (cv2.normalize) for contrast / hist prep."
+    ports = [image_in(), image_out()]
+    params = [
+        number_param("alpha", "Alpha", 0.0, minimum=0.0, maximum=255.0),
+        number_param("beta", "Beta", 255.0, minimum=0.0, maximum=255.0),
+        select_param("norm_type", "Norm Type", "minmax", ["minmax", "l2", "l1", "inf"]),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        norm_map = {
+            "minmax": cv2.NORM_MINMAX,
+            "l2": cv2.NORM_L2,
+            "l1": cv2.NORM_L1,
+            "inf": cv2.NORM_INF,
+        }
+        out = np.zeros_like(image, dtype=np.float32)
+        cv2.normalize(
+            image.astype(np.float32),
+            out,
+            float(params["alpha"]),
+            float(params["beta"]),
+            norm_map.get(str(params["norm_type"]), cv2.NORM_MINMAX),
+        )
+        return {"image": np.clip(out, 0, 255).astype(np.uint8)}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        src = input_vars["image"]
+        dst = output_vars["image"]
+        norm = {
+            "minmax": "cv2.NORM_MINMAX",
+            "l2": "cv2.NORM_L2",
+            "l1": "cv2.NORM_L1",
+            "inf": "cv2.NORM_INF",
+        }.get(str(params["norm_type"]), "cv2.NORM_MINMAX")
+        return [
+            f"_o = np.zeros_like({src}, dtype='float32')",
+            f"cv2.normalize({src}.astype('float32'), _o, {float(params['alpha'])}, "
+            f"{float(params['beta'])}, {norm})",
+            f"{dst} = np.clip(_o, 0, 255).astype('uint8')",
+        ]
+
+
+class CompareHistNode(BaseNode):
+    type = "compare_hist"
+    label = "Compare Histograms"
+    category = "analysis"
+    description = "Compare two images' histograms and overlay the similarity score."
+    ports = [
+        image_in("image_a", "Image A"),
+        image_in("image_b", "Image B"),
+        image_out(),
+    ]
+    params = [
+        select_param(
+            "method",
+            "Method",
+            "correlation",
+            ["correlation", "chi_square", "intersection", "bhattacharyya"],
+        ),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image_a = require_image(inputs, "image_a")
+        image_b = require_image(inputs, "image_b")
+        gray_a = _as_gray(image_a)
+        gray_b = _as_gray(image_b)
+        hist_a = cv2.calcHist([gray_a], [0], None, [256], [0, 256])
+        hist_b = cv2.calcHist([gray_b], [0], None, [256], [0, 256])
+        cv2.normalize(hist_a, hist_a, 0, 1, cv2.NORM_MINMAX)
+        cv2.normalize(hist_b, hist_b, 0, 1, cv2.NORM_MINMAX)
+        method_map = {
+            "correlation": cv2.HISTCMP_CORREL,
+            "chi_square": cv2.HISTCMP_CHISQR,
+            "intersection": cv2.HISTCMP_INTERSECT,
+            "bhattacharyya": cv2.HISTCMP_BHATTACHARYYA,
+        }
+        score = float(
+            cv2.compareHist(
+                hist_a,
+                hist_b,
+                method_map.get(str(params["method"]), cv2.HISTCMP_CORREL),
+            )
+        )
+        canvas = np.full((160, 420, 3), 32, dtype=np.uint8)
+        label = f"{params['method']}: {score:.4f}"
+        cv2.putText(
+            canvas,
+            label,
+            (20, 90),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (220, 220, 220),
+            2,
+            cv2.LINE_AA,
+        )
+        return {"image": canvas}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        a = input_vars["image_a"]
+        b = input_vars["image_b"]
+        dst = output_vars["image"]
+        method = {
+            "correlation": "cv2.HISTCMP_CORREL",
+            "chi_square": "cv2.HISTCMP_CHISQR",
+            "intersection": "cv2.HISTCMP_INTERSECT",
+            "bhattacharyya": "cv2.HISTCMP_BHATTACHARYYA",
+        }.get(str(params["method"]), "cv2.HISTCMP_CORREL")
+        return [
+            f"_ga = {a} if len({a}.shape)==2 else cv2.cvtColor({a}, cv2.COLOR_BGR2GRAY)",
+            f"_gb = {b} if len({b}.shape)==2 else cv2.cvtColor({b}, cv2.COLOR_BGR2GRAY)",
+            "_ha = cv2.calcHist([_ga], [0], None, [256], [0, 256])",
+            "_hb = cv2.calcHist([_gb], [0], None, [256], [0, 256])",
+            "cv2.normalize(_ha, _ha, 0, 1, cv2.NORM_MINMAX)",
+            "cv2.normalize(_hb, _hb, 0, 1, cv2.NORM_MINMAX)",
+            f"_score = float(cv2.compareHist(_ha, _hb, {method}))",
+            f"{dst} = np.full((160, 420, 3), 32, dtype='uint8')",
+            f"cv2.putText({dst}, f'{params['method']}: {{_score:.4f}}', (20, 90), "
+            "cv2.FONT_HERSHEY_SIMPLEX, 0.8, (220, 220, 220), 2, cv2.LINE_AA)",
+        ]
