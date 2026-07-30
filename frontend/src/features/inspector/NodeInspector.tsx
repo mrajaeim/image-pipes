@@ -53,14 +53,34 @@ export function NodeInspector() {
   }, [selected?.id, selected?.data.params, reset])
 
   if (!selected) {
+    const nodeCount = nodes.length
     return (
       <Box sx={{ p: 2 }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+        <Typography
+          variant="subtitle1"
+          sx={{ fontFamily: '"Fraunces", Georgia, serif', fontWeight: 700, mb: 1 }}
+        >
           Inspector
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Select a node to edit parameters.
+        <Typography variant="body2" sx={{ color: 'rgba(244,241,234,0.55)', mb: 2, lineHeight: 1.5 }}>
+          {nodeCount === 0
+            ? 'Drag a node from the palette, or load the Example pipeline to get started.'
+            : 'Click a node on the canvas to edit its parameters here.'}
         </Typography>
+        <Box
+          component="ul"
+          sx={{
+            m: 0,
+            pl: 2,
+            color: 'rgba(244,241,234,0.45)',
+            fontSize: 12,
+            lineHeight: 1.7,
+          }}
+        >
+          <li>Connect green inputs to orange outputs</li>
+          <li>Press Run to execute with live previews</li>
+          <li>Export saves workflow JSON; Export Python codegen</li>
+        </Box>
       </Box>
     )
   }
