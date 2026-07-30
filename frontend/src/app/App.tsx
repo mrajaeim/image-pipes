@@ -37,6 +37,16 @@ export default function App() {
     }
   }
 
+  const applyLoadedWorkflow = (text: string, successMessage: string) => {
+    const doc = parseWorkflowJson(text)
+    const { skippedTypes } = loadWorkflow(doc)
+    if (skippedTypes.length > 0) {
+      notifyInfo(`${successMessage} (skipped unknown nodes: ${skippedTypes.join(', ')})`)
+    } else {
+      notifySuccess(successMessage)
+    }
+  }
+
   const onLoadWorkflowClick = () => {
     if (nodeCatalog.length === 0) {
       notifyError('Node catalog is still loading — try again in a moment')
@@ -50,17 +60,28 @@ export default function App() {
     if (!file) return
     try {
       const text = await file.text()
-      const doc = parseWorkflowJson(text)
-      const { skippedTypes } = loadWorkflow(doc)
-      if (skippedTypes.length > 0) {
-        notifyInfo(`Workflow loaded (skipped unknown nodes: ${skippedTypes.join(', ')})`)
-      } else {
-        notifySuccess('Workflow loaded')
-      }
+      applyLoadedWorkflow(text, 'Workflow loaded')
     } catch (error) {
       notifyError(error instanceof Error ? error.message : 'Load failed')
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const onLoadExample = async () => {
+    if (nodeCatalog.length === 0) {
+      notifyError('Node catalog is still loading — try again in a moment')
+      return
+    }
+    try {
+      const response = await fetch('/examples/blur_canny.json')
+      if (!response.ok) {
+        throw new Error(`Could not fetch example (${response.status})`)
+      }
+      const text = await response.text()
+      applyLoadedWorkflow(text, 'Example workflow loaded')
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : 'Example load failed')
     }
   }
 
@@ -79,6 +100,7 @@ export default function App() {
         onExportPython={() => void onExportPython()}
         onExportWorkflow={onExportWorkflow}
         onLoadWorkflow={onLoadWorkflowClick}
+        onLoadExample={() => void onLoadExample()}
       />
 
       <Box
