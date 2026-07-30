@@ -17,6 +17,7 @@ export interface ParamField {
   maximum?: number | null
   step?: number | null
   options?: string[] | null
+  accept?: string[] | null
   description?: string | null
 }
 

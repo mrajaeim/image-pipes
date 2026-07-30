@@ -10,6 +10,7 @@ import {
 } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
 import type { ParamField } from '../../types'
+import { FileParamInput } from './FileParamInput'
 
 function buildSchema(fields: ParamField[]) {
   const shape: Record<string, z.ZodTypeAny> = {}
@@ -39,7 +40,7 @@ export function NodeInspector() {
   const fields = meta?.params ?? []
   const schema = buildSchema(fields)
 
-  const { register, handleSubmit, reset, formState } = useForm({
+  const { register, handleSubmit, reset, setValue, formState } = useForm({
     resolver: zodResolver(schema),
     defaultValues: selected?.data.params ?? {},
   })
@@ -61,6 +62,8 @@ export function NodeInspector() {
     )
   }
 
+  const commit = handleSubmit((values) => updateNodeParams(selected.id, values))
+
   return (
     <Box sx={{ p: 2, height: '100%', overflow: 'auto' }}>
       <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -71,7 +74,7 @@ export function NodeInspector() {
       </Typography>
       <Box
         component="form"
-        onChange={handleSubmit((values) => updateNodeParams(selected.id, values))}
+        onChange={() => void commit()}
         sx={{ display: 'grid', gap: 1.5 }}
       >
         {fields.length === 0 && (
@@ -79,23 +82,39 @@ export function NodeInspector() {
             No configurable parameters.
           </Typography>
         )}
-        {fields.map((field) =>
-          field.type === 'select' && field.options ? (
-            <TextField
-              key={field.name}
-              select
-              size="small"
-              label={field.label}
-              defaultValue={String(selected.data.params[field.name] ?? field.default ?? '')}
-              {...register(field.name)}
-            >
-              {field.options.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </TextField>
-          ) : (
+        {fields.map((field) => {
+          if (field.type === 'file') {
+            return (
+              <FileParamInput
+                key={field.name}
+                field={field}
+                value={String(selected.data.params[field.name] ?? '')}
+                onChange={(path) => {
+                  setValue(field.name, path, { shouldDirty: true, shouldValidate: true })
+                  updateNodeParams(selected.id, { [field.name]: path })
+                }}
+              />
+            )
+          }
+          if (field.type === 'select' && field.options) {
+            return (
+              <TextField
+                key={field.name}
+                select
+                size="small"
+                label={field.label}
+                defaultValue={String(selected.data.params[field.name] ?? field.default ?? '')}
+                {...register(field.name)}
+              >
+                {field.options.map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )
+          }
+          return (
             <TextField
               key={field.name}
               size="small"
@@ -104,8 +123,8 @@ export function NodeInspector() {
               helperText={formState.errors[field.name]?.message as string | undefined}
               {...register(field.name)}
             />
-          ),
-        )}
+          )
+        })}
       </Box>
     </Box>
   )
