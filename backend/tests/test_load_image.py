@@ -25,16 +25,24 @@ def test_list_image_files_filters_extensions(tmp_path: Path) -> None:
     assert [path.name for path in files] == ["a.png", "b.jpg"]
 
 
-def test_load_image_from_folder_uses_seed(tmp_path: Path) -> None:
+def test_load_image_returns_array_from_folder(tmp_path: Path) -> None:
     register_builtin_nodes()
     _write(tmp_path / "a.png", 10)
     _write(tmp_path / "b.png", 40)
     node = registry.get("load_image")
-    first = node.execute({}, {"path": str(tmp_path)}, seed=0)["image"]
-    second = node.execute({}, {"path": str(tmp_path)}, seed=1)["image"]
-    assert isinstance(first, np.ndarray)
-    assert isinstance(second, np.ndarray)
-    assert int(first.mean()) != int(second.mean())
+    loaded = node.execute({}, {"path": str(tmp_path)}, seed=0)["image"]
+    assert isinstance(loaded, list)
+    assert len(loaded) == 2
+    assert int(loaded[0].mean()) != int(loaded[1].mean())
+
+
+def test_load_image_single_file_still_returns_list(tmp_path: Path) -> None:
+    register_builtin_nodes()
+    path = tmp_path / "only.png"
+    _write(path, 12)
+    loaded = registry.get("load_image").execute({}, {"path": str(path)}, seed=0)["image"]
+    assert isinstance(loaded, list)
+    assert len(loaded) == 1
 
 
 def test_load_image_metadata_exposes_file_accept() -> None:
@@ -44,3 +52,4 @@ def test_load_image_metadata_exposes_file_accept() -> None:
     assert field.type == "file"
     assert field.accept is not None
     assert ".png" in field.accept
+    assert meta.ports[0].multiple is True

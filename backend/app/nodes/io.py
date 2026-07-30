@@ -51,17 +51,17 @@ def read_image(path: Path) -> np.ndarray:
 
 class LoadImageNode(BaseNode):
     type = "load_image"
-    label = "Load Image"
+    label = "Load Images"
     category = "io"
-    description = "Load an image file, or a folder of images (one per sample)."
-    ports = [image_out()]
+    description = "Load one or more images from files or a folder (output is an image array)."
+    ports = [image_out(multiple=True)]
     params = [
         file_param(
             "path",
-            "Image / Folder",
+            "Images / Folder",
             "",
             accept=IMAGE_EXTENSIONS,
-            description="Select an image file or a folder of images",
+            description="Select multiple images or a folder of images",
         )
     ]
 
@@ -73,11 +73,11 @@ class LoadImageNode(BaseNode):
     ) -> dict[str, np.ndarray | list[np.ndarray]]:
         path_value = str(params["path"])
         if not path_value:
-            raise ValueError("Load Image requires a file or folder selection")
+            raise ValueError("Load Images requires a file or folder selection")
         path = Path(path_value)
         files = list_image_files(path)
-        selected = files[seed % len(files)]
-        return {"image": read_image(selected)}
+        images = [read_image(file_path) for file_path in files]
+        return {"image": images}
 
     def emit_python(
         self,
@@ -93,14 +93,16 @@ class LoadImageNode(BaseNode):
             "_exts = {'.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp', '.gif'}",
             "if _path.is_dir():",
             "    _files = sorted(p for p in _path.iterdir() if p.suffix.lower() in _exts)",
-            "    if not _files:",
-            f"        raise FileNotFoundError({path!r})",
-            "    _selected = _files[seed % len(_files)]",
             "else:",
-            "    _selected = _path",
-            f"{dst} = cv2.imread(str(_selected), cv2.IMREAD_UNCHANGED)",
-            f"if {dst} is None:",
-            "    raise FileNotFoundError(str(_selected))",
+            "    _files = [_path]",
+            "if not _files:",
+            f"    raise FileNotFoundError({path!r})",
+            f"{dst} = []",
+            "for _file in _files:",
+            "    _img = cv2.imread(str(_file), cv2.IMREAD_UNCHANGED)",
+            "    if _img is None:",
+            "        raise FileNotFoundError(str(_file))",
+            f"    {dst}.append(_img)",
         ]
 
 

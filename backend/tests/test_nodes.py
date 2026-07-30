@@ -43,8 +43,9 @@ def test_filter_pipeline_deterministic(tmp_path) -> None:
     cv2.imwrite(str(path), image)
 
     loaded = registry.get("load_image").execute({}, {"path": str(path)}, seed=0)["image"]
+    assert isinstance(loaded, list)
     blurred = registry.get("gaussian_blur").execute(
-        {"image": loaded},
+        {"image": loaded[0]},
         {"ksize": 3, "sigma": 0},
         seed=0,
     )["image"]

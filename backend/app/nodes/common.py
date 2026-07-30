@@ -13,8 +13,19 @@ def image_in(port_id: str = "image", name: str = "Image") -> PortSpec:
     return PortSpec(id=port_id, name=name, direction=PortDirection.INPUT, data_type="image")
 
 
-def image_out(port_id: str = "image", name: str = "Image") -> PortSpec:
-    return PortSpec(id=port_id, name=name, direction=PortDirection.OUTPUT, data_type="image")
+def image_out(
+    port_id: str = "image",
+    name: str = "Image",
+    *,
+    multiple: bool = False,
+) -> PortSpec:
+    return PortSpec(
+        id=port_id,
+        name=name,
+        direction=PortDirection.OUTPUT,
+        data_type="image",
+        multiple=multiple,
+    )
 
 
 def require_image(
