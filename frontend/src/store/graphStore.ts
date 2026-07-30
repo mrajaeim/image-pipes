@@ -42,6 +42,7 @@ interface GraphState {
   onEdgesChange: (changes: EdgeChange[]) => void
   onConnect: (connection: Connection) => void
   onReconnect: (oldEdge: Edge, connection: Connection) => void
+  setEdgeWaypoints: (edgeId: string, waypoints: { x: number; y: number }[]) => void
   addNodeFromType: (meta: NodeMetadata, position: { x: number; y: number }) => void
   removeNode: (nodeId: string) => void
   duplicateNode: (nodeId: string) => void
@@ -173,10 +174,11 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         {
           ...connection,
           id: `e-${crypto.randomUUID()}`,
-          type: 'removable',
+          type: 'editable',
           zIndex: 1000,
           reconnectable: true,
           selectable: true,
+          data: { waypoints: [] },
         },
         get().edges,
       ),
@@ -189,7 +191,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         ...oldEdge,
         ...connection,
         id: oldEdge.id,
-        type: oldEdge.type ?? 'removable',
+        type: oldEdge.type ?? 'editable',
         zIndex: oldEdge.zIndex ?? 1000,
         source: connection.source ?? oldEdge.source,
         target: connection.target ?? oldEdge.target,
@@ -197,9 +199,25 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         targetHandle: connection.targetHandle ?? oldEdge.targetHandle,
         reconnectable: true,
         selectable: true,
+        data: oldEdge.data ?? { waypoints: [] },
       })
     set({ edges: next })
   },
+
+  setEdgeWaypoints: (edgeId, waypoints) =>
+    set({
+      edges: get().edges.map((edge) =>
+        edge.id === edgeId
+          ? {
+              ...edge,
+              data: {
+                ...(edge.data as Record<string, unknown> | undefined),
+                waypoints,
+              },
+            }
+          : edge,
+      ),
+    }),
 
   addNodeFromType: (meta, position) => {
     const id = `${meta.type}-${nodeCounter++}`

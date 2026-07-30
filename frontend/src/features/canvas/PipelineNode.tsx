@@ -40,7 +40,8 @@ const handleBaseStyle: React.CSSProperties = {
   width: 14,
   height: 14,
   border: '2px solid #111',
-  zIndex: 30,
+  zIndex: 1003,
+  pointerEvents: 'all',
 }
 
 const checkerboard = {

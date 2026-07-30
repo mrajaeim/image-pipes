@@ -4,6 +4,7 @@ import {
   Controls,
   MiniMap,
   ReactFlow,
+  reconnectEdge,
   type Connection,
   type Edge,
   type EdgeTypes,
@@ -13,7 +14,7 @@ import '@xyflow/react/dist/style.css'
 import { Box } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
 import { PipelineNodeView } from './PipelineNode'
-import { RemovableEdge } from './RemovableEdge'
+import { EditableEdge } from './EditableEdge'
 import type { NodeMetadata } from '../../types'
 
 export function PipelineCanvas() {
@@ -22,12 +23,11 @@ export function PipelineCanvas() {
   const onNodesChange = useGraphStore((s) => s.onNodesChange)
   const onEdgesChange = useGraphStore((s) => s.onEdgesChange)
   const onConnect = useGraphStore((s) => s.onConnect)
-  const onReconnect = useGraphStore((s) => s.onReconnect)
   const selectNode = useGraphStore((s) => s.selectNode)
   const addNodeFromType = useGraphStore((s) => s.addNodeFromType)
 
   const nodeTypes: NodeTypes = useMemo(() => ({ pipeline: PipelineNodeView }), [])
-  const edgeTypes: EdgeTypes = useMemo(() => ({ removable: RemovableEdge }), [])
+  const edgeTypes: EdgeTypes = useMemo(() => ({ editable: EditableEdge }), [])
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
@@ -50,15 +50,28 @@ export function PipelineCanvas() {
     return connection.source !== connection.target
   }, [])
 
+  const onReconnect = useCallback(
+    (oldEdge: Edge, connection: Connection) => {
+      useGraphStore.setState((state) => ({
+        edges: reconnectEdge(oldEdge, connection, state.edges),
+      }))
+    },
+    [],
+  )
+
   return (
     <Box
       sx={{
         width: '100%',
         height: '100%',
         bgcolor: '#0c0c0c',
+        // Connectors above node bodies; bend/remove controls stay on top.
+        '& .react-flow__nodes': { zIndex: 1 },
         '& .react-flow__edges': { zIndex: 1000 },
         '& .react-flow__edgelabel-renderer': { zIndex: 1001 },
-        '& .react-flow__nodes': { zIndex: 1 },
+        '& .react-flow__connectionline': { zIndex: 1002 },
+        // Handles still elevated within the node layer for local stacking.
+        '& .react-flow__handle': { zIndex: 10 },
       }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
@@ -85,11 +98,12 @@ export function PipelineCanvas() {
         fitView
         colorMode="dark"
         defaultEdgeOptions={{
-          type: 'removable',
+          type: 'editable',
           zIndex: 1000,
           style: { stroke: 'rgba(255,255,255,0.55)', strokeWidth: 2.5 },
           reconnectable: true,
           selectable: true,
+          data: { waypoints: [] },
         }}
       >
         <MiniMap
