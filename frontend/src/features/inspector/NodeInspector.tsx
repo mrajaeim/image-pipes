@@ -35,6 +35,7 @@ export function NodeInspector() {
   const catalog = useGraphStore((s) => s.nodeCatalog)
   const updateNodeParams = useGraphStore((s) => s.updateNodeParams)
   const setLocalPreviews = useGraphStore((s) => s.setLocalPreviews)
+  const removeLocalPreview = useGraphStore((s) => s.removeLocalPreview)
   const setSampleCount = useGraphStore((s) => s.setSampleCount)
 
   const selected = nodes.find((node) => node.id === selectedNodeId) ?? null
@@ -91,13 +92,23 @@ export function NodeInspector() {
                 key={field.name}
                 field={field}
                 value={String(selected.data.params[field.name] ?? '')}
+                previewUrls={selected.data.localPreviewUrls ?? []}
                 onChange={(path) => {
                   setValue(field.name, path, { shouldDirty: true, shouldValidate: true })
                   updateNodeParams(selected.id, { [field.name]: path })
                 }}
-                onPreviews={(urls) => setLocalPreviews(selected.id, urls)}
+                onPreviews={(urls, files) => setLocalPreviews(selected.id, urls, files)}
+                onRemovePreview={(index) => {
+                  const result = removeLocalPreview(selected.id, index)
+                  if (!result) return
+                  setValue(field.name, result.path, { shouldDirty: true, shouldValidate: true })
+                  if (!result.file) return
+                  void fetch(`/api/uploads?path=${encodeURIComponent(result.file)}`, {
+                    method: 'DELETE',
+                  })
+                }}
                 onBatchCount={(count) => {
-                  if (count > 1) setSampleCount(count)
+                  setSampleCount(Math.max(1, count))
                 }}
               />
             )

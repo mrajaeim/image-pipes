@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Button, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, IconButton, Stack, TextField, Typography } from '@mui/material'
 import type { ParamField } from '../../types'
 
 interface FileParamInputProps {
   field: ParamField
   value: string
+  previewUrls?: string[]
   onChange: (path: string) => void
-  onPreviews?: (dataUrls: string[]) => void
+  onPreviews?: (dataUrls: string[], uploadedFiles: string[]) => void
+  onRemovePreview?: (index: number) => void
   onBatchCount?: (count: number) => void
 }
 
@@ -66,15 +68,22 @@ function readFileAsDataUrl(file: File): Promise<string> {
 export function FileParamInput({
   field,
   value,
+  previewUrls = [],
   onChange,
   onPreviews,
+  onRemovePreview,
   onBatchCount,
 }: FileParamInputProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [summary, setSummary] = useState<string | null>(null)
+  const summary =
+    previewUrls.length > 1
+      ? `${previewUrls.length} images selected`
+      : previewUrls.length === 1
+        ? '1 image selected'
+        : null
 
   useEffect(() => {
     const input = folderRef.current
@@ -94,21 +103,14 @@ export function FileParamInput({
     setBusy(true)
     setError(null)
     try {
-      if (onPreviews) {
-        const urls = await Promise.all(files.map((file) => readFileAsDataUrl(file)))
-        onPreviews(urls)
-      }
+      const urls = await Promise.all(files.map((file) => readFileAsDataUrl(file)))
       const batch = asFolder || files.length > 1
       const result = await uploadFiles(files, batch)
+      onPreviews?.(urls, result.files)
       onChange(result.path)
       onBatchCount?.(result.count)
-      setSummary(
-        result.count > 1
-          ? `${result.count} images selected`
-          : `1 image selected · ${files[0]?.name ?? 'image'}`,
-      )
     } catch (err) {
-      onPreviews?.([])
+      onPreviews?.([], [])
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setBusy(false)
@@ -163,6 +165,54 @@ export function FileParamInput({
           event.target.value = ''
         }}
       />
+      {previewUrls.length > 0 && (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))',
+            gap: 1,
+          }}
+        >
+          {previewUrls.map((src, index) => (
+            <Box
+              key={`${index}-${src.slice(0, 24)}`}
+              sx={{
+                position: 'relative',
+                borderRadius: 1,
+                overflow: 'hidden',
+                bgcolor: '#0a0a0a',
+                aspectRatio: '1',
+              }}
+            >
+              <Box
+                component="img"
+                src={src}
+                alt={`Image ${index + 1}`}
+                sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+              {onRemovePreview && (
+                <IconButton
+                  size="small"
+                  aria-label={`Remove image ${index + 1}`}
+                  onClick={() => onRemovePreview(index)}
+                  sx={{
+                    position: 'absolute',
+                    top: 2,
+                    right: 2,
+                    width: 22,
+                    height: 22,
+                    bgcolor: 'rgba(0,0,0,0.65)',
+                    color: '#fff',
+                    '&:hover': { bgcolor: 'rgba(180,40,40,0.9)' },
+                  }}
+                >
+                  ×
+                </IconButton>
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
       {summary && (
         <Typography variant="caption" color="text.secondary">
           {summary}
