@@ -15,6 +15,7 @@ import numpy as np
 
 from app.engine.cache import CacheManager
 from app.engine.registry import NodeRegistry, registry
+from app.engine.run_context import current_sample_index
 from app.models.graph import (
     Edge,
     ExecuteRequest,
@@ -274,85 +275,93 @@ class DagExecutor:
         for sample_index in range(sample_count):
             cancel.check()
             sample_seed = request.seed + sample_index
+            sample_token = current_sample_index.set(sample_index)
             outputs: dict[str, dict[str, np.ndarray | list[np.ndarray]]] = {}
             sample_previews: dict[str, Any] = {}
 
-            for index, node_id in enumerate(order):
-                cancel.check()
-                instance = nodes[node_id]
-                node_impl = self.registry.get(instance.type)
-                params = node_impl.validate_params(instance.params)
-                inputs = _collect_inputs(
-                    node_id,
-                    request.graph.edges,
-                    outputs,
-                    sample_index=sample_index,
-                )
-                input_hash_map = _input_hashes(inputs, self.cache)
-                cache_key = self.cache.make_key(instance.type, params, input_hash_map, sample_seed)
-
-                emit(
-                    ExecutionEvent(
-                        type=ExecutionEventType.PROGRESS,
-                        node_id=node_id,
-                        progress=(index + 1) / len(order),
+            try:
+                for index, node_id in enumerate(order):
+                    cancel.check()
+                    instance = nodes[node_id]
+                    node_impl = self.registry.get(instance.type)
+                    params = node_impl.validate_params(instance.params)
+                    node_impl.prepare_run(params)
+                    inputs = _collect_inputs(
+                        node_id,
+                        request.graph.edges,
+                        outputs,
                         sample_index=sample_index,
-                        message=f"Executing {instance.type}",
                     )
-                )
+                    input_hash_map = _input_hashes(inputs, self.cache)
+                    cache_key = self.cache.make_key(
+                        instance.type, params, input_hash_map, sample_seed
+                    )
 
-                cache_hit = False
-                produced: dict[str, np.ndarray | list[np.ndarray]]
-                started = time.perf_counter()
-                if request.cache and self.cache.has_outputs(cache_key):
-                    cached = self.cache.get_outputs(cache_key)
-                    if cached is not None:
-                        produced = cached
-                        outputs[node_id] = produced
-                        cache_hit = True
-
-                if not cache_hit:
-                    produced = node_impl.execute(inputs, params, seed=sample_seed)
-                    outputs[node_id] = produced
-                    if request.cache:
-                        self.cache.put_outputs(
-                            cache_key,
-                            produced,
-                            meta={"node_id": node_id, "type": instance.type},
+                    emit(
+                        ExecutionEvent(
+                            type=ExecutionEventType.PROGRESS,
+                            node_id=node_id,
+                            progress=(index + 1) / len(order),
+                            sample_index=sample_index,
+                            message=f"Executing {instance.type}",
                         )
+                    )
 
-                duration_ms = (time.perf_counter() - started) * 1000.0
-                emit(
-                    ExecutionEvent(
-                        type=ExecutionEventType.PROGRESS,
+                    cache_hit = False
+                    produced: dict[str, np.ndarray | list[np.ndarray]]
+                    started = time.perf_counter()
+                    use_cache = request.cache and node_impl.cacheable
+                    if use_cache and self.cache.has_outputs(cache_key):
+                        cached = self.cache.get_outputs(cache_key)
+                        if cached is not None:
+                            produced = cached
+                            outputs[node_id] = produced
+                            cache_hit = True
+
+                    if not cache_hit:
+                        produced = node_impl.execute(inputs, params, seed=sample_seed)
+                        outputs[node_id] = produced
+                        if use_cache:
+                            self.cache.put_outputs(
+                                cache_key,
+                                produced,
+                                meta={"node_id": node_id, "type": instance.type},
+                            )
+
+                    duration_ms = (time.perf_counter() - started) * 1000.0
+                    emit(
+                        ExecutionEvent(
+                            type=ExecutionEventType.PROGRESS,
+                            node_id=node_id,
+                            progress=(index + 1) / len(order),
+                            sample_index=sample_index,
+                            cache_hit=cache_hit,
+                            duration_ms=duration_ms,
+                            message=(
+                                f"Finished {instance.type} in {duration_ms:.1f}ms"
+                                + (" (cache)" if cache_hit else "")
+                            ),
+                        )
+                    )
+
+                    _emit_port_previews(
+                        emit=emit,
                         node_id=node_id,
-                        progress=(index + 1) / len(order),
+                        produced=produced,
                         sample_index=sample_index,
                         cache_hit=cache_hit,
-                        duration_ms=duration_ms,
-                        message=(
-                            f"Finished {instance.type} in {duration_ms:.1f}ms"
-                            + (" (cache)" if cache_hit else "")
-                        ),
+                        sample_previews=sample_previews,
                     )
-                )
 
-                _emit_port_previews(
-                    emit=emit,
-                    node_id=node_id,
-                    produced=produced,
-                    sample_index=sample_index,
-                    cache_hit=cache_hit,
-                    sample_previews=sample_previews,
+                results["samples"].append(
+                    {
+                        "sample_index": sample_index,
+                        "seed": sample_seed,
+                        "previews": sample_previews,
+                    }
                 )
-
-            results["samples"].append(
-                {
-                    "sample_index": sample_index,
-                    "seed": sample_seed,
-                    "previews": sample_previews,
-                }
-            )
+            finally:
+                current_sample_index.reset(sample_token)
 
         emit(ExecutionEvent(type=ExecutionEventType.DONE, message="Execution complete"))
         return results

@@ -20,6 +20,7 @@ class BaseNode(ABC):
     ports: list[PortSpec] = []
     params: list[ParamField] = []
     stochastic: bool = False
+    cacheable: bool = True
 
     def metadata(self) -> NodeMetadata:
         return NodeMetadata(
@@ -50,6 +51,9 @@ class BaseNode(ABC):
             if field.options is not None and value not in field.options:
                 raise ValueError(f"Parameter '{field.name}' must be one of {field.options}")
         return merged
+
+    def prepare_run(self, params: dict[str, Any]) -> None:
+        """Hook called before execute/cache lookup (e.g. publish source filenames)."""
 
     @abstractmethod
     def execute(

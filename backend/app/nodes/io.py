@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,11 @@ import cv2
 import numpy as np
 
 from app.engine.registry import BaseNode
+from app.engine.run_context import (
+    current_sample_index,
+    current_source_stems,
+    source_stem_for_sample,
+)
 from app.nodes.common import (
     IMAGE_EXTENSIONS,
     file_param,
@@ -67,6 +73,17 @@ class LoadImageNode(BaseNode):
         )
     ]
 
+    def prepare_run(self, params: dict[str, Any]) -> None:
+        path_value = str(params.get("path", ""))
+        if not path_value:
+            current_source_stems.set([])
+            return
+        try:
+            files = list_image_files(Path(path_value))
+            current_source_stems.set([file_path.stem for file_path in files])
+        except (OSError, ValueError, FileNotFoundError):
+            current_source_stems.set([])
+
     def execute(
         self,
         inputs: dict[str, np.ndarray | list[np.ndarray] | None],
@@ -78,6 +95,7 @@ class LoadImageNode(BaseNode):
             raise ValueError("Load Images requires a file or folder selection")
         path = Path(path_value)
         files = list_image_files(path)
+        current_source_stems.set([file_path.stem for file_path in files])
         images = [read_image(file_path) for file_path in files]
         return {"image": images}
 
@@ -112,9 +130,24 @@ class SaveImageNode(BaseNode):
     type = "save_image"
     label = "Save Image"
     category = "io"
-    description = "Write an image to disk."
+    description = (
+        "Write image(s) to disk. Path supports templates: "
+        "{filename}, {time}, {index}."
+    )
+    cacheable = False
     ports = [image_in(), image_out()]
-    params = [string_param("path", "Path", "output.png")]
+    params = [
+        string_param(
+            "path",
+            "Path",
+            "output/{filename}_{index}.png",
+            description=(
+                "Output path template. Placeholders: "
+                "{filename} source stem, {time} YYYYmmdd_HHMMSS, {index} sample index. "
+                "If {index} is omitted, it is appended for sample index > 0."
+            ),
+        )
+    ]
 
     def execute(
         self,
@@ -123,7 +156,13 @@ class SaveImageNode(BaseNode):
         seed: int = 0,
     ) -> dict[str, np.ndarray | list[np.ndarray]]:
         image = require_image(inputs)
-        path = Path(str(params["path"]))
+        sample_index = current_sample_index.get()
+        path = resolve_save_path(
+            str(params["path"]),
+            index=sample_index,
+            filename=source_stem_for_sample(sample_index),
+            when=datetime.now(),
+        )
         path.parent.mkdir(parents=True, exist_ok=True)
         if not cv2.imwrite(str(path), image):
             raise RuntimeError(f"Failed to write image to '{path}'")
@@ -136,10 +175,54 @@ class SaveImageNode(BaseNode):
         input_vars: dict[str, str],
         output_vars: dict[str, str],
     ) -> list[str]:
+        template = str(params["path"])
+        src = input_vars["image"]
+        dst = output_vars["image"]
         return [
-            f"cv2.imwrite({params['path']!r}, {input_vars['image']})",
-            f"{output_vars['image']} = {input_vars['image']}",
+            "from datetime import datetime",
+            f"_template = {template!r}",
+            "_index = 0  # set per sample when batching",
+            "_filename = 'image'",
+            "_time = datetime.now().strftime('%Y%m%d_%H%M%S')",
+            (
+                "_path = Path(_template.replace('{filename}', _filename)"
+                ".replace('{time}', _time).replace('{index}', str(_index)))"
+            ),
+            (
+                "if _index > 0 and '{index}' not in _template "
+                "and '{time}' not in _template and '{filename}' not in _template:"
+            ),
+            "    _path = _path.with_name(f'{_path.stem}_{_index}{_path.suffix}')",
+            "_path.parent.mkdir(parents=True, exist_ok=True)",
+            f"cv2.imwrite(str(_path), {src})",
+            f"{dst} = {src}",
         ]
+
+
+def resolve_save_path(
+    template: str,
+    *,
+    index: int,
+    filename: str,
+    when: datetime,
+) -> Path:
+    """Expand {filename}, {time}, {index} in a save path template."""
+    safe_name = Path(filename).stem or "image"
+    # Strip path separators from injected filename so templates stay under the intended folder.
+    safe_name = safe_name.replace("/", "_").replace("\\", "_")
+    time_token = when.strftime("%Y%m%d_%H%M%S")
+    expanded = (
+        template.replace("{filename}", safe_name)
+        .replace("{time}", time_token)
+        .replace("{index}", str(index))
+    )
+    path = Path(expanded)
+    has_unique_token = any(
+        token in template for token in ("{index}", "{time}", "{filename}")
+    )
+    if index > 0 and not has_unique_token:
+        path = path.with_name(f"{path.stem}_{index}{path.suffix}")
+    return path
 
 
 class PreviewNode(BaseNode):
