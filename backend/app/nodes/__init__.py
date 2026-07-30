@@ -1,0 +1,41 @@
+"""Register all built-in OpenCV nodes."""
+
+from app.engine.registry import registry
+from app.nodes.color import MergeChannelsNode, SplitChannelsNode, ToGrayNode, ToHsvNode
+from app.nodes.filters import CannyNode, GaussianBlurNode, MedianBlurNode, ThresholdNode
+from app.nodes.geometry import CropNode, FlipNode, ResizeNode, RotateNode
+from app.nodes.io import LoadImageNode, PreviewNode, SaveImageNode
+from app.nodes.stochastic import GaussianNoiseNode, RandomBrightnessContrastNode
+
+_REGISTERED = False
+
+
+def register_builtin_nodes() -> None:
+    global _REGISTERED
+    if _REGISTERED:
+        return
+    for node in (
+        LoadImageNode(),
+        SaveImageNode(),
+        PreviewNode(),
+        ToGrayNode(),
+        ToHsvNode(),
+        SplitChannelsNode(),
+        MergeChannelsNode(),
+        GaussianBlurNode(),
+        MedianBlurNode(),
+        CannyNode(),
+        ThresholdNode(),
+        ResizeNode(),
+        RotateNode(),
+        CropNode(),
+        FlipNode(),
+        RandomBrightnessContrastNode(),
+        GaussianNoiseNode(),
+    ):
+        if not registry.has(node.type):
+            registry.register(node)
+    _REGISTERED = True
+
+
+register_builtin_nodes()

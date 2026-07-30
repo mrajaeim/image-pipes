@@ -3,6 +3,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.nodes import register_builtin_nodes
+
+register_builtin_nodes()
+
 app = FastAPI(
     title="Image Pipeline Playground",
     version="0.1.0",
