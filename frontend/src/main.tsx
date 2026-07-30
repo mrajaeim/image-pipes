@@ -7,10 +7,12 @@ import './index.css'
 
 const theme = createTheme({
   palette: {
-    mode: 'light',
-    primary: { main: '#1b4d3e' },
-    secondary: { main: '#c45c26' },
-    background: { default: '#f3f0e8', paper: '#fffdf8' },
+    mode: 'dark',
+    primary: { main: '#7dcea0' },
+    secondary: { main: '#e67e22' },
+    background: { default: '#0f0f0f', paper: '#1a1a1a' },
+    text: { primary: '#f4f1ea', secondary: 'rgba(244,241,234,0.65)' },
+    divider: 'rgba(255,255,255,0.1)',
   },
   typography: {
     fontFamily: '"IBM Plex Sans", "Segoe UI", sans-serif',

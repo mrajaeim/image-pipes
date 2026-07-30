@@ -15,6 +15,7 @@ export function CodePanel() {
           height="100%"
           defaultLanguage="python"
           value={code}
+          theme="vs-dark"
           options={{
             readOnly: true,
             minimap: { enabled: false },
