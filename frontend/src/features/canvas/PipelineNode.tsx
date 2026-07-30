@@ -469,7 +469,8 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
 
         {inputPorts.map((port, index) => {
           const top = sideHandleTop(index, Math.max(inputPorts.length, 1), contentHeight)
-          const showLabel = inputPorts.length > 1 || port.id !== 'image'
+          const showLabel =
+            inputPorts.length > 1 || port.id !== 'image' || Boolean(port.optional)
           return (
             <Box key={`in-${port.id}`}>
               <Handle
@@ -483,7 +484,13 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                   background: '#7dcea0',
                 }}
               />
-              {showLabel && <PortTag label={port.name} top={top} side="left" />}
+              {showLabel && (
+                <PortTag
+                  label={port.optional ? `${port.name} (optional)` : port.name}
+                  top={top}
+                  side="left"
+                />
+              )}
             </Box>
           )
         })}
@@ -504,7 +511,13 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                   background: '#e67e22',
                 }}
               />
-              {showLabel && <PortTag label={port.name} top={top} side="right" />}
+              {showLabel && (
+                <PortTag
+                  label={port.optional ? `${port.name} (optional)` : port.name}
+                  top={top}
+                  side="right"
+                />
+              )}
             </Box>
           )
         })}

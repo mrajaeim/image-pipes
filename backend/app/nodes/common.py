@@ -9,8 +9,19 @@ import numpy as np
 from app.models.graph import ParamField, PortDirection, PortSpec
 
 
-def image_in(port_id: str = "image", name: str = "Image") -> PortSpec:
-    return PortSpec(id=port_id, name=name, direction=PortDirection.INPUT, data_type="image")
+def image_in(
+    port_id: str = "image",
+    name: str = "Image",
+    *,
+    optional: bool = False,
+) -> PortSpec:
+    return PortSpec(
+        id=port_id,
+        name=name,
+        direction=PortDirection.INPUT,
+        data_type="image",
+        optional=optional,
+    )
 
 
 def image_out(

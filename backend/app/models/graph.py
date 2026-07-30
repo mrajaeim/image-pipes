@@ -19,6 +19,7 @@ class PortSpec(BaseModel):
     direction: PortDirection
     data_type: str = "image"
     multiple: bool = False
+    optional: bool = False
 
 
 class NodeInstance(BaseModel):

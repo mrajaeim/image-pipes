@@ -6,6 +6,7 @@ export interface PortSpec {
   direction: PortDirection
   data_type: string
   multiple: boolean
+  optional?: boolean
 }
 
 export interface ParamField {
