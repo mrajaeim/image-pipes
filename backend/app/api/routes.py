@@ -52,13 +52,26 @@ def list_nodes() -> list[NodeMetadata]:
 async def upload_images(
     files: list[UploadFile] = File(...),
     as_folder: bool = False,
+    append_to: str | None = None,
 ) -> UploadResponse:
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
 
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    batch_dir = UPLOAD_DIR / uuid.uuid4().hex
-    batch_dir.mkdir(parents=True, exist_ok=True)
+    uploads_root = UPLOAD_DIR.resolve()
+
+    if append_to:
+        target_path = Path(append_to).resolve()
+        if uploads_root not in target_path.parents and target_path != uploads_root:
+            raise HTTPException(status_code=400, detail="Path is outside uploads directory")
+        batch_dir = target_path if target_path.is_dir() else target_path.parent
+        if uploads_root not in batch_dir.parents and batch_dir != uploads_root:
+            raise HTTPException(status_code=400, detail="Path is outside uploads directory")
+        if not batch_dir.is_dir():
+            raise HTTPException(status_code=404, detail="Append destination not found")
+    else:
+        batch_dir = UPLOAD_DIR / uuid.uuid4().hex
+        batch_dir.mkdir(parents=True, exist_ok=True)
 
     saved: list[str] = []
     for upload in files:
@@ -66,6 +79,16 @@ async def upload_images(
         if not filename or not _allowed_extension(filename):
             continue
         target = batch_dir / filename
+        if target.exists():
+            stem = target.stem
+            suffix = target.suffix
+            index = 2
+            while True:
+                candidate = batch_dir / f"{stem}_{index}{suffix}"
+                if not candidate.exists():
+                    target = candidate
+                    break
+                index += 1
         content = await upload.read()
         if not content:
             continue
@@ -81,7 +104,12 @@ async def upload_images(
             ),
         )
 
-    if as_folder or len(saved) > 1:
+    total_in_dir = sum(
+        1
+        for path in batch_dir.iterdir()
+        if path.is_file() and _allowed_extension(path.name)
+    )
+    if as_folder or append_to is not None or len(saved) > 1 or total_in_dir > 1:
         return UploadResponse(
             path=str(batch_dir.resolve()),
             kind="folder",
