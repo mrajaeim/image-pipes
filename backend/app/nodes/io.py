@@ -14,7 +14,9 @@ from app.nodes.common import (
     file_param,
     image_in,
     image_out,
+    int_param,
     require_image,
+    select_param,
     string_param,
 )
 
@@ -164,3 +166,83 @@ class PreviewNode(BaseNode):
         output_vars: dict[str, str],
     ) -> list[str]:
         return [f"{output_vars['image']} = {input_vars['image']}  # preview"]
+
+
+class BlankImageNode(BaseNode):
+    type = "blank_image"
+    label = "Blank Image"
+    category = "io"
+    description = (
+        "Create a blank image with custom size. "
+        "Optionally match size from a connected reference image."
+    )
+    ports = [
+        image_in("size_ref", "Size Ref", optional=True),
+        image_out(),
+    ]
+    params = [
+        int_param("width", "Width", 256, minimum=1, maximum=8192),
+        int_param("height", "Height", 256, minimum=1, maximum=8192),
+        select_param("channels", "Channels", "bgr", ["gray", "bgr", "bgra"]),
+        int_param("fill", "Fill", 0, minimum=0, maximum=255),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        width = max(1, int(params["width"]))
+        height = max(1, int(params["height"]))
+        fill = int(params["fill"])
+        channels = str(params["channels"])
+
+        size_ref = inputs.get("size_ref")
+        if size_ref is not None:
+            if isinstance(size_ref, list):
+                if not size_ref:
+                    raise ValueError("Empty image list for optional size_ref input")
+                ref = size_ref[0]
+            else:
+                ref = size_ref
+            height, width = int(ref.shape[0]), int(ref.shape[1])
+
+        if channels == "gray":
+            image = np.full((height, width), fill, dtype=np.uint8)
+        elif channels == "bgra":
+            image = np.full((height, width, 4), fill, dtype=np.uint8)
+        else:
+            image = np.full((height, width, 3), fill, dtype=np.uint8)
+        return {"image": image}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        dst = output_vars["image"]
+        width = max(1, int(params["width"]))
+        height = max(1, int(params["height"]))
+        fill = int(params["fill"])
+        channels = str(params["channels"])
+        lines: list[str] = [
+            f"_w, _h, _fill = {width}, {height}, {fill}",
+        ]
+        if "size_ref" in input_vars:
+            ref = input_vars["size_ref"]
+            lines.extend(
+                [
+                    f"_ref = {ref}[0] if isinstance({ref}, list) else {ref}",
+                    "_h, _w = int(_ref.shape[0]), int(_ref.shape[1])",
+                ]
+            )
+        if channels == "gray":
+            lines.append(f"{dst} = np.full((_h, _w), _fill, dtype='uint8')")
+        elif channels == "bgra":
+            lines.append(f"{dst} = np.full((_h, _w, 4), _fill, dtype='uint8')")
+        else:
+            lines.append(f"{dst} = np.full((_h, _w, 3), _fill, dtype='uint8')")
+        return lines

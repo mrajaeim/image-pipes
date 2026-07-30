@@ -36,7 +36,7 @@ from app.nodes.filters import (
     ThresholdNode,
 )
 from app.nodes.geometry import CropNode, FlipNode, ResizeNode, RotateNode
-from app.nodes.io import LoadImageNode, PreviewNode, SaveImageNode
+from app.nodes.io import BlankImageNode, LoadImageNode, PreviewNode, SaveImageNode
 from app.nodes.morphology import DilateNode, ErodeNode, MorphologyExNode
 from app.nodes.stochastic import GaussianNoiseNode, RandomBrightnessContrastNode
 from app.nodes.structure import (
@@ -58,6 +58,7 @@ def register_builtin_nodes() -> None:
         return
     for node in (
         LoadImageNode(),
+        BlankImageNode(),
         SaveImageNode(),
         PreviewNode(),
         ToGrayNode(),

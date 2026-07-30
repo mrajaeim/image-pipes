@@ -12,6 +12,7 @@ def test_builtin_nodes_registered() -> None:
     register_builtin_nodes()
     expected = {
         "load_image",
+        "blank_image",
         "save_image",
         "preview",
         "to_gray",
