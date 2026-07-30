@@ -21,6 +21,7 @@ from app.nodes.color import (
 )
 from app.nodes.filters import (
     BilateralFilterNode,
+    BoxBlurNode,
     CannyNode,
     GaussianBlurNode,
     LaplacianNode,
@@ -66,6 +67,7 @@ def register_builtin_nodes() -> None:
         InRangeNode(),
         GaussianBlurNode(),
         MedianBlurNode(),
+        BoxBlurNode(),
         BilateralFilterNode(),
         CannyNode(),
         SobelNode(),

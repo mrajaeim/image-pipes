@@ -27,6 +27,7 @@ def test_builtin_nodes_registered() -> None:
         "in_range",
         "gaussian_blur",
         "median_blur",
+        "box_blur",
         "bilateral_filter",
         "canny",
         "sobel",

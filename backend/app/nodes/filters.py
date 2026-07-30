@@ -375,3 +375,98 @@ class LaplacianNode(BaseNode):
             ),
             f"{dst} = cv2.convertScaleAbs(_l)",
         ]
+
+
+class BoxBlurNode(BaseNode):
+    type = "box_blur"
+    label = "Box Blur"
+    category = "filters"
+    description = "Moving-average / box filter blur (uniform kernel convolution)."
+    ports = [image_in(), image_out()]
+    params = [
+        int_param("ksize", "Kernel Size", 5, minimum=1, maximum=51),
+        select_param("normalize", "Normalize", "true", ["true", "false"]),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        ksize = max(1, int(params["ksize"]))
+        normalize = str(params["normalize"]) == "true"
+        return {
+            "image": cv2.boxFilter(
+                require_image(inputs),
+                ddepth=-1,
+                ksize=(ksize, ksize),
+                normalize=normalize,
+            )
+        }
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        ksize = max(1, int(params["ksize"]))
+        normalize = str(params["normalize"]) == "true"
+        return [
+            f"{output_vars['image']} = cv2.boxFilter("
+            f"{input_vars['image']}, -1, ({ksize}, {ksize}), normalize={normalize})"
+        ]
+
+
+class SharpenNode(BaseNode):
+    type = "sharpen"
+    label = "Sharpen"
+    category = "filters"
+    description = "Unsharp-mask / Laplacian sharpening via convolution kernel."
+    ports = [image_in(), image_out()]
+    params = [
+        number_param("amount", "Amount", 1.0, minimum=0.1, maximum=5.0, step=0.1),
+        select_param("kernel", "Kernel", "laplacian", ["laplacian", "unsharp"]),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        amount = float(params["amount"])
+        if str(params["kernel"]) == "unsharp":
+            blurred = cv2.GaussianBlur(image, (0, 0), 3)
+            return {
+                "image": cv2.addWeighted(image, 1.0 + amount, blurred, -amount, 0)
+            }
+        kernel = np.array(
+            [[0, -1, 0], [-1, 4 * amount + 1, -1], [0, -1, 0]],
+            dtype=np.float32,
+        )
+        return {"image": cv2.filter2D(image, -1, kernel)}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        src = input_vars["image"]
+        dst = output_vars["image"]
+        amount = float(params["amount"])
+        if str(params["kernel"]) == "unsharp":
+            return [
+                f"_blur = cv2.GaussianBlur({src}, (0, 0), 3)",
+                f"{dst} = cv2.addWeighted({src}, {1.0 + amount}, _blur, {-amount}, 0)",
+            ]
+        center = 4 * amount + 1
+        return [
+            f"_k = np.array([[0, -1, 0], [-1, {center}, -1], [0, -1, 0]], dtype='float32')",
+            f"{dst} = cv2.filter2D({src}, -1, _k)",
+        ]
