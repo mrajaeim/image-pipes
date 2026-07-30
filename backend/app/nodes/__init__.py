@@ -21,6 +21,7 @@ from app.nodes.color import (
     ToGrayNode,
     ToHsvNode,
     ToLabNode,
+    ToRgbNode,
     ToYCrCbNode,
     ToYuvNode,
 )
@@ -63,6 +64,7 @@ def register_builtin_nodes() -> None:
         PreviewNode(),
         ToGrayNode(),
         ToHsvNode(),
+        ToRgbNode(),
         ToLabNode(),
         ToYuvNode(),
         ToYCrCbNode(),

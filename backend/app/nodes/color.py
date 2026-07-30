@@ -89,6 +89,35 @@ class ToHsvNode(BaseNode):
         return [f"{output_vars['image']} = cv2.cvtColor({input_vars['image']}, cv2.COLOR_BGR2HSV)"]
 
 
+class ToRgbNode(BaseNode):
+    type = "to_rgb"
+    label = "To RGB"
+    category = "color"
+    description = "Convert BGR image to RGB channel order."
+    ports = [image_in(), image_out()]
+    params = []
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        if len(image.shape) == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        return {"image": cv2.cvtColor(image, cv2.COLOR_BGR2RGB)}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        return [f"{output_vars['image']} = cv2.cvtColor({input_vars['image']}, cv2.COLOR_BGR2RGB)"]
+
+
 class SplitChannelsNode(BaseNode):
     type = "split_channels"
     label = "Split Channels"
