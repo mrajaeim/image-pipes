@@ -38,6 +38,7 @@ def test_builtin_nodes_registered() -> None:
         "connected_components",
         "blob_detect",
         "bounding_rect",
+        "approx_poly",
         "erode",
         "dilate",
         "morphology_ex",

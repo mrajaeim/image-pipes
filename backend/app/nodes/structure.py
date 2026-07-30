@@ -591,3 +591,86 @@ class BoundingRectNode(BaseNode):
                 ]
             )
         return lines
+
+
+class ApproxPolyNode(BaseNode):
+    type = "approx_poly"
+    label = "Approx Poly"
+    category = "analysis"
+    description = "Approximate contours with polygons (Douglas-Peucker)."
+    ports = [image_in(), image_out()]
+    params = [
+        number_param(
+            "epsilon",
+            "Epsilon Ratio",
+            0.02,
+            minimum=0.001,
+            maximum=0.5,
+            step=0.001,
+            description="Approximation accuracy as a fraction of contour perimeter.",
+        ),
+        int_param("min_area", "Min Area", 20, minimum=1, maximum=100000),
+        int_param("thickness", "Thickness", 2, minimum=1, maximum=10),
+        select_param("overlay", "Overlay", "on_input", ["on_input", "blank"]),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        binary = _binary(image)
+        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if str(params["overlay"]) == "blank":
+            canvas = np.zeros_like(_as_bgr(image))
+        else:
+            canvas = _as_bgr(image)
+        min_area = float(params["min_area"])
+        epsilon_ratio = float(params["epsilon"])
+        thickness = int(params["thickness"])
+        for contour in contours:
+            if cv2.contourArea(contour) < min_area:
+                continue
+            peri = cv2.arcLength(contour, True)
+            approx = cv2.approxPolyDP(contour, epsilon_ratio * peri, True)
+            cv2.drawContours(canvas, [approx], -1, (180, 80, 255), thickness)
+            for point in approx:
+                x, y = point.ravel()
+                cv2.circle(canvas, (int(x), int(y)), 3, (255, 220, 80), -1)
+        return {"image": canvas}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        src = input_vars["image"]
+        dst = output_vars["image"]
+        blank = str(params["overlay"]) == "blank"
+        return [
+            f"_gray = {src} if len({src}.shape) == 2 else cv2.cvtColor({src}, cv2.COLOR_BGR2GRAY)",
+            "_uniq = set(np.unique(_gray).tolist())",
+            "_bin = _gray if _uniq <= {0, 255} else "
+            "cv2.threshold(_gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]",
+            "_cnts, _ = cv2.findContours(_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)",
+            (
+                f"{dst} = np.zeros((_gray.shape[0], _gray.shape[1], 3), dtype='uint8')"
+                if blank
+                else (
+                    f"{dst} = {src}.copy() if len({src}.shape) == 3 else "
+                    f"cv2.cvtColor({src}, cv2.COLOR_GRAY2BGR)"
+                )
+            ),
+            "for _c in _cnts:",
+            f"    if cv2.contourArea(_c) < {float(params['min_area'])}: continue",
+            "    _peri = cv2.arcLength(_c, True)",
+            f"    _ap = cv2.approxPolyDP(_c, {float(params['epsilon'])} * _peri, True)",
+            f"    cv2.drawContours({dst}, [_ap], -1, (180, 80, 255), {int(params['thickness'])})",
+            "    for _p in _ap:",
+            "        _x, _y = _p.ravel()",
+            f"        cv2.circle({dst}, (int(_x), int(_y)), 3, (255, 220, 80), -1)",
+        ]
