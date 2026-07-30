@@ -24,10 +24,11 @@ It is useful for:
 ## Features
 
 - Drag-and-drop OpenCV nodes (color, filters, morphology, contours, histograms, clustering, and more)
+- **Albumentations augment** nodes (catalog-driven) with multi-target ports: image, optional mask, bboxes, keypoints
 - Live WebSocket execution with per-node previews, timings, and an execution log
 - Result caching and seeded stochastic nodes for reproducible experiments
 - **Run to selected** — execute only ancestors of a node while tuning parameters
-- **Starters** palette group for source nodes (Load Images, Blank Image, …)
+- **Starters** palette group for source nodes (Load Images, Blank Image, Annotations, …)
 - **Export** / **Load** workflow JSON; **Example** loads the bundled Lena blur→Canny pipeline
 - **Export Python** to a standalone script in the Monaco panel
 - Catalog-driven UI — the frontend does not hard-code nodes; `/api/nodes` metadata builds the palette automatically
@@ -47,7 +48,7 @@ Capabilities that matter beyond “React + OpenCV”:
 ## Stack
 
 - **Frontend:** React 19, Vite, TypeScript, MUI, React Flow, Zustand, TanStack Query, React Hook Form, Zod, Monaco
-- **Backend:** FastAPI, OpenCV, NumPy, Pillow, Pydantic v2, WebSockets
+- **Backend:** FastAPI, OpenCV, NumPy, Pillow, Albumentations 2.0.8 (MIT), Pydantic v2, WebSockets
 - **Tooling:** `uv`, `npm`, optional Docker
 
 ## Demo
@@ -108,14 +109,30 @@ docker compose up --build
 ## Usage
 
 1. Drag nodes from the **Starters** / palette onto the canvas (or click **Example**).
-2. Connect ports, select a node, and edit parameters in the inspector.
+2. Connect matching port types (image / mask / bboxes / keypoints), select a node, and edit parameters in the inspector.
 3. For **Load Images**, pick files or a folder (uploaded to the backend).
-4. Click **Run** for the full graph, or **Run to selected** / node menu **Run to here** for a partial DAG.
-5. Watch live previews and the execution log (per-node timings).
-6. Use **Export** / **Load** for workflow JSON; **Export Python** for a standalone script.
-7. Open **About** (info button next to the brand) for license and GitHub.
+4. For augmentation with labels, add an **Annotations** starter (Pascal VOC bboxes + xy keypoints) and optionally wire a mask image into the `mask` port.
+5. Click **Run** for the full graph, or **Run to selected** / node menu **Run to here** for a partial DAG.
+6. Watch live previews (bboxes/keypoints are overlaid on the image) and the execution log.
+7. Use **Export** / **Load** for workflow JSON; **Export Python** for a standalone script.
+8. Open **About** (info button next to the brand) for license and GitHub.
 
 Example workflow: [`backend/examples/blur_canny.json`](backend/examples/blur_canny.json) (uses [`backend/examples/lena.png`](backend/examples/lena.png)).
+
+## Albumentations augments
+
+The **augment** palette category exposes Albumentations transforms via a backend catalog (color, blur/noise, weather, normalize/channels, and dual geometry). Every augment node shares the same ports:
+
+| Port | Required | Notes |
+|------|----------|--------|
+| `image` | yes | OpenCV BGR; converted to RGB for Albumentations |
+| `mask` | no | Same H×W; stays aligned under Dual transforms |
+| `bboxes` | no | Pascal VOC `[x_min, y_min, x_max, y_max, label]` |
+| `keypoints` | no | `[x, y]` lists |
+
+Image-only transforms pass annotations through unchanged. Dual geometry transforms (flips, rotates, affine, crops, …) update mask/bboxes/keypoints together. Runs are seeded from the global seed / sample index.
+
+**Dependency note:** Image Pipes pins the MIT-licensed [`albumentations==2.0.8`](https://pypi.org/project/albumentations/2.0.8/) package so this project stays MIT-clean. The newer maintained `albumentationsx` line is AGPL and is intentionally not used here.
 
 ## Adding a node
 
