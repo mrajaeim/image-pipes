@@ -208,6 +208,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
   const updateNodeInternals = useUpdateNodeInternals()
   const nodeImages = useGraphStore((state) => state.nodeImages)
   const catalog = useGraphStore((state) => state.nodeCatalog)
+  const timing = useGraphStore((state) => state.nodeTimings[id])
   const localPreviewUrls = useGraphStore(
     (state) => state.nodes.find((node) => node.id === id)?.data.localPreviewUrls ?? [],
   )
@@ -326,6 +327,36 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               {data.label}
             </Typography>
           </Box>
+          {timing && (
+            <Box
+              component="span"
+              title={timing.cacheHit ? 'Served from cache' : 'Execution time'}
+              sx={{
+                flexShrink: 0,
+                px: 0.7,
+                py: 0.25,
+                borderRadius: 0.75,
+                bgcolor: timing.cacheHit
+                  ? 'rgba(125,206,160,0.14)'
+                  : 'rgba(255,255,255,0.06)',
+                border: '1px solid',
+                borderColor: timing.cacheHit
+                  ? 'rgba(125,206,160,0.35)'
+                  : 'rgba(255,255,255,0.1)',
+                color: timing.cacheHit ? '#7dcea0' : 'rgba(255,255,255,0.72)',
+                fontSize: 10,
+                fontWeight: 700,
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '0.02em',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.2,
+              }}
+            >
+              {timing.ms < 10 ? timing.ms.toFixed(1) : Math.round(timing.ms)}
+              ms
+              {timing.cacheHit ? ' · cache' : ''}
+            </Box>
+          )}
           {nodeMenu}
         </Stack>
 
