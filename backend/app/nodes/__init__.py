@@ -9,6 +9,7 @@ from app.nodes.analysis import (
 from app.nodes.color import (
     BrightnessContrastNode,
     ClaheNode,
+    InRangeNode,
     InvertNode,
     MergeChannelsNode,
     SplitChannelsNode,
@@ -58,6 +59,7 @@ def register_builtin_nodes() -> None:
         BrightnessContrastNode(),
         SplitChannelsNode(),
         MergeChannelsNode(),
+        InRangeNode(),
         GaussianBlurNode(),
         MedianBlurNode(),
         BilateralFilterNode(),

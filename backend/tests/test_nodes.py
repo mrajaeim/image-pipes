@@ -22,6 +22,7 @@ def test_builtin_nodes_registered() -> None:
         "brightness_contrast",
         "split_channels",
         "merge_channels",
+        "in_range",
         "gaussian_blur",
         "median_blur",
         "bilateral_filter",

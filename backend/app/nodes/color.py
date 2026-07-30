@@ -14,6 +14,7 @@ from app.nodes.common import (
     int_param,
     number_param,
     require_image,
+    select_param,
 )
 
 
@@ -308,3 +309,88 @@ class BrightnessContrastNode(BaseNode):
             f"{input_vars['image']}, alpha={float(params['alpha'])}, "
             f"beta={float(params['beta'])})"
         ]
+
+
+class InRangeNode(BaseNode):
+    type = "in_range"
+    label = "In Range"
+    category = "color"
+    description = "Keep pixels inside a color range (cv2.inRange), useful for HSV filtering."
+    ports = [image_in(), image_out()]
+    params = [
+        select_param("space", "Color Space", "hsv", ["bgr", "hsv", "lab"]),
+        int_param("c0_min", "Ch0 Min", 0, minimum=0, maximum=255),
+        int_param("c0_max", "Ch0 Max", 179, minimum=0, maximum=255),
+        int_param("c1_min", "Ch1 Min", 50, minimum=0, maximum=255),
+        int_param("c1_max", "Ch1 Max", 255, minimum=0, maximum=255),
+        int_param("c2_min", "Ch2 Min", 50, minimum=0, maximum=255),
+        int_param("c2_max", "Ch2 Max", 255, minimum=0, maximum=255),
+        select_param("output", "Output", "mask", ["mask", "masked_bgr"]),
+    ]
+
+    def execute(
+        self,
+        inputs: dict[str, np.ndarray | list[np.ndarray] | None],
+        params: dict[str, Any],
+        seed: int = 0,
+    ) -> dict[str, np.ndarray | list[np.ndarray]]:
+        image = require_image(inputs)
+        if len(image.shape) == 2:
+            bgr = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        elif image.shape[2] == 4:
+            bgr = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+        else:
+            bgr = image
+        space = str(params["space"])
+        if space == "hsv":
+            converted = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+        elif space == "lab":
+            converted = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
+        else:
+            converted = bgr
+        lower = np.array(
+            [int(params["c0_min"]), int(params["c1_min"]), int(params["c2_min"])],
+            dtype=np.uint8,
+        )
+        upper = np.array(
+            [int(params["c0_max"]), int(params["c1_max"]), int(params["c2_max"])],
+            dtype=np.uint8,
+        )
+        mask = cv2.inRange(converted, lower, upper)
+        if str(params["output"]) == "masked_bgr":
+            return {"image": cv2.bitwise_and(bgr, bgr, mask=mask)}
+        return {"image": mask}
+
+    def emit_python(
+        self,
+        node_id: str,
+        params: dict[str, Any],
+        input_vars: dict[str, str],
+        output_vars: dict[str, str],
+    ) -> list[str]:
+        src = input_vars["image"]
+        dst = output_vars["image"]
+        space = str(params["space"])
+        if space == "hsv":
+            convert = "_c = cv2.cvtColor(_bgr, cv2.COLOR_BGR2HSV)"
+        elif space == "lab":
+            convert = "_c = cv2.cvtColor(_bgr, cv2.COLOR_BGR2LAB)"
+        else:
+            convert = "_c = _bgr"
+        lower = (
+            f"[{int(params['c0_min'])}, {int(params['c1_min'])}, {int(params['c2_min'])}]"
+        )
+        upper = (
+            f"[{int(params['c0_max'])}, {int(params['c1_max'])}, {int(params['c2_max'])}]"
+        )
+        lines = [
+            f"_bgr = {src} if len({src}.shape) == 3 else cv2.cvtColor({src}, cv2.COLOR_GRAY2BGR)",
+            convert,
+            f"_mask = cv2.inRange(_c, np.array({lower}, dtype='uint8'), "
+            f"np.array({upper}, dtype='uint8'))",
+        ]
+        if str(params["output"]) == "masked_bgr":
+            lines.append(f"{dst} = cv2.bitwise_and(_bgr, _bgr, mask=_mask)")
+        else:
+            lines.append(f"{dst} = _mask")
+        return lines
