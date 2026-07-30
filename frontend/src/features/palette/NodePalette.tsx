@@ -22,7 +22,9 @@ const CATEGORY_ACCENT: Record<string, string> = {
   io: '#7dcea0',
   color: '#5dade2',
   filters: '#e67e22',
+  morphology: '#48c9b0',
   geometry: '#af7ac5',
+  analysis: '#5dade2',
   stochastic: '#f5b041',
 }
 
