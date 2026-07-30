@@ -128,13 +128,62 @@ class CannyNode(BaseNode):
         ]
 
 
+def _threshold_flag(method: str) -> int:
+    flags = {
+        "binary": cv2.THRESH_BINARY,
+        "binary_inv": cv2.THRESH_BINARY_INV,
+        "trunc": cv2.THRESH_TRUNC,
+        "tozero": cv2.THRESH_TOZERO,
+        "tozero_inv": cv2.THRESH_TOZERO_INV,
+        "otsu": cv2.THRESH_BINARY | cv2.THRESH_OTSU,
+        "otsu_inv": cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU,
+        "triangle": cv2.THRESH_BINARY | cv2.THRESH_TRIANGLE,
+        "triangle_inv": cv2.THRESH_BINARY_INV | cv2.THRESH_TRIANGLE,
+    }
+    return flags.get(method, cv2.THRESH_BINARY)
+
+
+def _threshold_flag_expr(method: str) -> str:
+    exprs = {
+        "binary": "cv2.THRESH_BINARY",
+        "binary_inv": "cv2.THRESH_BINARY_INV",
+        "trunc": "cv2.THRESH_TRUNC",
+        "tozero": "cv2.THRESH_TOZERO",
+        "tozero_inv": "cv2.THRESH_TOZERO_INV",
+        "otsu": "cv2.THRESH_BINARY | cv2.THRESH_OTSU",
+        "otsu_inv": "cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU",
+        "triangle": "cv2.THRESH_BINARY | cv2.THRESH_TRIANGLE",
+        "triangle_inv": "cv2.THRESH_BINARY_INV | cv2.THRESH_TRIANGLE",
+    }
+    return exprs.get(method, "cv2.THRESH_BINARY")
+
+
 class ThresholdNode(BaseNode):
     type = "threshold"
     label = "Threshold"
     category = "filters"
-    description = "Binary threshold."
+    description = (
+        "Global thresholding: binary, trunc, to-zero, Otsu, or Triangle methods."
+    )
     ports = [image_in(), image_out()]
     params = [
+        select_param(
+            "method",
+            "Method",
+            "binary",
+            [
+                "binary",
+                "binary_inv",
+                "trunc",
+                "tozero",
+                "tozero_inv",
+                "otsu",
+                "otsu_inv",
+                "triangle",
+                "triangle_inv",
+            ],
+            description="Otsu/Triangle ignore the manual threshold and estimate it",
+        ),
         number_param("thresh", "Threshold", 127.0, minimum=0.0, maximum=255.0),
         number_param("maxval", "Max Value", 255.0, minimum=0.0, maximum=255.0),
     ]
@@ -148,11 +197,12 @@ class ThresholdNode(BaseNode):
         image = require_image(inputs)
         if len(image.shape) == 3:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        method = str(params.get("method", "binary"))
         _, result = cv2.threshold(
             image,
             float(params["thresh"]),
             float(params["maxval"]),
-            cv2.THRESH_BINARY,
+            _threshold_flag(method),
         )
         return {"image": result}
 
@@ -165,10 +215,11 @@ class ThresholdNode(BaseNode):
     ) -> list[str]:
         src = input_vars["image"]
         dst = output_vars["image"]
+        method = str(params.get("method", "binary"))
         return [
             f"_gray = {src} if len({src}.shape) == 2 else cv2.cvtColor({src}, cv2.COLOR_BGR2GRAY)",
             f"_, {dst} = cv2.threshold(_gray, {float(params['thresh'])}, "
-            f"{float(params['maxval'])}, cv2.THRESH_BINARY)",
+            f"{float(params['maxval'])}, {_threshold_flag_expr(method)})",
         ]
 
 
