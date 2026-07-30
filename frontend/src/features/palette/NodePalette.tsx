@@ -19,6 +19,7 @@ async function fetchNodes(): Promise<NodeMetadata[]> {
 }
 
 const CATEGORY_ACCENT: Record<string, string> = {
+  starters: '#7dcea0',
   io: '#7dcea0',
   color: '#5dade2',
   filters: '#e67e22',
@@ -36,6 +37,11 @@ function portSummary(node: NodeMetadata): { inputs: number; outputs: number } {
   const inputs = node.ports.filter((port) => port.direction === 'input').length
   const outputs = node.ports.filter((port) => port.direction === 'output').length
   return { inputs, outputs }
+}
+
+function isStarterNode(node: NodeMetadata): boolean {
+  const inputs = node.ports.filter((port) => port.direction === 'input')
+  return inputs.length === 0 || inputs.every((port) => Boolean(port.optional))
 }
 
 function CategoryHeader({
@@ -128,11 +134,13 @@ function CategoryHeader({
 function NodeCard({
   node,
   onAdd,
+  showStartBadge = false,
 }: {
   node: NodeMetadata
   onAdd: (node: NodeMetadata) => void
+  showStartBadge?: boolean
 }) {
-  const accent = categoryAccent(node.category)
+  const accent = showStartBadge ? '#7dcea0' : categoryAccent(node.category)
   const { inputs, outputs } = portSummary(node)
 
   return (
@@ -255,6 +263,23 @@ function NodeCard({
           >
             {outputs} out
           </Typography>
+          {showStartBadge && (
+            <Typography
+              component="span"
+              sx={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                color: 'rgba(125,206,160,0.95)',
+                bgcolor: 'rgba(125,206,160,0.14)',
+                px: 0.65,
+                py: 0.15,
+                borderRadius: 0.75,
+              }}
+            >
+              start
+            </Typography>
+          )}
           {node.stochastic && (
             <Typography
               component="span"
@@ -305,6 +330,11 @@ export function NodePalette() {
     })
   }, [catalog, query])
 
+  const starters = useMemo(
+    () => filtered.filter((node) => isStarterNode(node)),
+    [filtered],
+  )
+
   const grouped = useMemo(() => {
     return filtered.reduce<Record<string, NodeMetadata[]>>((acc, node) => {
       acc[node.category] = acc[node.category] ?? []
@@ -314,6 +344,7 @@ export function NodePalette() {
   }, [filtered])
 
   const categories = Object.keys(grouped).sort((a, b) => a.localeCompare(b))
+  const startersOpen = !collapsed.starters
 
   const addNode = (node: NodeMetadata) => {
     const offset = (useGraphStore.getState().nodes.length % 8) * 28
@@ -443,6 +474,29 @@ export function NodePalette() {
           </Box>
         )}
 
+        {starters.length > 0 && (
+          <Box sx={{ mb: 1.25 }}>
+            <CategoryHeader
+              category="starters"
+              count={starters.length}
+              open={startersOpen}
+              onToggle={() =>
+                setCollapsed((prev) => ({ ...prev, starters: !prev.starters }))
+              }
+            />
+            <Collapse in={startersOpen} timeout={140} unmountOnExit>
+              {starters.map((node) => (
+                <NodeCard
+                  key={`starter-${node.type}`}
+                  node={node}
+                  onAdd={addNode}
+                  showStartBadge
+                />
+              ))}
+            </Collapse>
+          </Box>
+        )}
+
         {categories.map((category) => {
           const nodes = grouped[category]
           const open = !collapsed[category]
@@ -458,7 +512,12 @@ export function NodePalette() {
               />
               <Collapse in={open} timeout={140} unmountOnExit>
                 {nodes.map((node) => (
-                  <NodeCard key={node.type} node={node} onAdd={addNode} />
+                  <NodeCard
+                    key={node.type}
+                    node={node}
+                    onAdd={addNode}
+                    showStartBadge={isStarterNode(node)}
+                  />
                 ))}
               </Collapse>
             </Box>
