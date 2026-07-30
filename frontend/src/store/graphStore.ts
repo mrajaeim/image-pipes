@@ -44,7 +44,11 @@ interface GraphState {
   selectNode: (nodeId: string | null) => void
   updateNodeParams: (nodeId: string, params: Record<string, unknown>) => void
   setLocalPreview: (nodeId: string, dataUrl: string | null) => void
-  setLocalPreviews: (nodeId: string, dataUrls: string[]) => void
+  setLocalPreviews: (nodeId: string, dataUrls: string[], uploadedFiles?: string[]) => void
+  removeLocalPreview: (nodeId: string, index: number) => {
+    file: string | null
+    path: string
+  } | null
   setActiveNodeId: (nodeId: string | null) => void
   addPreview: (preview: ExecutionPreview) => void
   clearExecution: () => void
@@ -206,6 +210,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         params: { ...source.data.params },
         active: false,
         localPreviewUrls: [...(source.data.localPreviewUrls ?? [])],
+        uploadedFiles: [...(source.data.uploadedFiles ?? [])],
       },
     }
     set({
@@ -234,20 +239,68 @@ export const useGraphStore = create<GraphState>((set, get) => ({
               data: {
                 ...node.data,
                 localPreviewUrls: dataUrl ? [dataUrl] : [],
+                uploadedFiles: [],
               },
             }
           : node,
       ),
     }),
 
-  setLocalPreviews: (nodeId, dataUrls) =>
+  setLocalPreviews: (nodeId, dataUrls, uploadedFiles = []) =>
     set({
       nodes: get().nodes.map((node) =>
         node.id === nodeId
-          ? { ...node, data: { ...node.data, localPreviewUrls: dataUrls } }
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                localPreviewUrls: dataUrls,
+                uploadedFiles,
+              },
+            }
           : node,
       ),
     }),
+
+  removeLocalPreview: (nodeId, index) => {
+    const node = get().nodes.find((item) => item.id === nodeId)
+    if (!node) return null
+    const previews = [...(node.data.localPreviewUrls ?? [])]
+    const files = [...(node.data.uploadedFiles ?? [])]
+    if (index < 0 || index >= previews.length) return null
+    const removedFile = files[index] ?? null
+    previews.splice(index, 1)
+    if (index < files.length) files.splice(index, 1)
+
+    let nextPath = String(node.data.params.path ?? '')
+    if (previews.length === 0) {
+      nextPath = ''
+    } else if (files.length === 1) {
+      nextPath = files[0]
+    } else if (files.length > 1) {
+      // Keep the batch folder so remaining files continue to load together.
+      const parent = files[0]?.replace(/[\\/][^\\/]+$/, '')
+      if (parent) nextPath = parent
+    }
+
+    set({
+      nodes: get().nodes.map((item) =>
+        item.id === nodeId
+          ? {
+              ...item,
+              data: {
+                ...item.data,
+                localPreviewUrls: previews,
+                uploadedFiles: files,
+                params: { ...item.data.params, path: nextPath },
+              },
+            }
+          : item,
+      ),
+      sampleCount: Math.max(1, previews.length),
+    })
+    return { file: removedFile, path: nextPath }
+  },
 
   setActiveNodeId: (nodeId) =>
     set({
