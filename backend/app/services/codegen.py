@@ -19,6 +19,8 @@ def generate_python(graph: Graph, seed: int = 0) -> str:
         "",
         "from __future__ import annotations",
         "",
+        "from pathlib import Path",
+        "",
         "import cv2",
         "import numpy as np",
         "",
