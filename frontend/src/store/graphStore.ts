@@ -468,13 +468,23 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         params: node.data.params,
         position: node.position,
       })),
-      edges: edges.map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        source_port: edge.sourceHandle ?? 'image',
-        target: edge.target,
-        target_port: edge.targetHandle ?? 'image',
-      })),
+      edges: edges.map((edge) => {
+        const waypoints = (
+          edge.data as { waypoints?: { x: number; y: number }[] } | undefined
+        )?.waypoints
+        const cleaned =
+          Array.isArray(waypoints) && waypoints.length > 0
+            ? waypoints.map((point) => ({ x: point.x, y: point.y }))
+            : undefined
+        return {
+          id: edge.id,
+          source: edge.source,
+          source_port: edge.sourceHandle ?? 'image',
+          target: edge.target,
+          target_port: edge.targetHandle ?? 'image',
+          ...(cleaned ? { waypoints: cleaned } : {}),
+        }
+      }),
     }
   },
 
@@ -531,7 +541,11 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         zIndex: 1000,
         reconnectable: true,
         selectable: true,
-        data: { waypoints: [] },
+        data: {
+          waypoints: Array.isArray(edge.waypoints)
+            ? edge.waypoints.map((point) => ({ x: point.x, y: point.y }))
+            : [],
+        },
       }))
 
     syncNodeCounter(nodes.map((node) => node.id))

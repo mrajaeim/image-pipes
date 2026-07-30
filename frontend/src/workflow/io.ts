@@ -1,5 +1,10 @@
 /** Versioned workflow JSON for export / load. */
 
+export interface WorkflowWaypoint {
+  x: number
+  y: number
+}
+
 export interface WorkflowGraphPayload {
   nodes: Array<{
     id: string
@@ -13,6 +18,8 @@ export interface WorkflowGraphPayload {
     source_port: string
     target: string
     target_port: string
+    /** Optional bend anchors for reshaped connectors. */
+    waypoints?: WorkflowWaypoint[]
   }>
 }
 
@@ -30,6 +37,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isGraphPayload(value: unknown): value is WorkflowGraphPayload {
   if (!isRecord(value)) return false
   return Array.isArray(value.nodes) && Array.isArray(value.edges)
+}
+
+function normalizeWaypoints(value: unknown): WorkflowWaypoint[] | undefined {
+  if (!Array.isArray(value) || value.length === 0) return undefined
+  const points = value
+    .filter(isRecord)
+    .map((point) => ({
+      x: Number(point.x ?? 0),
+      y: Number(point.y ?? 0),
+    }))
+    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y))
+  return points.length > 0 ? points : undefined
 }
 
 function normalizeGraph(graph: WorkflowGraphPayload): WorkflowGraphPayload {
@@ -50,12 +69,14 @@ function normalizeGraph(graph: WorkflowGraphPayload): WorkflowGraphPayload {
     }),
     edges: graph.edges.map((edge) => {
       const record = edge as unknown as Record<string, unknown>
+      const waypoints = normalizeWaypoints(record.waypoints)
       return {
         id: String(record.id ?? ''),
         source: String(record.source ?? ''),
         source_port: String(record.source_port ?? 'image'),
         target: String(record.target ?? ''),
         target_port: String(record.target_port ?? 'image'),
+        ...(waypoints ? { waypoints } : {}),
       }
     }),
   }
