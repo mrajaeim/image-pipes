@@ -26,6 +26,56 @@
 
 </div>
 
+## 🚀 Experience the Workflow
+
+<table>
+<tr>
+<td width="65%">
+
+<img src="https://github.com/user-attachments/assets/fb73deff-cdf7-4a1d-8893-074dab5e8107">
+
+</td>
+
+<td width="35%">
+
+### Visual Editor
+
+- 🎯 Drag & Drop Nodes
+- ⚡ Instant Execution
+- 👀 Live Image Preview
+- 🧠 OpenCV & Albumentations
+- 📦 Export Python Code
+
+</td>
+</tr>
+</table>
+
+---
+
+<table>
+<tr>
+<td align="center">
+
+<img src="https://github.com/user-attachments/assets/0222a5f5-d2c1-4803-bb52-72b05c245f6c">
+
+### Dataset Augmentation
+
+Create hundreds of augmentations visually.
+
+</td>
+
+<td align="center">
+
+<img src="https://github.com/user-attachments/assets/aa2c1833-1ce1-4fd7-8a5a-d6f95058d2ff">
+
+### Pipeline Templates
+
+Build reusable computer vision pipelines.
+
+</td>
+</tr>
+</table>
+
 ---
 
 ## 💭 The Problem
