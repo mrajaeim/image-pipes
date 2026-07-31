@@ -23,17 +23,17 @@ jobs:
         include:
           - os: windows-latest
             artifact: windows
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             artifact: linux
           - os: macos-latest
             artifact: macos
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
@@ -42,12 +42,12 @@ jobs:
             desktop/package-lock.json
 
       - name: Setup Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v9
+        uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
@@ -72,12 +72,11 @@ jobs:
         env:
           CI: "true"
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          # electron-builder may use this for GitHub publishing metadata
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/build-desktop.mjs
 
       - name: Upload installers
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: ImagePipes-${{ matrix.artifact }}-${{ github.sha }}
           path: |
@@ -99,15 +98,15 @@ jobs:
       contents: write
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
           pattern: ImagePipes-*
           merge-multiple: true
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**
+          files: artifacts/*
           generate_release_notes: true
           fail_on_unmatched_files: true
