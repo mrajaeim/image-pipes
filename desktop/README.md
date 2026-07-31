@@ -25,16 +25,18 @@ cd backend && uv sync && uv run python run_server.py
 cd frontend && npm run build   # once, so FastAPI can serve the UI
 ```
 
-Or run everything from Electron (spawns `uv run python run_server.py` for you):
+Or run everything from Electron (spawns backend + Vite for you):
 
 ```bash
-cd frontend && npm run build
-cd ../backend && uv sync
+cd backend && uv sync
+cd ../frontend && npm install
 cd ../desktop && npm install
 cd .. && npm run desktop
 ```
 
-`npm run desktop` launches Electron with `--dev` (opens DevTools).
+`npm run desktop` launches Electron with `--dev`: it starts the FastAPI backend, starts the **Vite** frontend (hot reload), and loads that URL. Edit React code and the window updates without rebuilding.
+
+`npm run desktop:start` (no `--dev`) serves the built `frontend/dist` instead — run `npm run build:frontend` first for that path.
 
 ## What gets packaged
 

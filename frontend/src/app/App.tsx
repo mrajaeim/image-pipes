@@ -16,6 +16,7 @@ import {
 import { useWorkflowPersistence } from '../hooks/useWorkflowPersistence'
 import { notifyError, notifyInfo, notifySuccess } from '../notify'
 import { downloadWorkflowJson, parseWorkflowJson } from '../workflow/io'
+import { materializeSampleImages } from '../workflow/materializeSampleImages'
 import type { WorkflowTemplate } from '../workflow/templates'
 import { AppHeader } from './AppHeader'
 
@@ -53,9 +54,10 @@ export default function App() {
     }
   }
 
-  const applyLoadedWorkflow = (text: string, successMessage: string) => {
+  const applyLoadedWorkflow = async (text: string, successMessage: string) => {
     const doc = parseWorkflowJson(text)
     const { skippedTypes } = loadWorkflow(doc)
+    await materializeSampleImages()
     if (skippedTypes.length > 0) {
       notifyInfo(`${successMessage} (skipped unknown nodes: ${skippedTypes.join(', ')})`)
     } else {
@@ -76,7 +78,7 @@ export default function App() {
     if (!file) return
     try {
       const text = await file.text()
-      applyLoadedWorkflow(text, 'Workflow loaded')
+      await applyLoadedWorkflow(text, 'Workflow loaded')
     } catch (error) {
       notifyError(error instanceof Error ? error.message : 'Load failed')
     } finally {
@@ -99,7 +101,7 @@ export default function App() {
         throw new Error(`Could not fetch template (${response.status})`)
       }
       const text = await response.text()
-      applyLoadedWorkflow(text, `Loaded “${template.name}”`)
+      await applyLoadedWorkflow(text, `Loaded “${template.name}”`)
       setTemplatesOpen(false)
     } catch (error) {
       notifyError(error instanceof Error ? error.message : 'Template load failed')

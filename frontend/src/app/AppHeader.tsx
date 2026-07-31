@@ -2,6 +2,8 @@ import {
   Box,
   Button,
   IconButton,
+  Menu,
+  MenuItem,
   Stack,
   TextField,
   Typography,
@@ -168,6 +170,10 @@ export function AppHeader({
   const nodeCount = useGraphStore((s) => s.nodes.length)
   const edgeCount = useGraphStore((s) => s.edges.length)
   const [infoOpen, setInfoOpen] = useState(false)
+  const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null)
+  const exportMenuOpen = Boolean(exportAnchor)
+
+  const closeExportMenu = () => setExportAnchor(null)
 
   return (
     <Box
@@ -303,7 +309,18 @@ export function AppHeader({
         />
       </Stack>
 
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: 'center',
+          px: 0.75,
+          py: 0.5,
+          borderRadius: 1.5,
+          bgcolor: 'rgba(0,0,0,0.28)',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
         {isExecuting ? (
           <Button
             variant="outlined"
@@ -339,7 +356,9 @@ export function AppHeader({
             fontSize: 13,
             bgcolor: isExecuting ? '#5a4a3a' : '#e67e22',
             color: '#0f0f0f',
-            boxShadow: isExecuting ? 'none' : '0 0 0 1px rgba(230,126,34,0.35), 0 8px 20px rgba(230,126,34,0.22)',
+            boxShadow: isExecuting
+              ? 'none'
+              : '0 0 0 1px rgba(230,126,34,0.35), 0 8px 20px rgba(230,126,34,0.22)',
             '&:hover': { bgcolor: '#f39c12' },
             '&.Mui-disabled': {
               bgcolor: 'rgba(230,126,34,0.35)',
@@ -379,7 +398,20 @@ export function AppHeader({
         >
           Run to selected
         </Button>
+      </Stack>
 
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: 'center',
+          px: 0.75,
+          py: 0.5,
+          borderRadius: 1.5,
+          bgcolor: 'rgba(0,0,0,0.28)',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
         <Button
           variant="outlined"
           disabled={isExecuting}
@@ -401,20 +433,75 @@ export function AppHeader({
         <Button
           variant="outlined"
           disabled={isExecuting}
-          onClick={onExportWorkflow}
+          aria-haspopup="menu"
+          aria-expanded={exportMenuOpen ? 'true' : undefined}
+          aria-controls={exportMenuOpen ? 'export-menu' : undefined}
+          onClick={(event) => setExportAnchor(event.currentTarget)}
           sx={outlineBtnSx}
         >
           Export
+          <Box component="span" sx={{ ml: 0.75, fontSize: 10, opacity: 0.7, lineHeight: 1 }}>
+            ▾
+          </Box>
         </Button>
 
-        <Button
-          variant="outlined"
-          disabled={isExecuting}
-          onClick={onExportPython}
-          sx={outlineBtnSx}
+        <Menu
+          id="export-menu"
+          anchorEl={exportAnchor}
+          open={exportMenuOpen}
+          onClose={closeExportMenu}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          slotProps={{
+            paper: {
+              elevation: 0,
+              sx: {
+                mt: 0.75,
+                minWidth: 180,
+                bgcolor: '#161616',
+                color: '#f4f1ea',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 1.5,
+                overflow: 'hidden',
+                boxShadow: '0 18px 40px rgba(0,0,0,0.55)',
+                backgroundImage: 'none',
+              },
+            },
+            list: {
+              dense: true,
+              sx: { py: 0.5 },
+            },
+          }}
         >
-          Export Python
-        </Button>
+          <MenuItem
+            onClick={() => {
+              closeExportMenu()
+              onExportWorkflow()
+            }}
+            sx={{
+              fontSize: 13,
+              fontWeight: 600,
+              py: 1,
+              '&:hover': { bgcolor: 'rgba(125,206,160,0.1)' },
+            }}
+          >
+            Workflow JSON
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              closeExportMenu()
+              onExportPython()
+            }}
+            sx={{
+              fontSize: 13,
+              fontWeight: 600,
+              py: 1,
+              '&:hover': { bgcolor: 'rgba(125,206,160,0.1)' },
+            }}
+          >
+            Python script
+          </MenuItem>
+        </Menu>
       </Stack>
     </Box>
   )

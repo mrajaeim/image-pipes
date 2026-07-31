@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGraphStore } from '../store/graphStore'
+import { materializeSampleImages } from '../workflow/materializeSampleImages'
 import { loadWorkflowSession, saveWorkflowSession } from '../workflow/persist'
 
 const SAVE_DEBOUNCE_MS = 400
@@ -25,6 +26,9 @@ export function useWorkflowPersistence() {
     const saved = loadWorkflowSession()
     if (saved && saved.graph.nodes.length > 0) {
       loadWorkflow(saved)
+      void materializeSampleImages().catch(() => {
+        // Session may already have real upload paths; ignore sample staging failures.
+      })
     }
     setSessionReady(true)
   }, [nodeCatalog, loadWorkflow])

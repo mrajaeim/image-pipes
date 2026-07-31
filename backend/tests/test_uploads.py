@@ -9,6 +9,14 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+def test_sample_image_returns_lena() -> None:
+    client = TestClient(app)
+    response = client.get("/api/sample-image")
+    assert response.status_code == 200
+    assert response.headers.get("content-type", "").startswith("image/")
+    assert len(response.content) > 100
+
+
 def test_delete_uploaded_file(tmp_path, monkeypatch) -> None:
     uploads = tmp_path / "uploads"
     uploads.mkdir()

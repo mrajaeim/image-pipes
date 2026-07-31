@@ -5,14 +5,20 @@ const net = require('node:net')
 const path = require('node:path')
 const fs = require('node:fs')
 
-const DEFAULT_PORT = 8765
-const isDev = process.argv.includes('--dev') || !app.isPackaged
+const DEFAULT_BACKEND_PORT = 8000
+const DEFAULT_VITE_PORT = 5173
+/** Vite HMR UI — only when launched with `electron . --dev` (npm run desktop). */
+const useViteDev = process.argv.includes('--dev') && !app.isPackaged
+const isDev = useViteDev || !app.isPackaged
 
 /** @type {import('node:child_process').ChildProcess | null} */
 let backendProcess = null
+/** @type {import('node:child_process').ChildProcess | null} */
+let viteProcess = null
 /** @type {BrowserWindow | null} */
 let mainWindow = null
-let backendPort = DEFAULT_PORT
+let backendPort = DEFAULT_BACKEND_PORT
+let vitePort = DEFAULT_VITE_PORT
 
 function repoRoot() {
   // desktop/src -> desktop -> repo
@@ -47,15 +53,15 @@ function findFreePort(startPort) {
   })
 }
 
-function waitForHealth(port, timeoutMs = 90000) {
+function waitForHttpOk(port, pathName, label, timeoutMs = 90000) {
   const started = Date.now()
   return new Promise((resolve, reject) => {
     const tick = () => {
       const req = http.get(
-        { host: '127.0.0.1', port, path: '/api/health', timeout: 1500 },
+        { host: '127.0.0.1', port, path: pathName, timeout: 1500 },
         (res) => {
           res.resume()
-          if (res.statusCode === 200) {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 500) {
             resolve()
             return
           }
@@ -70,7 +76,7 @@ function waitForHealth(port, timeoutMs = 90000) {
     }
     const retry = () => {
       if (Date.now() - started > timeoutMs) {
-        reject(new Error('Backend did not become healthy in time'))
+        reject(new Error(`${label} did not become ready in time`))
         return
       }
       setTimeout(tick, 400)
@@ -91,9 +97,12 @@ function buildBackendEnv(port) {
     PYTHONUNBUFFERED: '1',
   }
 
-  const frontendDist = path.join(repoRoot(), 'frontend', 'dist')
-  if (fs.existsSync(frontendDist)) {
-    env.IMAGE_PIPES_FRONTEND_DIST = frontendDist
+  // Production / non-Vite desktop: FastAPI serves the built SPA.
+  if (!useViteDev) {
+    const frontendDist = path.join(repoRoot(), 'frontend', 'dist')
+    if (fs.existsSync(frontendDist)) {
+      env.IMAGE_PIPES_FRONTEND_DIST = frontendDist
+    }
   }
 
   if (app.isPackaged) {
@@ -104,6 +113,15 @@ function buildBackendEnv(port) {
   }
 
   return env
+}
+
+function attachProcessLogs(child, label) {
+  const log = (chunk) => {
+    const text = chunk.toString()
+    if (text.trim()) console.log(`[${label}] ${text.trimEnd()}`)
+  }
+  child.stdout?.on('data', log)
+  child.stderr?.on('data', log)
 }
 
 function spawnBackend(port) {
@@ -124,10 +142,8 @@ function spawnBackend(port) {
       windowsHide: true,
     })
   } else {
-    // Dev / unpackaged: prefer `uv run`, fall back to python.
     const runServer = path.join(cwdBackend, 'run_server.py')
-    const uvArgs = ['run', 'python', runServer]
-    backendProcess = spawn('uv', uvArgs, {
+    backendProcess = spawn('uv', ['run', 'python', runServer], {
       cwd: cwdBackend,
       env,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -136,33 +152,60 @@ function spawnBackend(port) {
     })
   }
 
-  const log = (chunk) => {
-    const text = chunk.toString()
-    if (text.trim()) console.log(`[backend] ${text.trimEnd()}`)
-  }
-  backendProcess.stdout?.on('data', log)
-  backendProcess.stderr?.on('data', log)
+  attachProcessLogs(backendProcess, 'backend')
   backendProcess.on('exit', (code, signal) => {
     console.log(`[backend] exited code=${code} signal=${signal}`)
     backendProcess = null
   })
 }
 
-function stopBackend() {
-  if (!backendProcess || backendProcess.killed) return
+function spawnVite(port, apiPort) {
+  const frontendDir = path.join(repoRoot(), 'frontend')
+  viteProcess = spawn('npm', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(port)], {
+    cwd: frontendDir,
+    env: {
+      ...process.env,
+      IMAGE_PIPES_API_PROXY: `http://127.0.0.1:${apiPort}`,
+      IMAGE_PIPES_VITE_PORT: String(port),
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: process.platform === 'win32',
+    windowsHide: true,
+  })
+
+  attachProcessLogs(viteProcess, 'vite')
+  viteProcess.on('exit', (code, signal) => {
+    console.log(`[vite] exited code=${code} signal=${signal}`)
+    viteProcess = null
+  })
+}
+
+function stopProcess(child) {
+  if (!child || child.killed || child.pid == null) return
   try {
     if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', String(backendProcess.pid), '/f', '/t'], {
+      spawn('taskkill', ['/pid', String(child.pid), '/f', '/t'], {
         stdio: 'ignore',
         windowsHide: true,
       })
     } else {
-      backendProcess.kill('SIGTERM')
+      child.kill('SIGTERM')
     }
   } catch (error) {
-    console.error('Failed to stop backend', error)
+    console.error('Failed to stop process', error)
   }
+}
+
+function stopChildren() {
+  stopProcess(viteProcess)
+  viteProcess = null
+  stopProcess(backendProcess)
   backendProcess = null
+}
+
+function uiUrl() {
+  if (useViteDev) return `http://127.0.0.1:${vitePort}`
+  return `http://127.0.0.1:${backendPort}`
 }
 
 async function createWindow() {
@@ -188,10 +231,9 @@ async function createWindow() {
     return { action: 'deny' }
   })
 
-  const url = `http://127.0.0.1:${backendPort}`
-  await mainWindow.loadURL(url)
+  await mainWindow.loadURL(uiUrl())
 
-  if (isDev) {
+  if (useViteDev) {
     mainWindow.webContents.openDevTools({ mode: 'detach' })
   }
 
@@ -201,9 +243,16 @@ async function createWindow() {
 }
 
 async function bootstrap() {
-  backendPort = await findFreePort(DEFAULT_PORT)
+  backendPort = await findFreePort(DEFAULT_BACKEND_PORT)
   spawnBackend(backendPort)
-  await waitForHealth(backendPort)
+  await waitForHttpOk(backendPort, '/api/health', 'Backend')
+
+  if (useViteDev) {
+    vitePort = await findFreePort(DEFAULT_VITE_PORT)
+    spawnVite(vitePort, backendPort)
+    await waitForHttpOk(vitePort, '/', 'Vite')
+  }
+
   await createWindow()
 }
 
@@ -211,22 +260,24 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   void bootstrap().catch(async (error) => {
     console.error(error)
-    stopBackend()
+    stopChildren()
     await dialog.showErrorBox(
       'Image Pipes failed to start',
       `${error instanceof Error ? error.message : String(error)}\n\n` +
-        'Dev tip: run `uv sync` in backend/ and `npm run build` in frontend/.',
+        (useViteDev
+          ? 'Dev tip: run `uv sync` in backend/ and `npm install` in frontend/.'
+          : 'Dev tip: run `uv sync` in backend/ and `npm run build` in frontend/.'),
     )
     app.quit()
   })
 })
 
 app.on('before-quit', () => {
-  stopBackend()
+  stopChildren()
 })
 
 app.on('window-all-closed', () => {
-  stopBackend()
+  stopChildren()
   if (process.platform !== 'darwin') app.quit()
 })
 

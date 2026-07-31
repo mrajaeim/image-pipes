@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import uuid
 from pathlib import Path
 
@@ -50,10 +51,36 @@ def _allowed_extension(filename: str) -> bool:
     return suffix in {ext.lower() for ext in IMAGE_EXTENSIONS}
 
 
+def _sample_lena_path() -> Path | None:
+    """Locate bundled Lena used by example templates."""
+    candidates = [
+        Path(__file__).resolve().parents[2] / "examples" / "lena.png",
+        Path.cwd() / "examples" / "lena.png",
+    ]
+    if getattr(sys, "frozen", False):
+        candidates.append(Path(sys.executable).resolve().parent / "examples" / "lena.png")
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            candidates.append(Path(meipass) / "examples" / "lena.png")
+    for path in candidates:
+        if path.is_file():
+            return path
+    return None
+
+
 @router.get("/nodes", response_model=list[NodeMetadata])
 def list_nodes() -> list[NodeMetadata]:
     register_builtin_nodes()
     return registry.list_metadata()
+
+
+@router.get("/sample-image")
+def sample_image() -> FileResponse:
+    """Return the bundled sample image for example workflows."""
+    path = _sample_lena_path()
+    if path is None:
+        raise HTTPException(status_code=404, detail="Sample image not found")
+    return FileResponse(path, media_type="image/png", filename="lena.png")
 
 
 @router.post("/uploads", response_model=UploadResponse)
