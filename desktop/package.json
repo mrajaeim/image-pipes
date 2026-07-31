@@ -9,13 +9,18 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "pack": "electron-builder --dir --publish never",
+    "dist": "electron-builder --publish never"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrajaeim/image-pipes.git"
   },
   "build": {
     "appId": "com.imagepipes.app",
     "productName": "Image Pipes",
     "copyright": "Copyright © Image Pipes contributors",
+    "publish": null,
     "directories": {
       "output": "release",
       "buildResources": "build"
