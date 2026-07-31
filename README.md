@@ -71,6 +71,8 @@ npm run build:desktop
 
 Installers are written to `desktop/release/` (NSIS on Windows, DMG on macOS, AppImage on Linux). See [`desktop/README.md`](desktop/README.md).
 
+CI builds installers on every push/PR to `main` (and on `workflow_dispatch`) via [`.github/workflows/desktop.yml`](.github/workflows/desktop.yml). Push a `v*` tag to publish a GitHub Release with the artifacts.
+
 ### Run the desktop shell in development
 
 ```bash
@@ -125,11 +127,13 @@ cd frontend && npm run build && cd ../backend
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Or with Docker:
+Or with Docker (single container serves UI + API on port 8000):
 
 ```bash
 docker compose up --build
 ```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). Persistent cache/uploads/outputs use named volumes. Image builds are verified in CI by [`.github/workflows/docker.yml`](.github/workflows/docker.yml).
 
 ## Usage
 
