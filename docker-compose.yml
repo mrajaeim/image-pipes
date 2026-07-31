@@ -15,12 +15,13 @@ services:
       IMAGE_PIPES_PORT: "8000"
       IMAGE_PIPES_DATA_DIR: /app/backend
       IMAGE_PIPES_FRONTEND_DIST: /app/frontend/dist
+      IMAGE_PIPES_LOG_LEVEL: warning
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 25s
     restart: unless-stopped
 
 volumes:
