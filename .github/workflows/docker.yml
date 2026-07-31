@@ -1,0 +1,66 @@
+name: Docker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - "frontend/**"
+      - "backend/**"
+      - ".github/workflows/docker.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - "frontend/**"
+      - "backend/**"
+      - ".github/workflows/docker.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: image-pipes:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke health check
+        run: |
+          docker run -d --name image-pipes-ci -p 8000:8000 image-pipes:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/health; then
+              echo
+              docker logs image-pipes-ci
+              docker rm -f image-pipes-ci
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Health check failed"
+          docker logs image-pipes-ci || true
+          docker rm -f image-pipes-ci || true
+          exit 1
