@@ -4,7 +4,9 @@ One-window desktop app: Electron starts the FastAPI backend, waits for health, t
 
 ## Easy path for users
 
-Build an installer (Windows NSIS / macOS DMG / Linux AppImage), then distribute `desktop/release/*`.
+Download prebuilt installers from [GitHub Releases](https://github.com/mrajaeim/image-pipes/releases).
+
+Or build an installer yourself (Windows NSIS / macOS DMG / Linux AppImage), then distribute `desktop/release/*`.
 
 ```bash
 # from repo root — needs Node.js, npm, and uv

@@ -18,6 +18,7 @@
 
 **⚡ Build • Preview • Experiment • Export**
 
+[Download](https://github.com/mrajaeim/image-pipes/releases) •
 [Demo](#-demo) •
 [Features](#-features) •
 [Architecture](#-architecture) •
@@ -271,6 +272,12 @@ Image Pipes fits naturally into workflows like:
 ---
 
 ## 🚀 Quick Start
+
+### Download
+
+Grab the latest desktop installer (Windows, macOS, or Linux) from the [Releases](https://github.com/mrajaeim/image-pipes/releases) page — no Python or Node required.
+
+### From source
 
 Clone the repository:
 
