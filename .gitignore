@@ -23,11 +23,16 @@ backend/outputs/*
 !backend/outputs/.gitkeep
 backend/outputs/downloads/*
 !backend/outputs/downloads/.gitkeep
+backend/build/
+backend/dist/
 
 # Node / frontend
 node_modules/
 frontend/dist/
 frontend/.vite/
+desktop/node_modules/
+desktop/release/
+desktop/resources/server/
 *.local
 
 # IDE / OS

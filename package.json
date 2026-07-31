@@ -1,0 +1,17 @@
+{
+  "name": "image-pipes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visual IDE for computer vision pipelines",
+  "license": "MIT",
+  "scripts": {
+    "install:all": "npm --prefix frontend install && npm --prefix desktop install && cd backend && uv sync --group dev",
+    "dev:backend": "cd backend && uv run python run_server.py",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "desktop": "npm --prefix desktop run dev",
+    "desktop:start": "npm --prefix desktop start",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:desktop": "node scripts/build-desktop.mjs",
+    "build:desktop:sidecar": "node scripts/build-desktop.mjs --sidecar-only"
+  }
+}
