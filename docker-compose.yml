@@ -1,10 +1,29 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: image-pipes:local
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/cache:/app/backend/cache
-      - ./backend/uploads:/app/backend/uploads
+      - image-pipes-cache:/app/backend/cache
+      - image-pipes-uploads:/app/backend/uploads
+      - image-pipes-outputs:/app/backend/outputs
     environment:
-      - IMAGE_PIPES_CACHE_DIR=/app/backend/cache
+      IMAGE_PIPES_HOST: "0.0.0.0"
+      IMAGE_PIPES_PORT: "8000"
+      IMAGE_PIPES_DATA_DIR: /app/backend
+      IMAGE_PIPES_FRONTEND_DIST: /app/frontend/dist
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  image-pipes-cache:
+  image-pipes-uploads:
+  image-pipes-outputs:
