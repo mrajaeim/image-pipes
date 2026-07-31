@@ -26,6 +26,11 @@ backend/outputs/downloads/*
 backend/build/
 backend/dist/
 
+# App data at repo root (default data_root when IMAGE_PIPES_DATA_DIR is unset)
+/uploads/
+/cache/
+/outputs/
+
 # Node / frontend
 node_modules/
 frontend/dist/
