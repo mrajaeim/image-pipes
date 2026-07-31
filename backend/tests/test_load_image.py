@@ -10,6 +10,7 @@ import numpy as np
 from app.engine.registry import registry
 from app.nodes import register_builtin_nodes
 from app.nodes.io import list_image_files
+from app.paths import examples_dir, resolve_load_path
 
 
 def _write(path: Path, value: int) -> None:
@@ -43,6 +44,25 @@ def test_load_image_single_file_still_returns_list(tmp_path: Path) -> None:
     loaded = registry.get("load_image").execute({}, {"path": str(path)}, seed=0)["image"]
     assert isinstance(loaded, list)
     assert len(loaded) == 1
+
+
+def test_resolve_load_path_finds_bundled_example(tmp_path: Path, monkeypatch) -> None:
+    lena = examples_dir() / "lena.png"
+    assert lena.is_file(), f"expected bundled example at {lena}"
+    monkeypatch.chdir(tmp_path)
+    resolved = resolve_load_path("examples/lena.png")
+    assert resolved.resolve() == lena.resolve()
+
+
+def test_load_image_accepts_relative_example_path(tmp_path: Path, monkeypatch) -> None:
+    register_builtin_nodes()
+    monkeypatch.chdir(tmp_path)
+    loaded = registry.get("load_image").execute(
+        {}, {"path": "examples/lena.png"}, seed=0
+    )["image"]
+    assert isinstance(loaded, list)
+    assert len(loaded) == 1
+    assert loaded[0].ndim >= 2
 
 
 def test_load_image_metadata_exposes_file_accept() -> None:

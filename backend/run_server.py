@@ -37,7 +37,7 @@ def main() -> None:
     _prepare_environment()
 
     host = os.environ.get("IMAGE_PIPES_HOST", "127.0.0.1")
-    port = int(os.environ.get("IMAGE_PIPES_PORT", "8765"))
+    port = int(os.environ.get("IMAGE_PIPES_PORT", "8000"))
 
     import uvicorn
 

@@ -26,6 +26,7 @@ from app.nodes.common import (
     select_param,
     string_param,
 )
+from app.paths import resolve_load_path
 
 
 def _normalized_extensions(extensions: list[str] | None = None) -> set[str]:
@@ -80,7 +81,7 @@ class LoadImageNode(BaseNode):
             current_source_stems.set([])
             return
         try:
-            files = list_image_files(Path(path_value))
+            files = list_image_files(resolve_load_path(path_value))
             current_source_stems.set([file_path.stem for file_path in files])
         except (OSError, ValueError, FileNotFoundError):
             current_source_stems.set([])
@@ -94,7 +95,7 @@ class LoadImageNode(BaseNode):
         path_value = str(params["path"])
         if not path_value:
             raise ValueError("Load Images requires a file or folder selection")
-        path = Path(path_value)
+        path = resolve_load_path(path_value)
         files = list_image_files(path)
         current_source_stems.set([file_path.stem for file_path in files])
         images = [read_image(file_path) for file_path in files]
@@ -107,7 +108,7 @@ class LoadImageNode(BaseNode):
         input_vars: dict[str, str],
         output_vars: dict[str, str],
     ) -> list[str]:
-        path = params["path"]
+        path = str(resolve_load_path(str(params["path"])))
         dst = output_vars["image"]
         return [
             f"_path = Path({path!r})",
