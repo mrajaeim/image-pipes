@@ -48,6 +48,10 @@ async function main() {
   const resourcesServer = path.join(desktopDir, 'resources', 'server')
   const pyDist = path.join(backendDir, 'dist', 'image-pipes-server')
 
+  console.log('==> Installing frontend dependencies')
+  const npmInstall = process.env.CI === 'true' ? ['ci'] : ['install']
+  await run('npm', npmInstall, frontendDir)
+
   console.log('==> Building frontend')
   await run('npm', ['run', 'build'], frontendDir)
 
@@ -90,7 +94,7 @@ async function main() {
   }
 
   console.log('==> Installing desktop dependencies')
-  await run('npm', ['install'], desktopDir)
+  await run('npm', npmInstall, desktopDir)
 
   console.log('==> Building Electron installer')
   await run('npm', ['run', 'dist'], desktopDir)
