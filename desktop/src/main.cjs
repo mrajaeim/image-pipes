@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, shell } = require('electron')
+const { app, BrowserWindow, dialog, Menu, shell } = require('electron')
 const { spawn } = require('node:child_process')
 const http = require('node:http')
 const net = require('node:net')
@@ -208,6 +208,7 @@ async function bootstrap() {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null)
   void bootstrap().catch(async (error) => {
     console.error(error)
     stopBackend()
