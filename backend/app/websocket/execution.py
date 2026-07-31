@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
@@ -11,10 +10,9 @@ from starlette.websockets import WebSocketState
 from app.engine.executor import CancellationToken, DagExecutor
 from app.models.graph import ExecuteRequest, ExecutionEvent, ExecutionEventType
 from app.nodes import register_builtin_nodes
+from app.paths import cache_dir
 
 router = APIRouter()
-
-CACHE_DIR = Path(__file__).resolve().parents[2] / "cache"
 
 
 @router.websocket("/ws/execute")
@@ -33,7 +31,7 @@ async def execute_pipeline(websocket: WebSocket) -> None:
             loop.call_soon_threadsafe(queue.put_nowait, event)
 
         def run_executor() -> None:
-            executor = DagExecutor(CACHE_DIR)
+            executor = DagExecutor(cache_dir())
             try:
                 executor.execute(request, on_event=on_event, cancel=cancel)
             except InterruptedError:

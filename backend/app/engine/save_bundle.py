@@ -13,7 +13,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-DOWNLOAD_DIR = Path(__file__).resolve().parents[2] / "outputs" / "downloads"
+from app.paths import download_dir
+
+DOWNLOAD_DIR = download_dir()
 
 
 @dataclass

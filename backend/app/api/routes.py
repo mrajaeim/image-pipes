@@ -14,13 +14,14 @@ from app.engine.registry import registry
 from app.models.graph import ExecuteRequest, Graph, NodeMetadata
 from app.nodes import register_builtin_nodes
 from app.nodes.common import IMAGE_EXTENSIONS
+from app.paths import cache_dir, output_dir, upload_dir
 from app.services.codegen import generate_python
 
 router = APIRouter(prefix="/api")
 
-CACHE_DIR = Path(__file__).resolve().parents[2] / "cache"
-UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads"
-OUTPUT_DIR = Path(__file__).resolve().parents[2] / "outputs"
+CACHE_DIR = cache_dir()
+UPLOAD_DIR = upload_dir()
+OUTPUT_DIR = output_dir()
 
 
 class CodegenBody(BaseModel):
@@ -166,13 +167,14 @@ def create_output_directory() -> OutputDirResponse:
 @router.get("/downloads/{filename}")
 def download_result_archive(filename: str) -> FileResponse:
     """Serve a ZIP produced by Save Image nodes during a pipeline run."""
-    from app.engine.save_bundle import DOWNLOAD_DIR
+    from app.engine import save_bundle as save_bundle_module
 
     safe_name = Path(filename).name
     if safe_name != filename or not safe_name.endswith(".zip"):
         raise HTTPException(status_code=400, detail="Invalid download name")
-    target = (DOWNLOAD_DIR / safe_name).resolve()
-    downloads_root = DOWNLOAD_DIR.resolve()
+    downloads = save_bundle_module.DOWNLOAD_DIR
+    target = (downloads / safe_name).resolve()
+    downloads_root = downloads.resolve()
     if downloads_root not in target.parents and target != downloads_root:
         raise HTTPException(status_code=400, detail="Path is outside downloads directory")
     if not target.is_file():

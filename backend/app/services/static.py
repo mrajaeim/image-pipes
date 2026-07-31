@@ -1,5 +1,9 @@
 """Production helpers for serving the built React app."""
 
+from __future__ import annotations
+
+import os
+import sys
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -7,10 +11,33 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 
-def mount_frontend(app: FastAPI, dist_dir: Path | None = None) -> None:
+def resolve_frontend_dist(dist_dir: Path | None = None) -> Path | None:
+    if dist_dir is not None:
+        return dist_dir if dist_dir.exists() else None
+
+    env = os.environ.get("IMAGE_PIPES_FRONTEND_DIST")
+    if env:
+        candidate = Path(env)
+        return candidate if candidate.exists() else None
+
+    if getattr(sys, "frozen", False):
+        bundle_dir = Path(getattr(sys, "_MEIPASS", Path(sys.executable).parent))
+        for candidate in (
+            bundle_dir / "frontend" / "dist",
+            Path(sys.executable).resolve().parent / "frontend" / "dist",
+        ):
+            if candidate.exists():
+                return candidate
+        return None
+
     root = Path(__file__).resolve().parents[3]
-    dist = dist_dir or (root / "frontend" / "dist")
-    if not dist.exists():
+    candidate = root / "frontend" / "dist"
+    return candidate if candidate.exists() else None
+
+
+def mount_frontend(app: FastAPI, dist_dir: Path | None = None) -> None:
+    dist = resolve_frontend_dist(dist_dir)
+    if dist is None:
         return
 
     assets = dist / "assets"
