@@ -1,0 +1,69 @@
+{
+  "name": "image-pipes-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron shell for Image Pipes",
+  "main": "src/main.cjs",
+  "author": "Image Pipes",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "com.imagepipes.app",
+    "productName": "Image Pipes",
+    "copyright": "Copyright © Image Pipes contributors",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/server",
+        "to": "server",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../backend/examples",
+        "to": "server/examples",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "ImagePipes-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "artifactName": "ImagePipes-${version}.${ext}"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "artifactName": "ImagePipes-${version}.${ext}",
+      "category": "Graphics"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Image Pipes"
+    }
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  }
+}

@@ -1,0 +1,7 @@
+# Packaged Electron / PyInstaller outputs
+desktop/node_modules/
+desktop/release/
+desktop/resources/server/
+backend/build/
+backend/dist/
+*.spec.bak
