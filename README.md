@@ -49,13 +49,38 @@ Capabilities that matter beyond “React + OpenCV”:
 
 - **Frontend:** React 19, Vite, TypeScript, MUI, React Flow, Zustand, TanStack Query, React Hook Form, Zod, Monaco
 - **Backend:** FastAPI, OpenCV, NumPy, Pillow, Albumentations 2.0.8 (MIT), Pydantic v2, WebSockets
+- **Desktop:** Electron + PyInstaller backend sidecar (optional installer)
 - **Tooling:** `uv`, `npm`, optional Docker
 
 ## Demo
 
 > **Tip:** A short GIF of canvas editing → Run → previews → Export Python converts more visitors than any feature list. Record from the local app and drop files under `docs/demo/` (e.g. `edit.gif`, `run.gif`, `export.gif`), then link them here.
 
-## Local development
+## Desktop app (recommended for end users)
+
+Image Pipes can run as a single **Electron** desktop app. The window starts the Python backend for you and opens the UI—no separate terminals.
+
+### Build an installer
+
+Requires [Node.js](https://nodejs.org/) and [uv](https://docs.astral.sh/uv/):
+
+```bash
+npm run install:all
+npm run build:desktop
+```
+
+Installers are written to `desktop/release/` (NSIS on Windows, DMG on macOS, AppImage on Linux). See [`desktop/README.md`](desktop/README.md).
+
+### Run the desktop shell in development
+
+```bash
+cd frontend && npm run build && cd ..
+cd backend && uv sync && cd ..
+npm --prefix desktop install
+npm run desktop
+```
+
+## Local development (browser)
 
 ### Backend
 
