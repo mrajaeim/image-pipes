@@ -41,7 +41,7 @@ export interface GraphNodeData {
   active?: boolean
   /** Local previews for Load Images before execution */
   localPreviewUrls?: string[]
-  /** Server paths for each local preview (same order as localPreviewUrls) */
+  /** Absolute paths for each local preview (same order as localPreviewUrls) */
   uploadedFiles?: string[]
   [key: string]: unknown
 }
@@ -67,6 +67,7 @@ export type ExecutionEventType =
   | 'done'
   | 'cancelled'
   | 'download'
+  | 'saved'
 
 export interface ExecutionEvent {
   type: ExecutionEventType
@@ -83,4 +84,5 @@ export interface ExecutionEvent {
   data?: Record<string, unknown> | null
   download_url?: string | null
   download_filename?: string | null
+  saved_dir?: string | null
 }

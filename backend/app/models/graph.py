@@ -60,6 +60,7 @@ class ExecutionEventType(StrEnum):
     DONE = "done"
     CANCELLED = "cancelled"
     DOWNLOAD = "download"
+    SAVED = "saved"
 
 
 class ExecutionEvent(BaseModel):
@@ -77,6 +78,7 @@ class ExecutionEvent(BaseModel):
     data: dict[str, Any] | None = None
     download_url: str | None = None
     download_filename: str | None = None
+    saved_dir: str | None = None
 
 
 class ParamField(BaseModel):
