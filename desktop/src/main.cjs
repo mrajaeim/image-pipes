@@ -1,9 +1,11 @@
-const { app, BrowserWindow, dialog, Menu, shell } = require('electron')
+const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require('electron')
 const { spawn } = require('node:child_process')
 const http = require('node:http')
 const net = require('node:net')
 const path = require('node:path')
 const fs = require('node:fs')
+
+const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'bmp', 'tif', 'tiff', 'webp', 'gif']
 
 const DEFAULT_BACKEND_PORT = 8000
 const DEFAULT_VITE_PORT = 5173
@@ -208,6 +210,50 @@ function uiUrl() {
   return `http://127.0.0.1:${backendPort}`
 }
 
+function registerDesktopIpc() {
+  ipcMain.handle('desktop:openImages', async () => {
+    const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
+      title: 'Choose images',
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        { name: 'Images', extensions: IMAGE_EXTENSIONS },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    })
+    if (result.canceled) return { canceled: true, paths: [] }
+    return { canceled: false, paths: result.filePaths }
+  })
+
+  ipcMain.handle('desktop:openFolder', async () => {
+    const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
+      title: 'Choose image folder',
+      properties: ['openDirectory'],
+    })
+    if (result.canceled || result.filePaths.length === 0) {
+      return { canceled: true, path: null }
+    }
+    return { canceled: false, path: result.filePaths[0] }
+  })
+
+  ipcMain.handle('desktop:pickFolder', async () => {
+    const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
+      title: 'Choose output folder',
+      properties: ['openDirectory', 'createDirectory'],
+    })
+    if (result.canceled || result.filePaths.length === 0) {
+      return { canceled: true, path: null }
+    }
+    return { canceled: false, path: result.filePaths[0] }
+  })
+
+  ipcMain.handle('desktop:revealInFolder', async (_event, targetPath) => {
+    if (typeof targetPath !== 'string' || !targetPath.trim()) {
+      throw new Error('Path is required')
+    }
+    shell.showItemInFolder(path.resolve(targetPath))
+  })
+}
+
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -258,6 +304,7 @@ async function bootstrap() {
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
+  registerDesktopIpc()
   void bootstrap().catch(async (error) => {
     console.error(error)
     stopChildren()

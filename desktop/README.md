@@ -46,4 +46,10 @@ cd .. && npm run desktop
 2. PyInstaller onedir sidecar → `desktop/resources/server/image-pipes-server(.exe)`
 3. electron-builder wraps Electron + sidecar + examples
 
-Runtime data (cache, uploads, downloads) goes under the OS userData folder, not Program Files.
+Runtime data (cache, uploads, downloads, asset registry) goes under the OS userData folder, not Program Files.
+
+## Desktop file I/O
+
+- **Load Images** uses native open-file / open-folder dialogs and registers local paths as asset batches (no copy into `uploads/`).
+- **Save Image** can write directly to a user-picked output folder; ZIP download remains a fallback when no folder is set.
+- The preload bridge exposes `window.imagePipesDesktop` (`openImages`, `openFolder`, `pickFolder`, `revealInFolder`).
