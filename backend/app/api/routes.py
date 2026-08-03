@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 import uuid
 from pathlib import Path
+from urllib.parse import unquote
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -12,10 +13,12 @@ from pydantic import BaseModel
 
 from app.engine.executor import DagExecutor
 from app.engine.registry import registry
+from app.models.assets import RegisterAssetsRequest, RegisterAssetsResponse
 from app.models.graph import ExecuteRequest, Graph, NodeMetadata
 from app.nodes import register_builtin_nodes
 from app.nodes.common import IMAGE_EXTENSIONS
 from app.paths import cache_dir, output_dir, upload_dir
+from app.services import assets as assets_service
 from app.services.codegen import generate_python
 
 router = APIRouter(prefix="/api")
@@ -39,6 +42,7 @@ class UploadResponse(BaseModel):
     kind: str
     files: list[str]
     count: int
+    asset_batch_id: str
 
 
 class OutputDirResponse(BaseModel):
@@ -81,6 +85,19 @@ def sample_image() -> FileResponse:
     if path is None:
         raise HTTPException(status_code=404, detail="Sample image not found")
     return FileResponse(path, media_type="image/png", filename="lena.png")
+
+
+@router.post("/assets/sample", response_model=RegisterAssetsResponse)
+def register_sample_image() -> RegisterAssetsResponse:
+    """Register the bundled sample image as an asset batch (no copy)."""
+    path = _sample_lena_path()
+    if path is None:
+        raise HTTPException(status_code=404, detail="Sample image not found")
+    try:
+        batch = assets_service.register_paths([str(path)], kind="external")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RegisterAssetsResponse(batch=batch, count=len(batch.files))
 
 
 @router.post("/uploads", response_model=UploadResponse)
@@ -145,19 +162,89 @@ async def upload_images(
         if path.is_file() and _allowed_extension(path.name)
     )
     if as_folder or append_to is not None or len(saved) > 1 or total_in_dir > 1:
-        return UploadResponse(
-            path=str(batch_dir.resolve()),
-            kind="folder",
-            files=saved,
-            count=len(saved),
-        )
+        response_path = str(batch_dir.resolve())
+        response_kind = "folder"
+    else:
+        response_path = saved[0]
+        response_kind = "file"
+
+    try:
+        if append_to is not None or response_kind == "folder":
+            all_files = sorted(
+                path
+                for path in batch_dir.iterdir()
+                if path.is_file() and _allowed_extension(path.name)
+            )
+            batch = assets_service.register_staged_files(all_files, root=batch_dir)
+        else:
+            batch = assets_service.register_staged_files([Path(saved[0])])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return UploadResponse(
-        path=saved[0],
-        kind="file",
+        path=response_path,
+        kind=response_kind,
         files=saved,
-        count=1,
+        count=len(saved),
+        asset_batch_id=batch.id,
     )
+
+
+@router.post("/assets/register", response_model=RegisterAssetsResponse)
+def register_assets(body: RegisterAssetsRequest) -> RegisterAssetsResponse:
+    """Register local paths (desktop native pickers) without copying bytes."""
+    try:
+        batch = assets_service.register_paths(
+            body.paths,
+            as_folder=body.as_folder,
+            append_to=body.append_to,
+            kind="folder" if body.as_folder else "external",
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return RegisterAssetsResponse(batch=batch, count=len(batch.files))
+
+
+@router.get("/assets/{batch_id}")
+def get_asset_batch(batch_id: str) -> RegisterAssetsResponse:
+    batch = assets_service.get_batch(batch_id)
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Asset batch not found")
+    return RegisterAssetsResponse(batch=batch, count=len(batch.files))
+
+
+@router.get("/assets/{batch_id}/files/{name}")
+def get_asset_file(batch_id: str, name: str) -> FileResponse:
+    batch = assets_service.get_batch(batch_id)
+    if batch is None:
+        raise HTTPException(status_code=404, detail="Asset batch not found")
+    decoded = unquote(name)
+    match = next((item for item in batch.files if item.name == decoded), None)
+    if match is None:
+        raise HTTPException(status_code=404, detail="Asset file not found")
+    target = Path(match.path)
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="Asset file missing on disk")
+    return FileResponse(target, filename=match.name)
+
+
+@router.delete("/assets/{batch_id}/files/{name}")
+def delete_asset_file(batch_id: str, name: str) -> dict:
+    decoded = unquote(name)
+    try:
+        batch = assets_service.remove_file(batch_id, decoded)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if batch is None:
+        return {"status": "deleted", "batch_id": batch_id, "empty": True}
+    return {
+        "status": "deleted",
+        "batch_id": batch_id,
+        "empty": False,
+        "count": len(batch.files),
+    }
 
 
 @router.delete("/uploads")

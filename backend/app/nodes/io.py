@@ -15,7 +15,7 @@ from app.engine.run_context import (
     current_source_stems,
     source_stem_for_sample,
 )
-from app.engine.save_bundle import get_save_bundle
+from app.engine.save_bundle import get_folder_saves, get_save_bundle
 from app.nodes.common import (
     IMAGE_EXTENSIONS,
     file_param,
@@ -71,16 +71,18 @@ class LoadImageNode(BaseNode):
             "",
             accept=IMAGE_EXTENSIONS,
             description="Select multiple images or a folder of images",
-        )
+        ),
+        string_param(
+            "asset_batch_id",
+            "Asset Batch",
+            "",
+            description="Registered asset batch id (preferred over path)",
+        ),
     ]
 
     def prepare_run(self, params: dict[str, Any]) -> None:
-        path_value = str(params.get("path", ""))
-        if not path_value:
-            current_source_stems.set([])
-            return
         try:
-            files = list_image_files(Path(path_value))
+            files = resolve_load_paths(params)
             current_source_stems.set([file_path.stem for file_path in files])
         except (OSError, ValueError, FileNotFoundError):
             current_source_stems.set([])
@@ -91,11 +93,9 @@ class LoadImageNode(BaseNode):
         params: dict[str, Any],
         seed: int = 0,
     ) -> dict[str, np.ndarray | list[np.ndarray]]:
-        path_value = str(params["path"])
-        if not path_value:
+        files = resolve_load_paths(params)
+        if not files:
             raise ValueError("Load Images requires a file or folder selection")
-        path = Path(path_value)
-        files = list_image_files(path)
         current_source_stems.set([file_path.stem for file_path in files])
         images = [read_image(file_path) for file_path in files]
         return {"image": images}
@@ -107,7 +107,7 @@ class LoadImageNode(BaseNode):
         input_vars: dict[str, str],
         output_vars: dict[str, str],
     ) -> list[str]:
-        path = params["path"]
+        path = str(params.get("path") or "")
         dst = output_vars["image"]
         return [
             f"_path = Path({path!r})",
@@ -127,17 +127,37 @@ class LoadImageNode(BaseNode):
         ]
 
 
+def resolve_load_paths(params: dict[str, Any]) -> list[Path]:
+    """Prefer asset_batch_id; fall back to legacy path param."""
+    batch_id = str(params.get("asset_batch_id") or "").strip()
+    if batch_id:
+        from app.services.assets import list_batch_paths
+
+        return list_batch_paths(batch_id)
+    path_value = str(params.get("path") or "").strip()
+    if not path_value:
+        return []
+    return list_image_files(Path(path_value))
+
+
 class SaveImageNode(BaseNode):
     type = "save_image"
     label = "Save Image"
     category = "io"
     description = (
-        "Collect image(s) into a ZIP download after the run. "
+        "Write image(s) to an output folder after the run "
+        "(or pack into a ZIP when no folder is set). "
         "Filename supports templates: {filename}, {time}, {index}."
     )
     cacheable = False
     ports = [image_in(), image_out()]
     params = [
+        string_param(
+            "output_dir",
+            "Output Folder",
+            "",
+            description="Local folder for saved images (desktop)",
+        ),
         string_param(
             "filename",
             "Filename",
@@ -160,7 +180,12 @@ class SaveImageNode(BaseNode):
             filename=source_stem_for_sample(sample_index),
             when=datetime.now(),
         )
-        get_save_bundle().add_image(name, image)
+        output_dir = str(params.get("output_dir") or "").strip()
+        if output_dir:
+            written = write_image_to_dir(Path(output_dir), name, image)
+            get_folder_saves().record(written)
+        else:
+            get_save_bundle().add_image(name, image)
         return {"image": image}
 
     def emit_python(
@@ -171,12 +196,13 @@ class SaveImageNode(BaseNode):
         output_vars: dict[str, str],
     ) -> list[str]:
         name_template = str(params.get("filename") or "{filename}_{index}.png")
+        output_dir = str(params.get("output_dir") or "output")
         src = input_vars["image"]
         dst = output_vars["image"]
         return [
             "from datetime import datetime",
             "from pathlib import Path",
-            "_out_dir = Path('output')",
+            f"_out_dir = Path({output_dir!r})",
             "_out_dir.mkdir(parents=True, exist_ok=True)",
             f"_name_template = {name_template!r}",
             "_index = 0  # set per sample when batching",
@@ -197,6 +223,32 @@ class SaveImageNode(BaseNode):
             "cv2.imwrite(str(_out_dir / _name), " + src + ")",
             f"{dst} = {src}",
         ]
+
+
+def write_image_to_dir(directory: Path, name: str, image: np.ndarray) -> Path:
+    """Encode and write an image under directory, avoiding name collisions."""
+    directory.mkdir(parents=True, exist_ok=True)
+    safe = Path(name).name or "image.png"
+    suffix = Path(safe).suffix.lower()
+    if suffix not in {".png", ".jpg", ".jpeg", ".bmp", ".webp"}:
+        safe = f"{Path(safe).stem}.png"
+        suffix = ".png"
+    target = directory / safe
+    stem = target.stem
+    file_suffix = target.suffix
+    index = 2
+    while target.exists():
+        target = directory / f"{stem}_{index}{file_suffix}"
+        index += 1
+    encode_ext = ".jpg" if suffix in {".jpg", ".jpeg"} else suffix
+    success, buffer = cv2.imencode(encode_ext, image)
+    if not success:
+        success, buffer = cv2.imencode(".png", image)
+        target = target.with_suffix(".png")
+    if not success:
+        raise RuntimeError(f"Failed to encode image for '{target.name}'")
+    target.write_bytes(buffer.tobytes())
+    return target.resolve()
 
 
 def resolve_save_filename(

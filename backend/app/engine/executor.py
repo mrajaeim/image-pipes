@@ -16,7 +16,12 @@ import numpy as np
 from app.engine.cache import CacheManager, is_image_value
 from app.engine.registry import NodeRegistry, registry
 from app.engine.run_context import current_sample_index
-from app.engine.save_bundle import SaveBundle, current_save_bundle
+from app.engine.save_bundle import (
+    FolderSaveTracker,
+    SaveBundle,
+    current_folder_saves,
+    current_save_bundle,
+)
 from app.models.graph import (
     Edge,
     ExecuteRequest,
@@ -26,7 +31,6 @@ from app.models.graph import (
     NodeInstance,
     PortDirection,
 )
-from app.nodes.io import list_image_files
 
 
 class DagValidationError(ValueError):
@@ -221,15 +225,14 @@ def _collect_inputs(
 
 def _batch_size_for_graph(graph: Graph) -> int:
     """Largest Load Images batch in the graph (1 when there is no multi-image source)."""
+    from app.nodes.io import resolve_load_paths
+
     size = 1
     for node in graph.nodes:
         if node.type != "load_image":
             continue
-        path_value = str(node.params.get("path", "")).strip()
-        if not path_value:
-            continue
         try:
-            files = list_image_files(Path(path_value))
+            files = resolve_load_paths(node.params)
         except (OSError, ValueError, FileNotFoundError):
             continue
         if files:
@@ -361,7 +364,9 @@ class DagExecutor:
         total_passes = iteration_count * batch_size
         results: dict[str, Any] = {"order": order, "samples": []}
         save_bundle = SaveBundle()
+        folder_saves = FolderSaveTracker()
         bundle_token = current_save_bundle.set(save_bundle)
+        folder_token = current_folder_saves.set(folder_saves)
 
         def emit(event: ExecutionEvent) -> None:
             if on_event is not None:
@@ -471,6 +476,18 @@ class DagExecutor:
                     finally:
                         current_sample_index.reset(sample_token)
 
+            if folder_saves.directories:
+                for directory in sorted(folder_saves.directories):
+                    emit(
+                        ExecutionEvent(
+                            type=ExecutionEventType.SAVED,
+                            message=f"Saved {len(folder_saves.files)} image(s) to {directory}",
+                            saved_dir=directory,
+                            data={"count": len(folder_saves.files), "files": folder_saves.files},
+                        )
+                    )
+                results["saved_dirs"] = sorted(folder_saves.directories)
+
             if save_bundle.files:
                 zip_path = save_bundle.write_zip()
                 download_name = zip_path.name
@@ -490,3 +507,4 @@ class DagExecutor:
             return results
         finally:
             current_save_bundle.reset(bundle_token)
+            current_folder_saves.reset(folder_token)

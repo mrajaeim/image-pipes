@@ -30,6 +30,7 @@ backend/dist/
 /uploads/
 /cache/
 /outputs/
+/assets/
 
 # Node / frontend
 node_modules/

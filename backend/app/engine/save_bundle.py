@@ -60,8 +60,26 @@ class SaveBundle:
         return out.resolve()
 
 
+@dataclass
+class FolderSaveTracker:
+    """Tracks directories written by Save Image when output_dir is set."""
+
+    directories: set[str] = field(default_factory=set)
+    files: list[str] = field(default_factory=list)
+
+    def record(self, path: Path) -> None:
+        resolved = path.resolve()
+        self.files.append(str(resolved))
+        self.directories.add(str(resolved.parent))
+
+
 current_save_bundle: ContextVar[SaveBundle | None] = ContextVar(
     "current_save_bundle",
+    default=None,
+)
+
+current_folder_saves: ContextVar[FolderSaveTracker | None] = ContextVar(
+    "current_folder_saves",
     default=None,
 )
 
@@ -71,6 +89,13 @@ def get_save_bundle() -> SaveBundle:
     if bundle is None:
         raise RuntimeError("Save bundle is not available for this run")
     return bundle
+
+
+def get_folder_saves() -> FolderSaveTracker:
+    tracker = current_folder_saves.get()
+    if tracker is None:
+        raise RuntimeError("Folder save tracker is not available for this run")
+    return tracker
 
 
 def zip_bytes(bundle: SaveBundle) -> bytes:
