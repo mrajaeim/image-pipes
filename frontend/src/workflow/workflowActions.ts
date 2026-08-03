@@ -44,7 +44,7 @@ export function newWorkflow(): void {
 export function saveWorkflow(): WorkflowRecord {
   const state = useGraphStore.getState()
   if (!state.workflowId) {
-    throw new Error('No saved workflow — use Save As')
+    throw new Error('No saved workflow — save with a name first')
   }
   const record = upsertWorkflow(state.toWorkflowDocument())
   state.markWorkflowClean(record)

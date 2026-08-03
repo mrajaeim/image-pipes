@@ -400,17 +400,9 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     previews.splice(index, 1)
     if (index < files.length) files.splice(index, 1)
 
-    let nextPath = String(node.data.params.path ?? '')
     let nextBatchId = String(node.data.params.asset_batch_id ?? '')
     if (previews.length === 0) {
-      nextPath = ''
       nextBatchId = ''
-    } else if (files.length === 1) {
-      nextPath = files[0]
-    } else if (files.length > 1) {
-      // Keep the batch folder so remaining files continue to load together.
-      const parent = files[0]?.replace(/[\\/][^\\/]+$/, '')
-      if (parent) nextPath = parent
     }
 
     set({
@@ -424,8 +416,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 uploadedFiles: files,
                 params: {
                   ...item.data.params,
-                  path: nextPath,
                   asset_batch_id: nextBatchId,
+                  ...(nextBatchId ? {} : { sample: '' }),
                 },
               },
             }
@@ -433,7 +425,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       ),
       workflowDirty: true,
     })
-    return { file: removedFile, path: nextPath, assetBatchId: nextBatchId }
+    return { file: removedFile, path: '', assetBatchId: nextBatchId }
   },
 
   setActiveNodeId: (nodeId) =>
@@ -619,12 +611,18 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   toGraphPayload: () => {
     const { nodes, edges } = get()
     return {
-      nodes: nodes.map((node) => ({
-        id: node.id,
-        type: node.data.type,
-        params: node.data.params,
-        position: node.position,
-      })),
+      nodes: nodes.map((node) => {
+        const params = { ...node.data.params }
+        if (node.data.type === 'load_image') {
+          delete params.path
+        }
+        return {
+          id: node.id,
+          type: node.data.type,
+          params,
+          position: node.position,
+        }
+      }),
       edges: edges.map((edge) => {
         const waypoints = (
           edge.data as { waypoints?: { x: number; y: number }[] } | undefined
