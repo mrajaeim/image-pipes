@@ -7,6 +7,7 @@ import {
   MenuItem,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import { useState } from 'react'
@@ -355,22 +356,34 @@ export function AppHeader({
           border: '1px solid rgba(255,255,255,0.06)',
         }}
       >
-        <TextField
-          size="small"
-          label="Seed"
-          type="number"
-          value={seed}
-          onChange={(e) => setSeed(Number(e.target.value))}
-          sx={fieldSx}
-        />
-        <TextField
-          size="small"
-          label="Samples"
-          type="number"
-          value={sampleCount}
-          onChange={(e) => setSampleCount(Math.max(1, Number(e.target.value) || 1))}
-          sx={fieldSx}
-        />
+        <Tooltip
+          title="Base random seed for stochastic nodes (noise, augmentations, etc.). The same seed gives reproducible results; each sample uses seed + sample index."
+          arrow
+          enterDelay={400}
+        >
+          <TextField
+            size="small"
+            label="Seed"
+            type="number"
+            value={seed}
+            onChange={(e) => setSeed(Number(e.target.value))}
+            sx={fieldSx}
+          />
+        </Tooltip>
+        <Tooltip
+          title="How many times to run the pipeline. Use more than 1 to preview variation from stochastic nodes; each run gets seed + sample index."
+          arrow
+          enterDelay={400}
+        >
+          <TextField
+            size="small"
+            label="Samples"
+            type="number"
+            value={sampleCount}
+            onChange={(e) => setSampleCount(Math.max(1, Number(e.target.value) || 1))}
+            sx={fieldSx}
+          />
+        </Tooltip>
       </Stack>
 
       <Stack
