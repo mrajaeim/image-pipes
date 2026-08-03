@@ -309,6 +309,13 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
     category: data.category,
   })
 
+  const isSaveImage = data.type === 'save_image'
+  const saveOutputDir =
+    typeof data.params.output_dir === 'string' ? data.params.output_dir.trim() : ''
+  const savePackaging = data.params.packaging === 'zip' ? 'zip' : 'bare'
+  const savePathDisplay = saveOutputDir || 'output'
+  const savePathKind = savePackaging === 'zip' ? 'ZIP archive' : 'Bare files'
+
   const ports = useMemo(() => {
     if (data.ports?.length) return data.ports
     return catalog.find((item) => item.type === data.type)?.ports ?? []
@@ -325,12 +332,18 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
 
   const grid = useMemo(
     () =>
-      buildPreviewGrid({
-        entry: nodeImages[id],
-        outputPorts,
-        localPreviewUrls,
-      }),
-    [id, localPreviewUrls, nodeImages, outputPorts],
+      isSaveImage
+        ? {
+            columns: ['image'],
+            slides: [] as ImageItem[][][],
+            sectionPorts: outputPorts.length > 0 ? outputPorts : [],
+          }
+        : buildPreviewGrid({
+            entry: nodeImages[id],
+            outputPorts,
+            localPreviewUrls,
+          }),
+    [id, isSaveImage, localPreviewUrls, nodeImages, outputPorts],
   )
 
   const sectionPorts = grid.sectionPorts
@@ -371,7 +384,9 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
       ? 'Choose images or a folder'
       : data.type === 'annotations'
         ? 'Edit bboxes & keypoints in the inspector'
-        : 'Connect upstream, then Run'
+        : data.type === 'save_image'
+          ? 'Set an output folder in the inspector'
+          : 'Connect upstream, then Run'
 
   const annotationSummary = useMemo(() => {
     const annotations = nodeImages[id]?.annotations
@@ -540,7 +555,48 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
             </Box>
           )}
 
-          {totalSlides === 0 ? (
+          {isSaveImage ? (
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                gap: 0.75,
+                height: Math.max(previewHeight, contentHeight),
+                flex: 1,
+                px: 1.25,
+                py: 1.25,
+                bgcolor: '#141414',
+                backgroundImage:
+                  'repeating-linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 10px, transparent 10px, transparent 20px)',
+              }}
+            >
+              <Typography
+                sx={{
+                  color: 'rgba(255,255,255,0.45)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {savePathKind}
+              </Typography>
+              <Typography
+                title={savePathDisplay}
+                sx={{
+                  color: '#f0ebe3',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  lineHeight: 1.4,
+                  wordBreak: 'break-all',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+                }}
+              >
+                {savePathDisplay}
+              </Typography>
+            </Box>
+          ) : totalSlides === 0 ? (
             <Box
               sx={{
                 display: 'grid',
