@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import zipfile
 from datetime import datetime
 
 import cv2
@@ -100,7 +101,7 @@ def test_executor_emits_download_zip(tmp_path, monkeypatch) -> None:
             ],
         ),
         seed=0,
-        sample_count=2,
+        sample_count=1,
         cache=False,
     )
     executor = DagExecutor(tmp_path / "cache", node_registry=registry)
@@ -111,9 +112,13 @@ def test_executor_emits_download_zip(tmp_path, monkeypatch) -> None:
 
     assert "download" in events
     assert result["download_url"].startswith("/api/downloads/")
+    assert len(result["samples"]) == 2
     zip_name = result["download_filename"]
     zip_path = tmp_path / "downloads" / zip_name
     assert zip_path.is_file()
+
+    with zipfile.ZipFile(zip_path) as archive:
+        assert sorted(archive.namelist()) == ["a_0.png", "b_1.png"]
 
     client = TestClient(app)
     # Point API download dir to the same temp folder used by the executor.

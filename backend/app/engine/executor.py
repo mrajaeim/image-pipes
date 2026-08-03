@@ -26,6 +26,7 @@ from app.models.graph import (
     NodeInstance,
     PortDirection,
 )
+from app.nodes.io import list_image_files
 
 
 class DagValidationError(ValueError):
@@ -189,7 +190,7 @@ def _collect_inputs(
     node_id: str,
     edges: list[Edge],
     outputs: dict[str, dict[str, Any]],
-    sample_index: int = 0,
+    batch_index: int = 0,
 ) -> dict[str, Any]:
     incoming = [edge for edge in edges if edge.target == node_id]
     inputs: dict[str, Any] = {}
@@ -202,13 +203,13 @@ def _collect_inputs(
             value = next(iter(source_outputs.values()))
         if value is None:
             continue
-        # Fan-out batch image inputs one image per sample so unary nodes keep working.
+        # Fan-out batch image lists one image per batch index so unary nodes keep working.
         if (
             isinstance(value, list)
             and value
             and all(isinstance(item, np.ndarray) for item in value)
         ):
-            grouped[edge.target_port].append(value[sample_index % len(value)])
+            grouped[edge.target_port].append(value[batch_index % len(value)])
         else:
             grouped[edge.target_port].append(value)
 
@@ -216,6 +217,24 @@ def _collect_inputs(
         inputs[port] = values[0] if len(values) == 1 else values
 
     return inputs
+
+
+def _batch_size_for_graph(graph: Graph) -> int:
+    """Largest Load Images batch in the graph (1 when there is no multi-image source)."""
+    size = 1
+    for node in graph.nodes:
+        if node.type != "load_image":
+            continue
+        path_value = str(node.params.get("path", "")).strip()
+        if not path_value:
+            continue
+        try:
+            files = list_image_files(Path(path_value))
+        except (OSError, ValueError, FileNotFoundError):
+            continue
+        if files:
+            size = max(size, len(files))
+    return size
 
 
 def _input_hashes(
@@ -231,6 +250,7 @@ def _emit_port_previews(
     node_id: str,
     produced: dict[str, Any],
     sample_index: int,
+    batch_index: int,
     cache_hit: bool,
     sample_previews: dict[str, Any],
 ) -> None:
@@ -242,22 +262,25 @@ def _emit_port_previews(
     for port_id, value in produced.items():
         if is_image_value(value):
             if isinstance(value, list):
-                encoded_list: list[str] = []
-                for index, image in enumerate(value):
-                    preview = _encode_preview(image)
-                    encoded_list.append(preview)
-                    emit(
-                        ExecutionEvent(
-                            type=ExecutionEventType.PREVIEW,
-                            node_id=node_id,
-                            port_id=port_id,
-                            image_b64=preview,
-                            sample_index=index,
-                            cache_hit=cache_hit,
-                        )
+                if not value:
+                    continue
+                image = value[batch_index % len(value)]
+                if not isinstance(image, np.ndarray):
+                    continue
+                preview = _encode_preview(image)
+                port_previews[port_id] = preview
+                # Key source batch previews by batch index so iterations do not
+                # duplicate the Load Images thumbnails in the UI.
+                emit(
+                    ExecutionEvent(
+                        type=ExecutionEventType.PREVIEW,
+                        node_id=node_id,
+                        port_id=port_id,
+                        image_b64=preview,
+                        sample_index=batch_index,
+                        cache_hit=cache_hit,
                     )
-                if encoded_list:
-                    port_previews[port_id] = encoded_list
+                )
                 continue
 
             image = _as_image(value)
@@ -324,7 +347,10 @@ class DagExecutor:
         if request.target_node_id:
             keep = ancestors_through_target(request.graph, request.target_node_id)
             order = [node_id for node_id in order if node_id in keep]
-        sample_count = max(1, request.sample_count)
+        # sample_count == UI "Iterations": how many times to run the full image set.
+        iteration_count = max(1, request.sample_count)
+        batch_size = _batch_size_for_graph(request.graph)
+        total_passes = iteration_count * batch_size
         results: dict[str, Any] = {"order": order, "samples": []}
         save_bundle = SaveBundle()
         bundle_token = current_save_bundle.set(save_bundle)
@@ -334,96 +360,107 @@ class DagExecutor:
                 on_event(event)
 
         try:
-            for sample_index in range(sample_count):
-                cancel.check()
-                sample_seed = request.seed + sample_index
-                sample_token = current_sample_index.set(sample_index)
-                outputs: dict[str, dict[str, Any]] = {}
-                sample_previews: dict[str, Any] = {}
+            for iteration in range(iteration_count):
+                # Stochastic seed is per iteration, shared across the image batch.
+                iteration_seed = request.seed + iteration
+                for batch_index in range(batch_size):
+                    cancel.check()
+                    flat_index = iteration * batch_size + batch_index
+                    sample_token = current_sample_index.set(flat_index)
+                    outputs: dict[str, dict[str, Any]] = {}
+                    sample_previews: dict[str, Any] = {}
 
-                try:
-                    for index, node_id in enumerate(order):
-                        cancel.check()
-                        instance = nodes[node_id]
-                        node_impl = self.registry.get(instance.type)
-                        params = node_impl.validate_params(instance.params)
-                        node_impl.prepare_run(params)
-                        inputs = _collect_inputs(
-                            node_id,
-                            request.graph.edges,
-                            outputs,
-                            sample_index=sample_index,
-                        )
-                        input_hash_map = _input_hashes(inputs, self.cache)
-                        cache_key = self.cache.make_key(
-                            instance.type, params, input_hash_map, sample_seed
-                        )
-
-                        emit(
-                            ExecutionEvent(
-                                type=ExecutionEventType.PROGRESS,
-                                node_id=node_id,
-                                progress=(index + 1) / len(order),
-                                sample_index=sample_index,
-                                message=f"Executing {instance.type}",
+                    try:
+                        for index, node_id in enumerate(order):
+                            cancel.check()
+                            instance = nodes[node_id]
+                            node_impl = self.registry.get(instance.type)
+                            params = node_impl.validate_params(instance.params)
+                            node_impl.prepare_run(params)
+                            inputs = _collect_inputs(
+                                node_id,
+                                request.graph.edges,
+                                outputs,
+                                batch_index=batch_index,
                             )
-                        )
+                            input_hash_map = _input_hashes(inputs, self.cache)
+                            cache_key = self.cache.make_key(
+                                instance.type, params, input_hash_map, iteration_seed
+                            )
 
-                        cache_hit = False
-                        produced: dict[str, Any]
-                        started = time.perf_counter()
-                        use_cache = request.cache and node_impl.cacheable
-                        if use_cache and self.cache.has_outputs(cache_key):
-                            cached = self.cache.get_outputs(cache_key)
-                            if cached is not None:
-                                produced = cached
-                                outputs[node_id] = produced
-                                cache_hit = True
-
-                        if not cache_hit:
-                            produced = node_impl.execute(inputs, params, seed=sample_seed)
-                            outputs[node_id] = produced
-                            if use_cache:
-                                self.cache.put_outputs(
-                                    cache_key,
-                                    produced,
-                                    meta={"node_id": node_id, "type": instance.type},
+                            progress = (flat_index * len(order) + index + 1) / (
+                                total_passes * len(order)
+                            )
+                            emit(
+                                ExecutionEvent(
+                                    type=ExecutionEventType.PROGRESS,
+                                    node_id=node_id,
+                                    progress=progress,
+                                    sample_index=flat_index,
+                                    message=f"Executing {instance.type}",
                                 )
-
-                        duration_ms = (time.perf_counter() - started) * 1000.0
-                        emit(
-                            ExecutionEvent(
-                                type=ExecutionEventType.PROGRESS,
-                                node_id=node_id,
-                                progress=(index + 1) / len(order),
-                                sample_index=sample_index,
-                                cache_hit=cache_hit,
-                                duration_ms=duration_ms,
-                                message=(
-                                    f"Finished {instance.type} in {duration_ms:.1f}ms"
-                                    + (" (cache)" if cache_hit else "")
-                                ),
                             )
-                        )
 
-                        _emit_port_previews(
-                            emit=emit,
-                            node_id=node_id,
-                            produced=produced,
-                            sample_index=sample_index,
-                            cache_hit=cache_hit,
-                            sample_previews=sample_previews,
-                        )
+                            cache_hit = False
+                            produced: dict[str, Any]
+                            started = time.perf_counter()
+                            use_cache = request.cache and node_impl.cacheable
+                            if use_cache and self.cache.has_outputs(cache_key):
+                                cached = self.cache.get_outputs(cache_key)
+                                if cached is not None:
+                                    produced = cached
+                                    outputs[node_id] = produced
+                                    cache_hit = True
 
-                    results["samples"].append(
-                        {
-                            "sample_index": sample_index,
-                            "seed": sample_seed,
-                            "previews": sample_previews,
-                        }
-                    )
-                finally:
-                    current_sample_index.reset(sample_token)
+                            if not cache_hit:
+                                produced = node_impl.execute(
+                                    inputs, params, seed=iteration_seed
+                                )
+                                outputs[node_id] = produced
+                                if use_cache:
+                                    self.cache.put_outputs(
+                                        cache_key,
+                                        produced,
+                                        meta={"node_id": node_id, "type": instance.type},
+                                    )
+
+                            duration_ms = (time.perf_counter() - started) * 1000.0
+                            emit(
+                                ExecutionEvent(
+                                    type=ExecutionEventType.PROGRESS,
+                                    node_id=node_id,
+                                    progress=progress,
+                                    sample_index=flat_index,
+                                    cache_hit=cache_hit,
+                                    duration_ms=duration_ms,
+                                    message=(
+                                        f"Finished {instance.type} in {duration_ms:.1f}ms"
+                                        + (" (cache)" if cache_hit else "")
+                                    ),
+                                )
+                            )
+
+                            _emit_port_previews(
+                                emit=emit,
+                                node_id=node_id,
+                                produced=produced,
+                                sample_index=flat_index,
+                                batch_index=batch_index,
+                                cache_hit=cache_hit,
+                                sample_previews=sample_previews,
+                            )
+
+                        results["samples"].append(
+                            {
+                                "sample_index": flat_index,
+                                "iteration": iteration,
+                                "batch_index": batch_index,
+                                "seed": iteration_seed,
+                                "previews": sample_previews,
+                            }
+                        )
+                    finally:
+                        current_sample_index.reset(sample_token)
 
             if save_bundle.files:
                 zip_path = save_bundle.write_zip()
