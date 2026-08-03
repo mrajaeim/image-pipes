@@ -20,8 +20,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
  * sample via /api/sample-image and attach it like a normal file pick.
  */
 export async function materializeSampleImages(): Promise<void> {
-  const { nodes, updateNodeParams, setLocalPreviews, setSampleCount } =
-    useGraphStore.getState()
+  const { nodes, updateNodeParams, setLocalPreviews } = useGraphStore.getState()
   const targets = nodes.filter(
     (node) =>
       node.data.type === 'load_image' &&
@@ -51,5 +50,4 @@ export async function materializeSampleImages(): Promise<void> {
     updateNodeParams(node.id, { path: result.path })
     setLocalPreviews(node.id, [dataUrl], result.files)
   }
-  setSampleCount(1)
 }

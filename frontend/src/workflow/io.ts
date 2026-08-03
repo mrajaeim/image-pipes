@@ -33,7 +33,8 @@ export interface WorkflowDocument {
   createdAt?: string
   updatedAt?: string
   seed: number
-  sampleCount: number
+  /** How many times to run the pipeline (stochastic variation). */
+  iterationCount: number
   graph: WorkflowGraphPayload
 }
 
@@ -89,13 +90,17 @@ function normalizeGraph(graph: WorkflowGraphPayload): WorkflowGraphPayload {
   }
 }
 
-function readSampleCount(value: Record<string, unknown>): number {
+function readIterationCount(value: Record<string, unknown>): number {
   const raw =
-    typeof value.sampleCount === 'number'
-      ? value.sampleCount
-      : typeof value.sample_count === 'number'
-        ? value.sample_count
-        : 1
+    typeof value.iterationCount === 'number'
+      ? value.iterationCount
+      : typeof value.iteration_count === 'number'
+        ? value.iteration_count
+        : typeof value.sampleCount === 'number'
+          ? value.sampleCount
+          : typeof value.sample_count === 'number'
+            ? value.sample_count
+            : 1
   return Math.max(1, raw)
 }
 
@@ -142,7 +147,7 @@ export function coerceWorkflowDocument(value: unknown): WorkflowDocument {
     ...(createdAt ? { createdAt } : {}),
     ...(updatedAt ? { updatedAt } : {}),
     seed: typeof value.seed === 'number' ? value.seed : 0,
-    sampleCount: readSampleCount(value),
+    iterationCount: readIterationCount(value),
     graph: normalizeGraph(graph),
   }
 }

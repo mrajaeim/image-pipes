@@ -55,7 +55,7 @@ interface GraphState {
   generatedCode: string
   isExecuting: boolean
   seed: number
-  sampleCount: number
+  iterationCount: number
   /** Bumped on loadWorkflow so the canvas can refit the viewport. */
   graphRevision: number
   workflowId: string | null
@@ -89,9 +89,9 @@ interface GraphState {
   setGeneratedCode: (code: string) => void
   setIsExecuting: (value: boolean) => void
   setSeed: (seed: number) => void
-  setSampleCount: (count: number) => void
+  setIterationCount: (count: number) => void
   setWorkflowMeta: (meta: { name?: string; description?: string }) => void
-  markworkflowDirty: () => void
+  markWorkflowDirty: () => void
   markWorkflowClean: (record?: {
     id: string
     name: string
@@ -165,7 +165,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   generatedCode: '# Run codegen to export a Python script\n',
   isExecuting: false,
   seed: 0,
-  sampleCount: 1,
+  iterationCount: 1,
   graphRevision: 0,
   workflowId: null,
   workflowName: DEFAULT_WORKFLOW_NAME,
@@ -419,7 +419,6 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             }
           : item,
       ),
-      sampleCount: Math.max(1, previews.length),
       workflowDirty: true,
     })
     return { file: removedFile, path: nextPath }
@@ -505,7 +504,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setGeneratedCode: (code) => set({ generatedCode: code }),
   setIsExecuting: (value) => set({ isExecuting: value }),
   setSeed: (seed) => set({ seed, workflowDirty: true }),
-  setSampleCount: (count) => set({ sampleCount: Math.max(1, count), workflowDirty: true }),
+  setIterationCount: (count) => set({ iterationCount: Math.max(1, count), workflowDirty: true }),
 
   setWorkflowMeta: (meta) =>
     set((state) => ({
@@ -518,7 +517,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       workflowDirty: true,
     })),
 
-  markworkflowDirty: () => set({ workflowDirty: true }),
+  markWorkflowDirty: () => set({ workflowDirty: true }),
 
   markWorkflowClean: (record) =>
     set((state) => ({
@@ -547,7 +546,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       isExecuting: false,
       generatedCode: '# Run codegen to export a Python script\n',
       seed: 0,
-      sampleCount: 1,
+      iterationCount: 1,
       graphRevision: get().graphRevision + 1,
       workflowId: null,
       workflowName: DEFAULT_WORKFLOW_NAME,
@@ -621,7 +620,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   toWorkflowDocument: () => {
     const {
       seed,
-      sampleCount,
+      iterationCount,
       workflowId,
       workflowName,
       workflowDescription,
@@ -636,7 +635,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       ...(workflowCreatedAt ? { createdAt: workflowCreatedAt } : {}),
       ...(workflowUpdatedAt ? { updatedAt: workflowUpdatedAt } : {}),
       seed,
-      sampleCount,
+      iterationCount,
       graph: get().toGraphPayload(),
     }
   },
@@ -711,7 +710,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       isExecuting: false,
       generatedCode: '# Run codegen to export a Python script\n',
       seed: doc.seed,
-      sampleCount: Math.max(1, doc.sampleCount),
+      iterationCount: Math.max(1, doc.iterationCount),
       graphRevision: get().graphRevision + 1,
       workflowId: doc.id ?? null,
       workflowName: doc.name || DEFAULT_WORKFLOW_NAME,

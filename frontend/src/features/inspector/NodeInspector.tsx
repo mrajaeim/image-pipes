@@ -38,7 +38,6 @@ export function NodeInspector() {
   const updateNodeParams = useGraphStore((s) => s.updateNodeParams)
   const setLocalPreviews = useGraphStore((s) => s.setLocalPreviews)
   const removeLocalPreview = useGraphStore((s) => s.removeLocalPreview)
-  const setSampleCount = useGraphStore((s) => s.setSampleCount)
 
   const selected = nodes.find((node) => node.id === selectedNodeId) ?? null
   const meta = catalog.find((item) => item.type === selected?.data.type)
@@ -167,9 +166,6 @@ export function NodeInspector() {
                       void fetch(`/api/uploads?path=${encodeURIComponent(result.file)}`, {
                         method: 'DELETE',
                       })
-                    }}
-                    onBatchCount={(count) => {
-                      setSampleCount(Math.max(1, count))
                     }}
                   />
                 )

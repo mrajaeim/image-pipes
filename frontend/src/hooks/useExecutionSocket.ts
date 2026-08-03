@@ -36,7 +36,7 @@ export function useExecutionSocket() {
   const setNodeTiming = useGraphStore((s) => s.setNodeTiming)
   const toGraphPayload = useGraphStore((s) => s.toGraphPayload)
   const seed = useGraphStore((s) => s.seed)
-  const sampleCount = useGraphStore((s) => s.sampleCount)
+  const iterationCount = useGraphStore((s) => s.iterationCount)
   const targetLabelRef = useRef<string | null>(null)
 
   const cancel = useCallback(() => {
@@ -62,7 +62,7 @@ export function useExecutionSocket() {
           JSON.stringify({
             graph: toGraphPayload(),
             seed,
-            sample_count: sampleCount,
+            sample_count: iterationCount,
             cache: true,
             ...(options?.targetNodeId
               ? { target_node_id: options.targetNodeId }
@@ -162,7 +162,7 @@ export function useExecutionSocket() {
       addPreview,
       appendLog,
       clearExecution,
-      sampleCount,
+      iterationCount,
       seed,
       setActiveNodeId,
       setIsExecuting,

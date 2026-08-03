@@ -11,7 +11,6 @@ interface FileParamInputProps {
   onChange: (path: string) => void
   onPreviews?: (dataUrls: string[], uploadedFiles: string[]) => void
   onRemovePreview?: (index: number) => void
-  onBatchCount?: (count: number) => void
 }
 
 interface UploadResponse {
@@ -85,7 +84,6 @@ export function FileParamInput({
   onChange,
   onPreviews,
   onRemovePreview,
-  onBatchCount,
 }: FileParamInputProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const addRef = useRef<HTMLInputElement>(null)
@@ -133,7 +131,6 @@ export function FileParamInput({
         const nextFiles = [...uploadedFiles, ...result.files]
         onPreviews?.(nextUrls, nextFiles)
         onChange(result.path)
-        onBatchCount?.(nextUrls.length)
         notifySuccess(
           result.count > 1
             ? `Added ${result.count} images (${nextUrls.length} total)`
@@ -142,7 +139,6 @@ export function FileParamInput({
       } else {
         onPreviews?.(urls, result.files)
         onChange(result.path)
-        onBatchCount?.(result.count)
         notifySuccess(
           result.count > 1 ? `${result.count} images loaded` : 'Image loaded',
         )

@@ -15,7 +15,7 @@ import { useGraphStore } from '../store/graphStore'
 import { ProjectInfoModal } from './ProjectInfoModal'
 
 const fieldSx = {
-  width: 92,
+  width: 100,
   '& .MuiInputBase-root': {
     color: '#f0ebe3',
     bgcolor: '#0f0f0f',
@@ -177,9 +177,9 @@ export function AppHeader({
   onOpenRecent,
 }: AppHeaderProps) {
   const seed = useGraphStore((s) => s.seed)
-  const sampleCount = useGraphStore((s) => s.sampleCount)
+  const iterationCount = useGraphStore((s) => s.iterationCount)
   const setSeed = useGraphStore((s) => s.setSeed)
-  const setSampleCount = useGraphStore((s) => s.setSampleCount)
+  const setIterationCount = useGraphStore((s) => s.setIterationCount)
   const isExecuting = useGraphStore((s) => s.isExecuting)
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
   const nodeCount = useGraphStore((s) => s.nodes.length)
@@ -357,7 +357,7 @@ export function AppHeader({
         }}
       >
         <Tooltip
-          title="Base random seed for stochastic nodes (noise, augmentations, etc.). The same seed gives reproducible results; each sample uses seed + sample index."
+          title="Base random seed for stochastic nodes (noise, augmentations, etc.). The same seed gives reproducible results; each iteration uses seed + iteration index."
           arrow
           enterDelay={400}
         >
@@ -371,16 +371,16 @@ export function AppHeader({
           />
         </Tooltip>
         <Tooltip
-          title="How many times to run the pipeline. Use more than 1 to preview variation from stochastic nodes; each run gets seed + sample index."
+          title="How many times to run the full pipeline over your image set. A batch of 10 images with Iterations=1 runs once; raise this to preview stochastic variation."
           arrow
           enterDelay={400}
         >
           <TextField
             size="small"
-            label="Samples"
+            label="Iterations"
             type="number"
-            value={sampleCount}
-            onChange={(e) => setSampleCount(Math.max(1, Number(e.target.value) || 1))}
+            value={iterationCount}
+            onChange={(e) => setIterationCount(Math.max(1, Number(e.target.value) || 1))}
             sx={fieldSx}
           />
         </Tooltip>

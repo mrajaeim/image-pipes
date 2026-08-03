@@ -17,7 +17,7 @@ export function useWorkflowPersistence() {
   const nodes = useGraphStore((s) => s.nodes)
   const edges = useGraphStore((s) => s.edges)
   const seed = useGraphStore((s) => s.seed)
-  const sampleCount = useGraphStore((s) => s.sampleCount)
+  const iterationCount = useGraphStore((s) => s.iterationCount)
   const workflowId = useGraphStore((s) => s.workflowId)
   const workflowName = useGraphStore((s) => s.workflowName)
   const workflowDescription = useGraphStore((s) => s.workflowDescription)
@@ -65,7 +65,7 @@ export function useWorkflowPersistence() {
     nodes,
     edges,
     seed,
-    sampleCount,
+    iterationCount,
     workflowId,
     workflowName,
     workflowDescription,
