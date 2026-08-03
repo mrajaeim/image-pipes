@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useGraphStore } from '../store/graphStore'
 import { materializeSampleImages } from '../workflow/materializeSampleImages'
 import { loadWorkflowSession, saveWorkflowSession } from '../workflow/persist'
+import { getProject } from '../workflow/projectLibrary'
 
 const SAVE_DEBOUNCE_MS = 400
 
@@ -24,8 +25,24 @@ export function useWorkflowPersistence() {
     if (restoredRef.current || nodeCatalog.length === 0) return
     restoredRef.current = true
     const saved = loadWorkflowSession()
-    if (saved && saved.graph.nodes.length > 0) {
-      loadWorkflow(saved)
+    if (saved && saved.document.graph.nodes.length > 0) {
+      const libraryProject =
+        saved.activeProjectId != null ? getProject(saved.activeProjectId) : null
+      const doc = libraryProject
+        ? {
+            ...saved.document,
+            id: libraryProject.id,
+            name: libraryProject.name,
+            description: libraryProject.description,
+            createdAt: libraryProject.createdAt,
+            updatedAt: libraryProject.updatedAt,
+          }
+        : {
+            ...saved.document,
+            // File/session drafts are not library entries until Save As.
+            id: undefined,
+          }
+      loadWorkflow(doc)
       void materializeSampleImages().catch(() => {
         // Session may already have real upload paths; ignore sample staging failures.
       })
@@ -36,14 +53,18 @@ export function useWorkflowPersistence() {
   useEffect(() => {
     if (!sessionReady) return
     const timer = window.setTimeout(() => {
-      saveWorkflowSession(toWorkflowDocument())
+      const doc = toWorkflowDocument()
+      saveWorkflowSession(doc, doc.id ?? null)
     }, SAVE_DEBOUNCE_MS)
     return () => window.clearTimeout(timer)
   }, [sessionReady, nodes, edges, seed, sampleCount, toWorkflowDocument])
 
   useEffect(() => {
     if (!sessionReady) return
-    const flush = () => saveWorkflowSession(toWorkflowDocument())
+    const flush = () => {
+      const doc = toWorkflowDocument()
+      saveWorkflowSession(doc, doc.id ?? null)
+    }
     window.addEventListener('beforeunload', flush)
     return () => window.removeEventListener('beforeunload', flush)
   }, [sessionReady, toWorkflowDocument])

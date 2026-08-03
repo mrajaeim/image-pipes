@@ -7,19 +7,66 @@ import {
 
 export const WORKFLOW_SESSION_KEY = 'image-pipes.workflow.v1'
 
-export function saveWorkflowSession(doc: WorkflowDocument): void {
+export interface WorkflowSession {
+  activeProjectId: string | null
+  document: WorkflowDocument
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function readOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+/** Accept the new session envelope or a legacy bare WorkflowDocument. */
+export function coerceWorkflowSession(value: unknown): WorkflowSession | null {
+  if (!isRecord(value)) return null
+
+  if (isRecord(value.document)) {
+    try {
+      return {
+        activeProjectId: readOptionalString(value.activeProjectId),
+        document: coerceWorkflowDocument(value.document),
+      }
+    } catch {
+      return null
+    }
+  }
+
   try {
-    localStorage.setItem(WORKFLOW_SESSION_KEY, JSON.stringify(doc))
+    return {
+      activeProjectId: null,
+      document: coerceWorkflowDocument(value),
+    }
+  } catch {
+    return null
+  }
+}
+
+export function saveWorkflowSession(
+  doc: WorkflowDocument,
+  activeProjectId: string | null = doc.id ?? null,
+): void {
+  try {
+    const session: WorkflowSession = {
+      activeProjectId,
+      document: doc,
+    }
+    localStorage.setItem(WORKFLOW_SESSION_KEY, JSON.stringify(session))
   } catch {
     // Quota or private mode — ignore; export still works.
   }
 }
 
-export function loadWorkflowSession(): WorkflowDocument | null {
+export function loadWorkflowSession(): WorkflowSession | null {
   try {
     const raw = localStorage.getItem(WORKFLOW_SESSION_KEY)
     if (!raw) return null
-    return coerceWorkflowDocument(JSON.parse(raw) as unknown)
+    return coerceWorkflowSession(JSON.parse(raw) as unknown)
   } catch {
     return null
   }
