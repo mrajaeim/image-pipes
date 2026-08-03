@@ -453,16 +453,17 @@ class DagExecutor:
                                 )
                             )
 
-                            _emit_port_previews(
-                                emit=emit,
-                                node_id=node_id,
-                                produced=produced,
-                                sample_index=flat_index,
-                                iteration=iteration,
-                                batch_index=batch_index,
-                                cache_hit=cache_hit,
-                                sample_previews=sample_previews,
-                            )
+                            if instance.type != "save_image":
+                                _emit_port_previews(
+                                    emit=emit,
+                                    node_id=node_id,
+                                    produced=produced,
+                                    sample_index=flat_index,
+                                    iteration=iteration,
+                                    batch_index=batch_index,
+                                    cache_hit=cache_hit,
+                                    sample_previews=sample_previews,
+                                )
 
                         results["samples"].append(
                             {
@@ -489,19 +490,24 @@ class DagExecutor:
                 results["saved_dirs"] = sorted(folder_saves.directories)
 
             if save_bundle.files:
-                zip_path = save_bundle.write_zip()
-                download_name = zip_path.name
-                emit(
-                    ExecutionEvent(
-                        type=ExecutionEventType.DOWNLOAD,
-                        message=f"Ready to download {len(save_bundle.files)} image(s)",
-                        download_url=f"/api/downloads/{download_name}",
-                        download_filename=download_name,
-                        data={"count": len(save_bundle.files)},
+                zip_paths = save_bundle.write_zips()
+                results["saved_zips"] = [str(path) for path in zip_paths]
+                if len(zip_paths) == 1:
+                    results["saved_zip"] = str(zip_paths[0])
+                results.setdefault("saved_dirs", [])
+                for zip_path in zip_paths:
+                    zip_str = str(zip_path)
+                    emit(
+                        ExecutionEvent(
+                            type=ExecutionEventType.SAVED,
+                            message=f"Saved ZIP to {zip_str}",
+                            saved_dir=str(zip_path.parent),
+                            data={"count": 1, "files": [zip_str]},
+                        )
                     )
-                )
-                results["download_url"] = f"/api/downloads/{download_name}"
-                results["download_filename"] = download_name
+                    parent = str(zip_path.parent)
+                    if parent not in results["saved_dirs"]:
+                        results["saved_dirs"].append(parent)
 
             emit(ExecutionEvent(type=ExecutionEventType.DONE, message="Execution complete"))
             return results
