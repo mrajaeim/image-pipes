@@ -1,4 +1,6 @@
 import { Box, Button, TextField, Typography } from '@mui/material'
+import { getDesktop, isDesktopApp } from '../../api/assets'
+import { notifyError } from '../../notify'
 
 const SAVE_PATH_TEMPLATES = [
   { token: '{filename}', hint: 'source stem' },
@@ -8,20 +10,62 @@ const SAVE_PATH_TEMPLATES = [
 
 type SaveImageParamsProps = {
   filename: string
+  outputDir: string
   onFilenameChange: (filename: string) => void
+  onOutputDirChange: (outputDir: string) => void
 }
 
-export function SaveImageParams({ filename, onFilenameChange }: SaveImageParamsProps) {
+export function SaveImageParams({
+  filename,
+  outputDir,
+  onFilenameChange,
+  onOutputDirChange,
+}: SaveImageParamsProps) {
+  const desktop = isDesktopApp()
+
   const insertTemplate = (token: string) => {
     onFilenameChange(`${filename}${token}`)
+  }
+
+  const pickFolder = async () => {
+    const bridge = getDesktop()
+    if (!bridge) return
+    try {
+      const result = await bridge.pickFolder()
+      if (result.canceled || !result.path) return
+      onOutputDirChange(result.path)
+    } catch (err) {
+      notifyError(err instanceof Error ? err.message : 'Could not pick folder')
+    }
   }
 
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }}>
       <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.55)', lineHeight: 1.45 }}>
-        After Run, images are packed into a ZIP and your browser downloads it. No local folder
-        access is required.
+        {desktop
+          ? 'Pick an output folder to write images after Run. Leave empty to fall back to a ZIP download.'
+          : 'After Run, images are packed into a ZIP and downloaded. Set an output folder when running on desktop.'}
       </Typography>
+
+      <Box sx={{ display: 'grid', gap: 1 }}>
+        <TextField
+          size="small"
+          label="Output folder"
+          value={outputDir}
+          onChange={(event) => onOutputDirChange(event.target.value)}
+          helperText={desktop ? 'Required for direct disk writes' : 'Optional on desktop builds'}
+        />
+        {desktop && (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => void pickFolder()}
+            sx={{ textTransform: 'none', justifySelf: 'start' }}
+          >
+            Choose folder
+          </Button>
+        )}
+      </Box>
 
       <TextField
         size="small"

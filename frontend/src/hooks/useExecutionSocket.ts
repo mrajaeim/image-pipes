@@ -111,9 +111,25 @@ export function useExecutionSocket() {
           setIsExecuting(false)
           setActiveNodeId(null)
         }
+        if (event.type === 'saved' && event.saved_dir) {
+          appendLog(event.message ?? `Saved to ${event.saved_dir}`)
+          notifySuccess(event.message ?? `Saved to ${event.saved_dir}`)
+          const reveal = window.imagePipesDesktop?.revealInFolder
+          if (reveal) {
+            const files = event.data?.files
+            const firstFile =
+              Array.isArray(files) && typeof files[0] === 'string'
+                ? files[0]
+                : event.saved_dir
+            void reveal(firstFile).catch(() => {
+              /* ignore reveal failures */
+            })
+          }
+        }
         if (event.type === 'download' && event.download_url) {
           const filename = event.download_filename ?? 'results.zip'
           appendLog(event.message ?? `Download ready: ${filename}`)
+          // Desktop with folder saves already revealed the output; ZIP is fallback only.
           const anchor = document.createElement('a')
           anchor.href = event.download_url
           anchor.download = filename

@@ -108,9 +108,14 @@ export function NodeInspector() {
             filename={String(
               selected.data.params.filename ?? '{filename}_{index}.png',
             )}
+            outputDir={String(selected.data.params.output_dir ?? '')}
             onFilenameChange={(filename) => {
               setValue('filename', filename, { shouldDirty: true, shouldValidate: true })
               updateNodeParams(selected.id, { filename })
+            }}
+            onOutputDirChange={(outputDir) => {
+              setValue('output_dir', outputDir, { shouldDirty: true, shouldValidate: true })
+              updateNodeParams(selected.id, { output_dir: outputDir })
             }}
           />
         ) : isAnnotations ? (
@@ -142,30 +147,58 @@ export function NodeInspector() {
               </Typography>
             )}
             {fields.map((field) => {
+              if (field.name === 'asset_batch_id' || field.name === 'output_dir') {
+                return null
+              }
               if (field.type === 'file') {
                 return (
                   <FileParamInput
                     key={field.name}
                     field={field}
                     value={String(selected.data.params[field.name] ?? '')}
+                    assetBatchId={String(selected.data.params.asset_batch_id ?? '')}
                     previewUrls={selected.data.localPreviewUrls ?? []}
                     uploadedFiles={selected.data.uploadedFiles ?? []}
                     onChange={(path) => {
                       setValue(field.name, path, { shouldDirty: true, shouldValidate: true })
                       updateNodeParams(selected.id, { [field.name]: path })
                     }}
+                    onAssetBatchId={(batchId) => {
+                      setValue('asset_batch_id', batchId, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                      updateNodeParams(selected.id, { asset_batch_id: batchId })
+                    }}
                     onPreviews={(urls, files) => setLocalPreviews(selected.id, urls, files)}
                     onRemovePreview={(index) => {
+                      const prevBatchId = String(
+                        selected.data.params.asset_batch_id ?? '',
+                      )
                       const result = removeLocalPreview(selected.id, index)
                       if (!result) return
                       setValue(field.name, result.path, {
                         shouldDirty: true,
                         shouldValidate: true,
                       })
+                      if (result.assetBatchId !== undefined) {
+                        setValue('asset_batch_id', result.assetBatchId, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
                       if (!result.file) return
-                      void fetch(`/api/uploads?path=${encodeURIComponent(result.file)}`, {
-                        method: 'DELETE',
-                      })
+                      if (prevBatchId) {
+                        const name = result.file.replace(/^.*[\\/]/, '')
+                        void fetch(
+                          `/api/assets/${prevBatchId}/files/${encodeURIComponent(name)}`,
+                          { method: 'DELETE' },
+                        )
+                      } else {
+                        void fetch(`/api/uploads?path=${encodeURIComponent(result.file)}`, {
+                          method: 'DELETE',
+                        })
+                      }
                     }}
                   />
                 )

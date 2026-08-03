@@ -85,6 +85,7 @@ interface GraphState {
   removeLocalPreview: (nodeId: string, index: number) => {
     file: string | null
     path: string
+    assetBatchId?: string
   } | null
   setActiveNodeId: (nodeId: string | null) => void
   addPreview: (preview: ExecutionPreview) => void
@@ -400,8 +401,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     if (index < files.length) files.splice(index, 1)
 
     let nextPath = String(node.data.params.path ?? '')
+    let nextBatchId = String(node.data.params.asset_batch_id ?? '')
     if (previews.length === 0) {
       nextPath = ''
+      nextBatchId = ''
     } else if (files.length === 1) {
       nextPath = files[0]
     } else if (files.length > 1) {
@@ -419,14 +422,18 @@ export const useGraphStore = create<GraphState>((set, get) => ({
                 ...item.data,
                 localPreviewUrls: previews,
                 uploadedFiles: files,
-                params: { ...item.data.params, path: nextPath },
+                params: {
+                  ...item.data.params,
+                  path: nextPath,
+                  asset_batch_id: nextBatchId,
+                },
               },
             }
           : item,
       ),
       workflowDirty: true,
     })
-    return { file: removedFile, path: nextPath }
+    return { file: removedFile, path: nextPath, assetBatchId: nextBatchId }
   },
 
   setActiveNodeId: (nodeId) =>

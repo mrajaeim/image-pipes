@@ -1,23 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
 import { Box, Button, IconButton, TextField, Typography } from '@mui/material'
+import {
+  batchDisplayPath,
+  batchFilePaths,
+  batchPreviewUrls,
+  isDesktopApp,
+  getDesktop,
+  registerLocalPaths,
+  uploadImageFiles,
+} from '../../api/assets'
 import type { ParamField } from '../../types'
 import { notifyError, notifySuccess } from '../../notify'
 
 interface FileParamInputProps {
   field: ParamField
   value: string
+  assetBatchId?: string
   previewUrls?: string[]
   uploadedFiles?: string[]
   onChange: (path: string) => void
+  onAssetBatchId?: (batchId: string) => void
   onPreviews?: (dataUrls: string[], uploadedFiles: string[]) => void
   onRemovePreview?: (index: number) => void
-}
-
-interface UploadResponse {
-  path: string
-  kind: string
-  files: string[]
-  count: number
 }
 
 function acceptAttr(field: ParamField): string {
@@ -45,28 +49,6 @@ function parentDir(filePath: string): string {
   return filePath.replace(/[\\/][^\\/]+$/, '')
 }
 
-async function uploadFiles(
-  files: File[],
-  asFolder: boolean,
-  appendTo?: string,
-): Promise<UploadResponse> {
-  const body = new FormData()
-  for (const file of files) {
-    body.append('files', file, file.name)
-  }
-  const params = new URLSearchParams({ as_folder: asFolder ? 'true' : 'false' })
-  if (appendTo) params.set('append_to', appendTo)
-  const response = await fetch(`/api/uploads?${params.toString()}`, {
-    method: 'POST',
-    body,
-  })
-  if (!response.ok) {
-    const detail = await response.text()
-    throw new Error(detail || 'Upload failed')
-  }
-  return response.json() as Promise<UploadResponse>
-}
-
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -79,9 +61,11 @@ function readFileAsDataUrl(file: File): Promise<string> {
 export function FileParamInput({
   field,
   value,
+  assetBatchId = '',
   previewUrls = [],
   uploadedFiles = [],
   onChange,
+  onAssetBatchId,
   onPreviews,
   onRemovePreview,
 }: FileParamInputProps) {
@@ -90,6 +74,7 @@ export function FileParamInput({
   const folderRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const desktop = isDesktopApp()
   const summary =
     previewUrls.length > 1
       ? `${previewUrls.length} images selected`
@@ -103,6 +88,67 @@ export function FileParamInput({
     input.setAttribute('webkitdirectory', '')
     input.setAttribute('directory', '')
   }, [])
+
+  const applyBatch = (
+    batchId: string,
+    path: string,
+    urls: string[],
+    files: string[],
+    message: string,
+  ) => {
+    onAssetBatchId?.(batchId)
+    onChange(path)
+    onPreviews?.(urls, files)
+    notifySuccess(message)
+  }
+
+  const handleDesktopPick = async (mode: 'replace' | 'append' | 'folder') => {
+    const bridge = getDesktop()
+    if (!bridge) return
+    setBusy(true)
+    setError(null)
+    try {
+      if (mode === 'folder') {
+        const picked = await bridge.openFolder()
+        if (picked.canceled || !picked.path) return
+        const result = await registerLocalPaths([picked.path], { asFolder: true })
+        applyBatch(
+          result.batch.id,
+          batchDisplayPath(result.batch),
+          batchPreviewUrls(result.batch),
+          batchFilePaths(result.batch),
+          result.count > 1 ? `${result.count} images loaded` : 'Image loaded',
+        )
+        return
+      }
+
+      const picked = await bridge.openImages()
+      if (picked.canceled || picked.paths.length === 0) return
+      const appending = mode === 'append' && Boolean(assetBatchId)
+      const result = await registerLocalPaths(picked.paths, {
+        asFolder: picked.paths.length > 1,
+        appendTo: appending ? assetBatchId : undefined,
+      })
+      applyBatch(
+        result.batch.id,
+        batchDisplayPath(result.batch),
+        batchPreviewUrls(result.batch),
+        batchFilePaths(result.batch),
+        appending
+          ? `Images updated (${result.batch.files.length} total)`
+          : result.count > 1
+            ? `${result.count} images loaded`
+            : 'Image loaded',
+      )
+    } catch (err) {
+      if (mode === 'replace' || mode === 'folder') onPreviews?.([], [])
+      const message = err instanceof Error ? err.message : 'Could not open images'
+      setError(message)
+      notifyError(message)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const handleFiles = async (
     fileList: FileList | null,
@@ -125,10 +171,11 @@ export function FileParamInput({
       const appending = mode === 'append' && uploadedFiles.length > 0
       const appendTo = appending ? parentDir(uploadedFiles[0]) : undefined
       const batch = asFolder || files.length > 1 || appending
-      const result = await uploadFiles(files, batch, appendTo)
+      const result = await uploadImageFiles(files, { asFolder: batch, appendTo })
       if (appending) {
         const nextUrls = [...previewUrls, ...urls]
         const nextFiles = [...uploadedFiles, ...result.files]
+        onAssetBatchId?.(result.asset_batch_id)
         onPreviews?.(nextUrls, nextFiles)
         onChange(result.path)
         notifySuccess(
@@ -137,6 +184,7 @@ export function FileParamInput({
             : `Added image (${nextUrls.length} total)`,
         )
       } else {
+        onAssetBatchId?.(result.asset_batch_id)
         onPreviews?.(urls, result.files)
         onChange(result.path)
         notifySuccess(
@@ -160,7 +208,11 @@ export function FileParamInput({
         label={field.label}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        helperText={field.description ?? `Allowed: ${acceptAttr(field)}`}
+        helperText={
+          desktop
+            ? 'Native file dialogs register local paths (no copy).'
+            : (field.description ?? `Allowed: ${acceptAttr(field)}`)
+        }
       />
       <Box
         sx={{
@@ -174,7 +226,10 @@ export function FileParamInput({
           size="small"
           variant="outlined"
           disabled={busy}
-          onClick={() => fileRef.current?.click()}
+          onClick={() => {
+            if (desktop) void handleDesktopPick('replace')
+            else fileRef.current?.click()
+          }}
           sx={{ textTransform: 'none' }}
         >
           Choose images
@@ -183,7 +238,10 @@ export function FileParamInput({
           size="small"
           variant="outlined"
           disabled={busy}
-          onClick={() => addRef.current?.click()}
+          onClick={() => {
+            if (desktop) void handleDesktopPick('append')
+            else addRef.current?.click()
+          }}
           sx={{ textTransform: 'none' }}
         >
           Add image
@@ -192,44 +250,51 @@ export function FileParamInput({
           size="small"
           variant="outlined"
           disabled={busy}
-          onClick={() => folderRef.current?.click()}
+          onClick={() => {
+            if (desktop) void handleDesktopPick('folder')
+            else folderRef.current?.click()
+          }}
           sx={{ textTransform: 'none' }}
         >
           Choose folder
         </Button>
       </Box>
-      <input
-        ref={fileRef}
-        type="file"
-        hidden
-        multiple
-        accept={acceptAttr(field)}
-        onChange={(event) => {
-          void handleFiles(event.target.files, false, 'replace')
-          event.target.value = ''
-        }}
-      />
-      <input
-        ref={addRef}
-        type="file"
-        hidden
-        multiple
-        accept={acceptAttr(field)}
-        onChange={(event) => {
-          void handleFiles(event.target.files, false, 'append')
-          event.target.value = ''
-        }}
-      />
-      <input
-        ref={folderRef}
-        type="file"
-        hidden
-        multiple
-        onChange={(event) => {
-          void handleFiles(event.target.files, true, 'replace')
-          event.target.value = ''
-        }}
-      />
+      {!desktop && (
+        <>
+          <input
+            ref={fileRef}
+            type="file"
+            hidden
+            multiple
+            accept={acceptAttr(field)}
+            onChange={(event) => {
+              void handleFiles(event.target.files, false, 'replace')
+              event.target.value = ''
+            }}
+          />
+          <input
+            ref={addRef}
+            type="file"
+            hidden
+            multiple
+            accept={acceptAttr(field)}
+            onChange={(event) => {
+              void handleFiles(event.target.files, false, 'append')
+              event.target.value = ''
+            }}
+          />
+          <input
+            ref={folderRef}
+            type="file"
+            hidden
+            multiple
+            onChange={(event) => {
+              void handleFiles(event.target.files, true, 'replace')
+              event.target.value = ''
+            }}
+          />
+        </>
+      )}
       {previewUrls.length > 0 && (
         <Box
           sx={{

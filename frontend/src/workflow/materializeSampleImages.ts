@@ -1,23 +1,20 @@
-/** Turn template placeholder paths like examples/lena.png into real uploads. */
+/** Turn template placeholder paths like examples/lena.png into real asset refs. */
 
+import {
+  batchDisplayPath,
+  batchFilePaths,
+  batchPreviewUrls,
+} from '../api/assets'
 import { useGraphStore } from '../store/graphStore'
+import type { RegisterAssetsResponse } from '../types'
 
 function isExamplePlaceholder(path: string): boolean {
   return path.replace(/\\/g, '/').replace(/^\.\//, '').startsWith('examples/')
 }
 
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error('Could not read sample image'))
-    reader.readAsDataURL(blob)
-  })
-}
-
 /**
- * For Load Image nodes that still point at examples/..., download the bundled
- * sample via /api/sample-image and attach it like a normal file pick.
+ * For Load Image nodes that still point at examples/..., register the bundled
+ * sample via /api/assets/sample (no FormData copy).
  */
 export async function materializeSampleImages(): Promise<void> {
   const { nodes, updateNodeParams, setLocalPreviews } = useGraphStore.getState()
@@ -28,26 +25,21 @@ export async function materializeSampleImages(): Promise<void> {
   )
   if (targets.length === 0) return
 
-  const response = await fetch('/api/sample-image')
+  const response = await fetch('/api/assets/sample', { method: 'POST' })
   if (!response.ok) {
-    throw new Error('Could not load sample image')
+    throw new Error('Could not stage sample image')
   }
-  const blob = await response.blob()
-  const file = new File([blob], 'lena.png', { type: 'image/png' })
-  const dataUrl = await blobToDataUrl(blob)
+  const result = (await response.json()) as RegisterAssetsResponse
+  const path = batchDisplayPath(result.batch)
+  const urls = batchPreviewUrls(result.batch)
+  const files = batchFilePaths(result.batch)
 
   for (const node of targets) {
-    const body = new FormData()
-    body.append('files', file)
-    const upload = await fetch('/api/uploads?as_folder=false', {
-      method: 'POST',
-      body,
+    // Share one registered batch across all example Load Image nodes.
+    updateNodeParams(node.id, {
+      path,
+      asset_batch_id: result.batch.id,
     })
-    if (!upload.ok) {
-      throw new Error('Could not stage sample image')
-    }
-    const result = (await upload.json()) as { path: string; files: string[] }
-    updateNodeParams(node.id, { path: result.path })
-    setLocalPreviews(node.id, [dataUrl], result.files)
+    setLocalPreviews(node.id, urls, files)
   }
 }
