@@ -9,6 +9,7 @@ from typing import Any
 import cv2
 import numpy as np
 
+from app.engine import save_bundle as save_bundle_module
 from app.engine.registry import BaseNode
 from app.engine.run_context import (
     current_sample_index,
@@ -18,7 +19,6 @@ from app.engine.run_context import (
 from app.engine.save_bundle import get_folder_saves, get_save_bundle
 from app.nodes.common import (
     IMAGE_EXTENSIONS,
-    file_param,
     image_in,
     image_out,
     int_param,
@@ -62,21 +62,20 @@ class LoadImageNode(BaseNode):
     type = "load_image"
     label = "Load Images"
     category = "io"
-    description = "Load one or more images from files or a folder (output is an image array)."
+    description = "Load one or more images from the asset registry (files or a folder)."
     ports = [image_out(multiple=True)]
     params = [
-        file_param(
-            "path",
-            "Images / Folder",
-            "",
-            accept=IMAGE_EXTENSIONS,
-            description="Select multiple images or a folder of images",
-        ),
         string_param(
             "asset_batch_id",
             "Asset Batch",
             "",
-            description="Registered asset batch id (preferred over path)",
+            description="Registered asset batch id",
+        ),
+        string_param(
+            "sample",
+            "Sample",
+            "",
+            description="Optional bundled sample key (e.g. lena) for templates",
         ),
     ]
 
@@ -107,17 +106,16 @@ class LoadImageNode(BaseNode):
         input_vars: dict[str, str],
         output_vars: dict[str, str],
     ) -> list[str]:
-        path = str(params.get("path") or "")
+        try:
+            files = resolve_load_paths(params)
+            paths = [str(path) for path in files]
+        except (OSError, ValueError, FileNotFoundError):
+            legacy = str(params.get("path") or "").strip()
+            paths = [legacy] if legacy else []
+        paths_literal = repr(paths)
         dst = output_vars["image"]
         return [
-            f"_path = Path({path!r})",
-            "_exts = {'.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp', '.gif'}",
-            "if _path.is_dir():",
-            "    _files = sorted(p for p in _path.iterdir() if p.suffix.lower() in _exts)",
-            "else:",
-            "    _files = [_path]",
-            "if not _files:",
-            f"    raise FileNotFoundError({path!r})",
+            f"_files = {paths_literal}",
             f"{dst} = []",
             "for _file in _files:",
             "    _img = cv2.imread(str(_file), cv2.IMREAD_UNCHANGED)",
@@ -128,16 +126,17 @@ class LoadImageNode(BaseNode):
 
 
 def resolve_load_paths(params: dict[str, Any]) -> list[Path]:
-    """Prefer asset_batch_id; fall back to legacy path param."""
+    """Resolve Load Images via asset_batch_id (legacy path kept as fallback)."""
     batch_id = str(params.get("asset_batch_id") or "").strip()
     if batch_id:
         from app.services.assets import list_batch_paths
 
         return list_batch_paths(batch_id)
+    # Legacy workflows / tests may still pass an absolute path.
     path_value = str(params.get("path") or "").strip()
-    if not path_value:
-        return []
-    return list_image_files(Path(path_value))
+    if path_value:
+        return list_image_files(Path(path_value))
+    return []
 
 
 class SaveImageNode(BaseNode):
@@ -145,18 +144,24 @@ class SaveImageNode(BaseNode):
     label = "Save Image"
     category = "io"
     description = (
-        "Write image(s) to an output folder after the run "
-        "(or pack into a ZIP when no folder is set). "
-        "Filename supports templates: {filename}, {time}, {index}."
+        "Write image(s) as bare files or a ZIP under the workflow output folder "
+        "(or a chosen folder). Filename supports templates: {filename}, {time}, {index}."
     )
     cacheable = False
     ports = [image_in(), image_out()]
     params = [
+        select_param(
+            "packaging",
+            "Packaging",
+            "bare",
+            ["bare", "zip"],
+            description="Write individual files (bare) or pack into a ZIP",
+        ),
         string_param(
             "output_dir",
             "Output Folder",
             "",
-            description="Local folder for saved images (desktop)",
+            description="Destination folder (defaults to workflow output)",
         ),
         string_param(
             "filename",
@@ -180,12 +185,19 @@ class SaveImageNode(BaseNode):
             filename=source_stem_for_sample(sample_index),
             when=datetime.now(),
         )
-        output_dir = str(params.get("output_dir") or "").strip()
-        if output_dir:
-            written = write_image_to_dir(Path(output_dir), name, image)
-            get_folder_saves().record(written)
+        custom_dir = str(params.get("output_dir") or "").strip()
+        destination = (
+            Path(custom_dir) if custom_dir else save_bundle_module.OUTPUT_DIR
+        )
+        packaging = str(params.get("packaging") or "bare").strip().lower()
+        if packaging not in {"bare", "zip"}:
+            packaging = "bare"
+
+        if packaging == "zip":
+            get_save_bundle().add_image(name, image, destination=destination)
         else:
-            get_save_bundle().add_image(name, image)
+            written = write_image_to_dir(destination, name, image)
+            get_folder_saves().record(written)
         return {"image": image}
 
     def emit_python(
@@ -197,9 +209,10 @@ class SaveImageNode(BaseNode):
     ) -> list[str]:
         name_template = str(params.get("filename") or "{filename}_{index}.png")
         output_dir = str(params.get("output_dir") or "output")
+        packaging = str(params.get("packaging") or "bare").strip().lower()
         src = input_vars["image"]
         dst = output_vars["image"]
-        return [
+        lines = [
             "from datetime import datetime",
             "from pathlib import Path",
             f"_out_dir = Path({output_dir!r})",
@@ -220,9 +233,24 @@ class SaveImageNode(BaseNode):
             "    _stem = Path(_name).stem",
             "    _suffix = Path(_name).suffix or '.png'",
             "    _name = f'{_stem}_{_index}{_suffix}'",
-            "cv2.imwrite(str(_out_dir / _name), " + src + ")",
-            f"{dst} = {src}",
         ]
+        if packaging == "zip":
+            lines.extend(
+                [
+                    "import zipfile",
+                    "_zip_path = _out_dir / f'results_{_time}.zip'",
+                    (
+                        "with zipfile.ZipFile(_zip_path, 'a', compression=zipfile.ZIP_DEFLATED) "
+                        "as _archive:"
+                    ),
+                    f"    _, _buf = cv2.imencode(Path(_name).suffix or '.png', {src})",
+                    "    _archive.writestr(_name, _buf.tobytes())",
+                ]
+            )
+        else:
+            lines.append("cv2.imwrite(str(_out_dir / _name), " + src + ")")
+        lines.append(f"{dst} = {src}")
+        return lines
 
 
 def write_image_to_dir(directory: Path, name: str, image: np.ndarray) -> Path:
