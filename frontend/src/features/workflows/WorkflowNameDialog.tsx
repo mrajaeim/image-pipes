@@ -8,7 +8,7 @@ type WorkflowNameDialogProps = {
   initialName: string
   initialDescription?: string
   onClose: () => void
-  onConfirm: (meta: { name: string; description: string }) => void
+  onConfirm: (meta: { name: string; description: string }) => void | Promise<void>
 }
 
 const fieldSx = {

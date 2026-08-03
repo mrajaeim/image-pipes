@@ -19,6 +19,10 @@ import { notifyError, notifyInfo, notifySuccess } from '../notify'
 import { downloadWorkflowJson, parseWorkflowJson } from '../workflow/io'
 import { materializeSampleImages } from '../workflow/materializeSampleImages'
 import {
+  buildExportDocument,
+  rehydrateWorkflowAssets,
+} from '../workflow/workflowAssets'
+import {
   confirmDiscardIfDirty,
   loadExternalDocument,
   newWorkflow,
@@ -29,7 +33,7 @@ import {
 import type { WorkflowTemplate } from '../workflow/templates'
 import { AppHeader } from './AppHeader'
 
-type NamePrompt = 'saveAs' | 'rename' | null
+type NamePrompt = 'save' | 'export' | 'rename' | null
 
 export default function App() {
   const toWorkflowDocument = useGraphStore((s) => s.toWorkflowDocument)
@@ -54,11 +58,21 @@ export default function App() {
     successMessage: string,
     nameOverride?: string,
   ) => {
-    const doc = parseWorkflowJson(text)
+    const parsed = parseWorkflowJson(text)
+    const { doc, previews } = await rehydrateWorkflowAssets(parsed)
     const { skippedTypes } = loadExternalDocument(
       doc,
       nameOverride ? { name: nameOverride } : undefined,
     )
+    const { setLocalPreviews, nodes } = useGraphStore.getState()
+    for (const node of nodes) {
+      if (node.data.type !== 'load_image') continue
+      const batchId = String(node.data.params.asset_batch_id ?? '').trim()
+      const preview = batchId ? previews[batchId] : undefined
+      if (preview) {
+        setLocalPreviews(node.id, preview.urls, preview.files)
+      }
+    }
     await materializeSampleImages()
     if (skippedTypes.length > 0) {
       notifyInfo(`${successMessage} (skipped unknown nodes: ${skippedTypes.join(', ')})`)
@@ -76,7 +90,7 @@ export default function App() {
   const onSaveWorkflow = () => {
     try {
       if (!workflowId) {
-        setNamePrompt('saveAs')
+        setNamePrompt('save')
         return
       }
       saveWorkflow()
@@ -87,7 +101,7 @@ export default function App() {
   }
 
   const onSaveAsWorkflow = () => {
-    setNamePrompt('saveAs')
+    setNamePrompt('export')
   }
 
   const onRenameWorkflow = () => {
@@ -129,15 +143,21 @@ export default function App() {
     setRecentOpen(true)
   }
 
-  const onConfirmNamePrompt = (meta: { name: string; description: string }) => {
+  const onConfirmNamePrompt = async (meta: { name: string; description: string }) => {
     try {
-      if (namePrompt === 'saveAs') {
+      if (namePrompt === 'save') {
         const record = saveWorkflowAs(meta)
-        downloadWorkflowJson({
-          ...toWorkflowDocument(),
-          ...record,
-        })
         notifySuccess(`Saved “${record.name}”`)
+      } else if (namePrompt === 'export') {
+        const name = meta.name.trim() || workflowName
+        const description = meta.description.trim()
+        const exported = await buildExportDocument({
+          ...toWorkflowDocument(),
+          name,
+          ...(description ? { description } : { description: undefined }),
+        })
+        downloadWorkflowJson(exported)
+        notifySuccess(`Exported “${name}”`)
       } else if (namePrompt === 'rename') {
         renameActiveWorkflow(meta)
         notifySuccess('Workflow renamed')
@@ -192,12 +212,20 @@ export default function App() {
       />
       <WorkflowNameDialog
         open={namePrompt != null}
-        title={namePrompt === 'rename' ? 'Rename workflow' : 'Save as'}
-        confirmLabel={namePrompt === 'rename' ? 'Rename' : 'Save'}
+        title={
+          namePrompt === 'rename'
+            ? 'Rename workflow'
+            : namePrompt === 'export'
+              ? 'Export'
+              : 'Save workflow'
+        }
+        confirmLabel={
+          namePrompt === 'rename' ? 'Rename' : namePrompt === 'export' ? 'Export' : 'Save'
+        }
         initialName={workflowName}
         initialDescription={workflowDescription}
         onClose={() => setNamePrompt(null)}
-        onConfirm={onConfirmNamePrompt}
+        onConfirm={(meta) => void onConfirmNamePrompt(meta)}
       />
       <RecentWorkflowsDialog
         open={recentOpen}

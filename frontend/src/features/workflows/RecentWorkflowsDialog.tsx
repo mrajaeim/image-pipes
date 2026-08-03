@@ -289,7 +289,7 @@ export function RecentWorkflowsDialog({
           >
             <Typography sx={{ fontSize: 14 }}>No saved workflows yet.</Typography>
             <Typography sx={{ mt: 0.75, fontSize: 12.5, color: 'rgba(244,241,234,0.35)' }}>
-              Use Save or Save as… from the Workflow menu.
+              Use Save or Export… from the Workflow menu.
             </Typography>
           </Box>
         ) : (
