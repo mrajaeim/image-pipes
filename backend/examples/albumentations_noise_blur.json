@@ -9,7 +9,7 @@
       {
         "id": "load-1",
         "type": "load_image",
-        "params": { "path": "examples/lena.png" },
+        "params": { "sample": "lena" },
         "position": { "x": 0, "y": 40 }
       },
       {
