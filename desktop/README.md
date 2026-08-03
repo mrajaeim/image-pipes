@@ -18,6 +18,8 @@ Installers land in `desktop/release/`. End users do **not** need Python or Node.
 
 GitHub Actions builds Windows / Linux / macOS installers on `main` and publishes them when you push a `v*` tag (see `.github/workflows/desktop.yml`).
 
+Installer version comes from the git tag (`v0.2.0` → `0.2.0`) via `scripts/build-desktop.mjs`. Override with `IMAGE_PIPES_VERSION` if needed.
+
 ## Developer day-to-day
 
 Terminal A — not required if you use the desktop shell:

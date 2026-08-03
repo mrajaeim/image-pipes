@@ -4,9 +4,10 @@
  * 1) frontend production build
  * 2) PyInstaller backend sidecar
  * 3) stage into desktop/resources/server
- * 4) electron-builder installer
+ * 4) sync desktop version from git tag (when available)
+ * 5) electron-builder installer
  */
-import { spawn } from 'node:child_process'
+import { execSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -38,6 +39,70 @@ function rimraf(target) {
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true })
   fs.cpSync(src, dest, { recursive: true })
+}
+
+/** Strip leading `v` from a git tag (v0.2.0 → 0.2.0). */
+function stripVersionPrefix(tag) {
+  return tag.trim().replace(/^v/i, '')
+}
+
+/**
+ * Resolve the desktop app version from (in order):
+ * 1) IMAGE_PIPES_VERSION env
+ * 2) GITHUB_REF tag (CI tag builds)
+ * 3) nearest git tag (`git describe --tags --abbrev=0`)
+ * Returns null when nothing usable is found.
+ */
+function resolveDesktopVersion() {
+  const override = process.env.IMAGE_PIPES_VERSION?.trim()
+  if (override) return stripVersionPrefix(override)
+
+  const ref = process.env.GITHUB_REF ?? ''
+  if (ref.startsWith('refs/tags/')) {
+    return stripVersionPrefix(ref.slice('refs/tags/'.length))
+  }
+
+  try {
+    const tag = execSync('git describe --tags --abbrev=0', {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    if (tag) return stripVersionPrefix(tag)
+  } catch {
+    // Untagged clone / shallow checkout without tags.
+  }
+  return null
+}
+
+/** Write resolved version into desktop/package.json for electron-builder. */
+function syncDesktopPackageVersion(desktopDir) {
+  const version = resolveDesktopVersion()
+  const pkgPath = path.join(desktopDir, 'package.json')
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+
+  if (!version) {
+    console.log(
+      `==> No git tag version found; keeping desktop/package.json at ${pkg.version}`,
+    )
+    return pkg.version
+  }
+
+  if (!/^\d+\.\d+\.\d+/.test(version)) {
+    throw new Error(
+      `Invalid desktop version "${version}" (expected semver like 0.2.0)`,
+    )
+  }
+
+  if (pkg.version === version) {
+    console.log(`==> Desktop version already ${version}`)
+    return version
+  }
+
+  console.log(`==> Setting desktop version to ${version} (from git tag)`)
+  pkg.version = version
+  fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`)
+  return version
 }
 
 async function main() {
@@ -96,7 +161,9 @@ async function main() {
   console.log('==> Installing desktop dependencies')
   await run('npm', npmInstall, desktopDir)
 
-  console.log('==> Building Electron installer')
+  const version = syncDesktopPackageVersion(desktopDir)
+
+  console.log(`==> Building Electron installer (v${version})`)
   await run('npm', ['run', 'dist'], desktopDir)
 
   console.log('\nDesktop build complete. Installers are under desktop/release/')
