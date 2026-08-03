@@ -18,6 +18,9 @@ export function useWorkflowPersistence() {
   const edges = useGraphStore((s) => s.edges)
   const seed = useGraphStore((s) => s.seed)
   const sampleCount = useGraphStore((s) => s.sampleCount)
+  const projectId = useGraphStore((s) => s.projectId)
+  const projectName = useGraphStore((s) => s.projectName)
+  const projectDescription = useGraphStore((s) => s.projectDescription)
   const [sessionReady, setSessionReady] = useState(false)
   const restoredRef = useRef(false)
 
@@ -57,7 +60,17 @@ export function useWorkflowPersistence() {
       saveWorkflowSession(doc, doc.id ?? null)
     }, SAVE_DEBOUNCE_MS)
     return () => window.clearTimeout(timer)
-  }, [sessionReady, nodes, edges, seed, sampleCount, toWorkflowDocument])
+  }, [
+    sessionReady,
+    nodes,
+    edges,
+    seed,
+    sampleCount,
+    projectId,
+    projectName,
+    projectDescription,
+    toWorkflowDocument,
+  ])
 
   useEffect(() => {
     if (!sessionReady) return
