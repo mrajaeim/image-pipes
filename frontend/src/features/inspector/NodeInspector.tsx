@@ -83,7 +83,7 @@ export function NodeInspector() {
         >
           <li>Connect matching port types (image, mask, bboxes, keypoints)</li>
           <li>Press Run to execute with live previews</li>
-          <li>Export saves workflow JSON; Export Python codegen</li>
+          <li>Projects saves named pipelines; Export downloads JSON / Python</li>
         </Box>
       </Box>
     )

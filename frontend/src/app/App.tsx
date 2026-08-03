@@ -6,6 +6,7 @@ import { NodeInspector } from '../features/inspector/NodeInspector'
 import { CodePanel } from '../features/code/CodePanel'
 import { ExecutionLogPanel } from '../features/execution/ExecutionLogPanel'
 import { PreviewGrid } from '../features/preview/PreviewGrid'
+import { ProjectsDialog } from '../features/projects/ProjectsDialog'
 import { TemplateGallery } from '../features/templates/TemplateGallery'
 import { useGraphStore } from '../store/graphStore'
 import {
@@ -17,19 +18,23 @@ import { useWorkflowPersistence } from '../hooks/useWorkflowPersistence'
 import { notifyError, notifyInfo, notifySuccess } from '../notify'
 import { downloadWorkflowJson, parseWorkflowJson } from '../workflow/io'
 import { materializeSampleImages } from '../workflow/materializeSampleImages'
+import {
+  confirmDiscardIfDirty,
+  loadExternalDocument,
+} from '../workflow/projectActions'
 import type { WorkflowTemplate } from '../workflow/templates'
 import { AppHeader } from './AppHeader'
 
 export default function App() {
   const setGeneratedCode = useGraphStore((s) => s.setGeneratedCode)
   const toWorkflowDocument = useGraphStore((s) => s.toWorkflowDocument)
-  const loadWorkflow = useGraphStore((s) => s.loadWorkflow)
   const nodeCatalog = useGraphStore((s) => s.nodeCatalog)
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
   const isExecuting = useGraphStore((s) => s.isExecuting)
   const { run, cancel } = useExecutionSocket()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [projectsOpen, setProjectsOpen] = useState(false)
   const [sideTab, setSideTab] = useState(0)
 
   useEffect(() => bindExecutionRunner(run), [run])
@@ -54,9 +59,16 @@ export default function App() {
     }
   }
 
-  const applyLoadedWorkflow = async (text: string, successMessage: string) => {
+  const applyLoadedWorkflow = async (
+    text: string,
+    successMessage: string,
+    nameOverride?: string,
+  ) => {
     const doc = parseWorkflowJson(text)
-    const { skippedTypes } = loadWorkflow(doc)
+    const { skippedTypes } = loadExternalDocument(
+      doc,
+      nameOverride ? { name: nameOverride } : undefined,
+    )
     await materializeSampleImages()
     if (skippedTypes.length > 0) {
       notifyInfo(`${successMessage} (skipped unknown nodes: ${skippedTypes.join(', ')})`)
@@ -70,6 +82,7 @@ export default function App() {
       notifyError('Node catalog is still loading — try again in a moment')
       return
     }
+    if (!confirmDiscardIfDirty()) return
     fileInputRef.current?.click()
   }
 
@@ -79,6 +92,7 @@ export default function App() {
     try {
       const text = await file.text()
       await applyLoadedWorkflow(text, 'Workflow loaded')
+      setProjectsOpen(false)
     } catch (error) {
       notifyError(error instanceof Error ? error.message : 'Load failed')
     } finally {
@@ -94,14 +108,19 @@ export default function App() {
     setTemplatesOpen(true)
   }
 
+  const onOpenProjects = () => {
+    setProjectsOpen(true)
+  }
+
   const onSelectTemplate = async (template: WorkflowTemplate) => {
+    if (!confirmDiscardIfDirty()) return
     try {
       const response = await fetch(template.path)
       if (!response.ok) {
         throw new Error(`Could not fetch template (${response.status})`)
       }
       const text = await response.text()
-      await applyLoadedWorkflow(text, `Loaded “${template.name}”`)
+      await applyLoadedWorkflow(text, `Loaded “${template.name}”`, template.name)
       setTemplatesOpen(false)
     } catch (error) {
       notifyError(error instanceof Error ? error.message : 'Template load failed')
@@ -131,6 +150,13 @@ export default function App() {
         onExportWorkflow={onExportWorkflow}
         onLoadWorkflow={onLoadWorkflowClick}
         onOpenTemplates={onOpenTemplates}
+        onOpenProjects={onOpenProjects}
+      />
+      <ProjectsDialog
+        open={projectsOpen}
+        onClose={() => setProjectsOpen(false)}
+        onImportFile={onLoadWorkflowClick}
+        disabled={isExecuting}
       />
       <TemplateGallery
         open={templatesOpen}

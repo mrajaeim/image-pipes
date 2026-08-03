@@ -132,6 +132,7 @@ interface AppHeaderProps {
   onExportWorkflow: () => void
   onLoadWorkflow: () => void
   onOpenTemplates: () => void
+  onOpenProjects: () => void
 }
 
 const outlineBtnSx = {
@@ -160,6 +161,7 @@ export function AppHeader({
   onExportWorkflow,
   onLoadWorkflow,
   onOpenTemplates,
+  onOpenProjects,
 }: AppHeaderProps) {
   const seed = useGraphStore((s) => s.seed)
   const sampleCount = useGraphStore((s) => s.sampleCount)
@@ -169,6 +171,8 @@ export function AppHeader({
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
   const nodeCount = useGraphStore((s) => s.nodes.length)
   const edgeCount = useGraphStore((s) => s.edges.length)
+  const projectName = useGraphStore((s) => s.projectName)
+  const projectDirty = useGraphStore((s) => s.projectDirty)
   const [infoOpen, setInfoOpen] = useState(false)
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null)
   const exportMenuOpen = Boolean(exportAnchor)
@@ -264,6 +268,49 @@ export function AppHeader({
         >
           i
         </IconButton>
+        <Box
+          sx={{
+            display: { xs: 'none', sm: 'flex' },
+            flexDirection: 'column',
+            minWidth: 0,
+            maxWidth: 220,
+            ml: 0.5,
+            pl: 1.25,
+            borderLeft: '1px solid rgba(255,255,255,0.1)',
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: 'rgba(244,241,234,0.4)',
+              lineHeight: 1.2,
+            }}
+          >
+            Project
+          </Typography>
+          <Typography
+            title={projectName}
+            sx={{
+              fontSize: 13,
+              fontWeight: 650,
+              color: '#f4f1ea',
+              lineHeight: 1.25,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {projectName}
+            {projectDirty ? (
+              <Box component="span" sx={{ color: '#e67e22', ml: 0.35 }}>
+                *
+              </Box>
+            ) : null}
+          </Typography>
+        </Box>
       </Stack>
 
       <ProjectInfoModal open={infoOpen} onClose={() => setInfoOpen(false)} />
@@ -412,6 +459,15 @@ export function AppHeader({
           border: '1px solid rgba(255,255,255,0.06)',
         }}
       >
+        <Button
+          variant="outlined"
+          disabled={isExecuting}
+          onClick={onOpenProjects}
+          sx={outlineBtnSx}
+        >
+          Projects
+        </Button>
+
         <Button
           variant="outlined"
           disabled={isExecuting}
