@@ -524,6 +524,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     const { seed, sampleCount } = get()
     return {
       version: 1 as const,
+      name: 'Untitled',
       seed,
       sampleCount,
       graph: get().toGraphPayload(),

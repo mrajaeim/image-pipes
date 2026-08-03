@@ -1,5 +1,7 @@
 /** Versioned workflow JSON for export / load. */
 
+export const DEFAULT_PROJECT_NAME = 'Untitled'
+
 export interface WorkflowWaypoint {
   x: number
   y: number
@@ -25,6 +27,11 @@ export interface WorkflowGraphPayload {
 
 export interface WorkflowDocument {
   version: 1
+  id?: string
+  name: string
+  description?: string
+  createdAt?: string
+  updatedAt?: string
   seed: number
   sampleCount: number
   graph: WorkflowGraphPayload
@@ -92,6 +99,12 @@ function readSampleCount(value: Record<string, unknown>): number {
   return Math.max(1, raw)
 }
 
+function readOptionalString(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
 /** Accept versioned docs, example wrappers, or bare `{ nodes, edges }` graphs. */
 export function coerceWorkflowDocument(value: unknown): WorkflowDocument {
   if (!isRecord(value)) {
@@ -115,8 +128,19 @@ export function coerceWorkflowDocument(value: unknown): WorkflowDocument {
     )
   }
 
+  const name = readOptionalString(value.name) ?? DEFAULT_PROJECT_NAME
+  const description = readOptionalString(value.description)
+  const id = readOptionalString(value.id)
+  const createdAt = readOptionalString(value.createdAt)
+  const updatedAt = readOptionalString(value.updatedAt)
+
   return {
     version: 1,
+    ...(id ? { id } : {}),
+    name,
+    ...(description ? { description } : {}),
+    ...(createdAt ? { createdAt } : {}),
+    ...(updatedAt ? { updatedAt } : {}),
     seed: typeof value.seed === 'number' ? value.seed : 0,
     sampleCount: readSampleCount(value),
     graph: normalizeGraph(graph),
@@ -142,12 +166,23 @@ export function parseWorkflowJson(text: string): WorkflowDocument {
   return coerceWorkflowDocument(parsed)
 }
 
-export function downloadWorkflowJson(doc: WorkflowDocument, filename = 'workflow.json') {
+/** Sanitize a project name into a safe download filename stem. */
+export function workflowFilename(name: string, fallback = 'workflow'): string {
+  const stem = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `${stem || fallback}.json`
+}
+
+export function downloadWorkflowJson(doc: WorkflowDocument, filename?: string) {
+  const resolved = filename ?? workflowFilename(doc.name)
   const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = filename
+  anchor.download = resolved
   anchor.click()
   URL.revokeObjectURL(url)
 }
