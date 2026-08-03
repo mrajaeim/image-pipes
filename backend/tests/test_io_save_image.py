@@ -1,9 +1,10 @@
-"""Tests for Save Image ZIP download flow."""
+"""Tests for Save Image bare / ZIP write flow."""
 
 from __future__ import annotations
 
 import zipfile
 from datetime import datetime
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -42,7 +43,7 @@ def test_resolve_save_filename_auto_index_when_missing() -> None:
 
 def test_save_image_adds_to_bundle(tmp_path, monkeypatch) -> None:
     register_builtin_nodes()
-    monkeypatch.setattr("app.engine.save_bundle.DOWNLOAD_DIR", tmp_path / "downloads")
+    monkeypatch.setattr("app.engine.save_bundle.OUTPUT_DIR", tmp_path / "outputs")
     image = np.zeros((4, 4, 3), dtype=np.uint8)
     image[:, :] = (10, 20, 30)
     bundle = SaveBundle()
@@ -52,7 +53,7 @@ def test_save_image_adds_to_bundle(tmp_path, monkeypatch) -> None:
     try:
         out = registry.get("save_image").execute(
             {"image": image},
-            {"filename": "{filename}_{index}.png"},
+            {"filename": "{filename}_{index}.png", "packaging": "zip"},
             seed=0,
         )["image"]
     finally:
@@ -65,9 +66,9 @@ def test_save_image_adds_to_bundle(tmp_path, monkeypatch) -> None:
     assert len(bundle.files["photo_1.png"]) > 0
 
 
-def test_executor_emits_download_zip(tmp_path, monkeypatch) -> None:
+def test_executor_writes_zip_without_browser_download(tmp_path, monkeypatch) -> None:
     register_builtin_nodes()
-    monkeypatch.setattr("app.engine.save_bundle.DOWNLOAD_DIR", tmp_path / "downloads")
+    monkeypatch.setattr("app.engine.save_bundle.OUTPUT_DIR", tmp_path / "outputs")
     a = np.full((2, 2, 3), 1, dtype=np.uint8)
     b = np.full((2, 2, 3), 2, dtype=np.uint8)
     path_a = tmp_path / "a.png"
@@ -87,7 +88,10 @@ def test_executor_emits_download_zip(tmp_path, monkeypatch) -> None:
                 NodeInstance(
                     id="save",
                     type="save_image",
-                    params={"filename": "{filename}_{index}.png"},
+                    params={
+                        "filename": "{filename}_{index}.png",
+                        "packaging": "zip",
+                    },
                 ),
             ],
             edges=[
@@ -110,19 +114,73 @@ def test_executor_emits_download_zip(tmp_path, monkeypatch) -> None:
         on_event=lambda event: events.append(event.type.value),
     )
 
-    assert "download" in events
-    assert result["download_url"].startswith("/api/downloads/")
+    assert "saved" in events
+    assert "download" not in events
+    assert "download_url" not in result
     assert len(result["samples"]) == 2
-    zip_name = result["download_filename"]
-    zip_path = tmp_path / "downloads" / zip_name
+    zip_path = Path(result["saved_zip"])
     assert zip_path.is_file()
+    assert zip_path.parent == (tmp_path / "outputs").resolve()
 
     with zipfile.ZipFile(zip_path) as archive:
         assert sorted(archive.namelist()) == ["a_0.png", "b_1.png"]
 
     client = TestClient(app)
-    # Point API download dir to the same temp folder used by the executor.
-    monkeypatch.setattr("app.engine.save_bundle.DOWNLOAD_DIR", tmp_path / "downloads")
-    response = client.get(f"/api/downloads/{zip_name}")
+    monkeypatch.setattr("app.engine.save_bundle.OUTPUT_DIR", tmp_path / "outputs")
+    response = client.get(f"/api/downloads/{zip_path.name}")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("application/zip")
+
+
+def test_executor_writes_bare_files_to_default_output(tmp_path, monkeypatch) -> None:
+    register_builtin_nodes()
+    out_dir = tmp_path / "outputs"
+    monkeypatch.setattr("app.engine.save_bundle.OUTPUT_DIR", out_dir)
+    src = tmp_path / "photo.png"
+    cv2.imwrite(str(src), np.full((2, 2, 3), 7, dtype=np.uint8))
+
+    events: list[str] = []
+    request = ExecuteRequest(
+        graph=Graph(
+            nodes=[
+                NodeInstance(
+                    id="load",
+                    type="load_image",
+                    params={"path": str(src)},
+                ),
+                NodeInstance(
+                    id="save",
+                    type="save_image",
+                    params={
+                        "filename": "{filename}_{index}.png",
+                        "packaging": "bare",
+                    },
+                ),
+            ],
+            edges=[
+                Edge(
+                    id="e1",
+                    source="load",
+                    source_port="image",
+                    target="save",
+                    target_port="image",
+                )
+            ],
+        ),
+        seed=0,
+        sample_count=1,
+        cache=False,
+    )
+    executor = DagExecutor(tmp_path / "cache", node_registry=registry)
+    result = executor.execute(
+        request,
+        on_event=lambda event: events.append(event.type.value),
+    )
+
+    assert "saved" in events
+    assert "download" not in events
+    assert "saved_zip" not in result
+    assert out_dir.is_dir()
+    written = sorted(out_dir.glob("*.png"))
+    assert len(written) == 1
+    assert written[0].name == "photo_0.png"

@@ -45,11 +45,10 @@ def test_load_image_single_file_still_returns_list(tmp_path: Path) -> None:
     assert len(loaded) == 1
 
 
-def test_load_image_metadata_exposes_file_accept() -> None:
+def test_load_image_metadata_exposes_asset_batch() -> None:
     register_builtin_nodes()
     meta = next(item for item in registry.list_metadata() if item.type == "load_image")
-    field = meta.params[0]
-    assert field.type == "file"
-    assert field.accept is not None
-    assert ".png" in field.accept
+    names = {field.name for field in meta.params}
+    assert "asset_batch_id" in names
+    assert "path" not in names
     assert meta.ports[0].multiple is True
