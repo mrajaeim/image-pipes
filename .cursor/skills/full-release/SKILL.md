@@ -2,15 +2,15 @@
 name: full-release
 description: >-
   Run a full release: update CHANGELOG, commit remaining work with incremental
-  conventional commits, push commits, create an annotated v* tag, and push the
-  tag. Use when the user asks to release, cut a version, tag a release, sync
-  commits and tags, or update the changelog for a version.
+  conventional commits, prepare an annotated v* tag, and give the user manual
+  push commands. Use when the user asks to release, cut a version, tag a
+  release, sync commits and tags, or update the changelog for a version.
 disable-model-invocation: true
 ---
 
 # Full Release
 
-End-to-end release for this repo: changelog → commits → push → tag → push tag.
+End-to-end release for this repo: changelog → commits → **manual push** → tag → **manual push tag**.
 
 ## Preconditions
 
@@ -18,11 +18,16 @@ Confirm with the user before tagging:
 
 1. **Version** — e.g. `0.2.1` (tag will be `v0.2.1`)
 2. **Branch** — usually `main`, clean enough to release
-3. **Whether to push** — never push unless the user asked to push/release
 
 Do **not** move or delete a tag that already exists on the remote / has a GitHub Release. If the release is already cut, bump to the next patch/minor instead.
 
 Follow `.cursor/rules/incremental-commits.mdc` for any commits. Prefer small conventional commits; do not dump unrelated WIP into the release commit.
+
+## Push policy (manual)
+
+**The agent never pushes.** This environment often lacks GitHub SSH/HTTPS credentials.
+
+After commits (and optional local tag), print copy-paste commands for the user. Wait for them to say they pushed, then verify.
 
 ## Workflow
 
@@ -34,10 +39,9 @@ Release Progress:
 - [ ] 2. Update CHANGELOG.md
 - [ ] 3. Commit remaining release files
 - [ ] 4. Quality gates (if code changed)
-- [ ] 5. Push commits
-- [ ] 6. Create annotated tag
-- [ ] 7. Push tag
-- [ ] 8. Verify
+- [ ] 5. Create annotated tag locally
+- [ ] 6. Give user push commands (commits + tag)
+- [ ] 7. After user confirms push — verify
 ```
 
 ### 1. Inspect state
@@ -49,6 +53,8 @@ git log --oneline origin/main..HEAD
 git tag -l "v*"
 git describe --tags --abbrev=0
 ```
+
+If `git fetch` fails (auth), continue with local state and note that remote verification may be limited.
 
 Note uncommitted files, unpushed commits, and whether `vX.Y.Z` already exists locally or on origin.
 
@@ -100,15 +106,7 @@ If backend/frontend code changed in this release slice:
 
 Skip full gates when the only change is `CHANGELOG.md` / docs.
 
-### 5. Push commits
-
-Only after the user asked to release/push:
-
-```bash
-git push -u origin HEAD
-```
-
-### 6. Create annotated tag
+### 5. Create annotated tag locally
 
 Tag the commit that includes the changelog:
 
@@ -121,28 +119,47 @@ Rules:
 - Tag format: `v` + semver (`v0.2.1`)
 - Annotated tags only (`-a`)
 - Never retag / force-push an existing published tag
+- Creating the tag locally is fine; **pushing** it is the user's job
 
-### 7. Push tag
+### 6. Give user push commands
+
+Print a ready-to-run block (fill in the real version). Do not run `git push` yourself.
 
 ```bash
+# Push commits
+git push -u origin HEAD
+
+# Push tag (triggers desktop release CI)
 git push origin vX.Y.Z
 ```
 
+If the tag was not created yet, include create + push:
+
+```bash
+git push -u origin HEAD
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+Tell the user: after pushing, reply so verification can run.
+
 Pushing `v*` triggers `.github/workflows/desktop.yml` (build + GitHub Release). Desktop installer version is synced from the tag inside `scripts/build-desktop.mjs` (`v0.2.1` → `0.2.1`).
 
-### 8. Verify
+### 7. Verify (after user confirms push)
 
 ```bash
 git status -sb
 git log -1 --oneline
 git show vX.Y.Z --oneline -s
+git fetch origin --tags   # if auth works
 ```
 
 Report:
 
 - Changelog section version + date
-- Commit SHA(s) pushed
+- Commit SHA
 - Tag name
+- Whether `main` matches `origin/main` (when fetch works)
 - Release URL: `https://github.com/mrajaeim/image-pipes/releases/tag/vX.Y.Z`
 
 ## Desktop version notes
@@ -153,7 +170,7 @@ Report:
 
 ## Anti-patterns
 
-- Pushing without an explicit user request to push/release
+- Agent running `git push` (always manual)
 - Force-updating a tag that already has a GitHub Release
 - Mixing feature WIP with the release/changelog commit
 - Empty or missing changelog section for the new version
