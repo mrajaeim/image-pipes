@@ -32,7 +32,7 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/app/backend/.venv
 
 RUN uv sync --frozen --no-dev \
-  && mkdir -p cache uploads outputs/downloads
+  && mkdir -p cache uploads outputs
 
 COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
 

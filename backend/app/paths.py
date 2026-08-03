@@ -1,4 +1,4 @@
-"""Shared filesystem locations for cache, uploads, downloads, and assets."""
+"""Shared filesystem locations for cache, uploads, outputs, and assets."""
 
 from __future__ import annotations
 
@@ -32,11 +32,5 @@ def upload_dir() -> Path:
 
 def output_dir() -> Path:
     path = data_root() / "outputs"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def download_dir() -> Path:
-    path = output_dir() / "downloads"
     path.mkdir(parents=True, exist_ok=True)
     return path
