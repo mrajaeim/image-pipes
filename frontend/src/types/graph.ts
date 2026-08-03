@@ -49,6 +49,10 @@ export interface GraphNodeData {
 export interface ExecutionPreview {
   nodeId: string
   sampleIndex: number
+  /** Outer loop index (UI slide). */
+  iteration?: number
+  /** Image within the batch set (row within a slide). */
+  batchIndex?: number
   imageB64: string
   portId?: string | null
   cacheHit?: boolean | null
@@ -72,6 +76,8 @@ export interface ExecutionEvent {
   progress?: number | null
   image_b64?: string | null
   sample_index?: number | null
+  iteration?: number | null
+  batch_index?: number | null
   cache_hit?: boolean | null
   duration_ms?: number | null
   data?: Record<string, unknown> | null

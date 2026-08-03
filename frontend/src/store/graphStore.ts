@@ -27,8 +27,13 @@ export type NodeImageState = {
   samples: string[]
   /** Latest image per port (compat / single-sample multiport). */
   ports: Record<string, string>
-  /** Per-port sample stacks: portId → images[sampleIndex]. */
+  /** Per-port flat stacks: portId → images[sampleIndex] (compat). */
   portSamples: Record<string, string[]>
+  /**
+   * Per-port iteration × batch grid: portId → [iteration][batchIndex].
+   * UI slides = iterations; rows within a slide = batch images.
+   */
+  portIterations: Record<string, string[][]>
   /** Latest bbox / keypoint payloads from preview events. */
   annotations?: {
     bboxes?: unknown
@@ -121,7 +126,7 @@ function syncNodeCounter(nodeIds: string[]) {
 }
 
 function emptyNodeImages(): NodeImageState {
-  return { result: null, samples: [], ports: {}, portSamples: {} }
+  return { result: null, samples: [], ports: {}, portSamples: {}, portIterations: {} }
 }
 
 function resultForNode(
@@ -438,6 +443,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     const existing = get().nodeImages[preview.nodeId] ?? emptyNodeImages()
     const ports = { ...existing.ports }
     const portSamples = { ...existing.portSamples }
+    const portIterations = { ...existing.portIterations }
     const nextSamples = [...existing.samples]
     let annotations = existing.annotations
 
@@ -449,6 +455,20 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       }
       portStack[preview.sampleIndex] = preview.imageB64
       portSamples[portId] = portStack
+
+      const iteration = preview.iteration ?? 0
+      const batchIndex = preview.batchIndex ?? preview.sampleIndex
+      const iterStacks = [...(portIterations[portId] ?? [])].map((row) => [...row])
+      while (iterStacks.length <= iteration) {
+        iterStacks.push([])
+      }
+      const batchStack = [...iterStacks[iteration]]
+      while (batchStack.length <= batchIndex) {
+        batchStack.push('')
+      }
+      batchStack[batchIndex] = preview.imageB64
+      iterStacks[iteration] = batchStack
+      portIterations[portId] = iterStacks
 
       if (portId === 'image' || Object.keys(ports).length === 1) {
         while (nextSamples.length <= preview.sampleIndex) {
@@ -477,6 +497,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
           samples: nextSamples,
           ports,
           portSamples,
+          portIterations,
           annotations,
         },
       },

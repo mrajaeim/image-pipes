@@ -250,6 +250,7 @@ def _emit_port_previews(
     node_id: str,
     produced: dict[str, Any],
     sample_index: int,
+    iteration: int,
     batch_index: int,
     cache_hit: bool,
     sample_previews: dict[str, Any],
@@ -269,8 +270,9 @@ def _emit_port_previews(
                     continue
                 preview = _encode_preview(image)
                 port_previews[port_id] = preview
-                # Key source batch previews by batch index so iterations do not
-                # duplicate the Load Images thumbnails in the UI.
+                # Load Images (list ports): one UI slide for the batch set.
+                # Key by batch_index and pin iteration=0 so repeats do not
+                # multiply slides.
                 emit(
                     ExecutionEvent(
                         type=ExecutionEventType.PREVIEW,
@@ -278,6 +280,8 @@ def _emit_port_previews(
                         port_id=port_id,
                         image_b64=preview,
                         sample_index=batch_index,
+                        iteration=0,
+                        batch_index=batch_index,
                         cache_hit=cache_hit,
                     )
                 )
@@ -297,6 +301,8 @@ def _emit_port_previews(
                     port_id=port_id,
                     image_b64=preview,
                     sample_index=sample_index,
+                    iteration=iteration,
+                    batch_index=batch_index,
                     cache_hit=cache_hit,
                     data=(
                         {"bboxes": bboxes, "keypoints": keypoints}
@@ -315,6 +321,8 @@ def _emit_port_previews(
                 node_id=node_id,
                 port_id=port_id,
                 sample_index=sample_index,
+                iteration=iteration,
+                batch_index=batch_index,
                 cache_hit=cache_hit,
                 data={port_id: value},
             )
@@ -445,6 +453,7 @@ class DagExecutor:
                                 node_id=node_id,
                                 produced=produced,
                                 sample_index=flat_index,
+                                iteration=iteration,
                                 batch_index=batch_index,
                                 cache_hit=cache_hit,
                                 sample_previews=sample_previews,

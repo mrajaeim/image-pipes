@@ -118,3 +118,61 @@ def test_two_iterations_repeat_full_set_with_seed_offset(tmp_path) -> None:
     ]
     # Load Images previews stay keyed by batch index (not flat iteration×batch).
     assert sorted(set(load_preview_indices)) == [0, 1]
+
+
+def test_preview_events_expose_iteration_and_batch(tmp_path) -> None:
+    register_builtin_nodes()
+    for index, value in enumerate((5, 9)):
+        image = np.full((4, 4, 3), value, dtype=np.uint8)
+        cv2.imwrite(str(tmp_path / f"img{index}.png"), image)
+
+    request = ExecuteRequest(
+        graph=Graph(
+            nodes=[
+                NodeInstance(
+                    id="load",
+                    type="load_image",
+                    params={"path": str(tmp_path)},
+                ),
+                NodeInstance(
+                    id="blur",
+                    type="gaussian_blur",
+                    params={"ksize": 3, "sigma": 0},
+                ),
+            ],
+            edges=[
+                Edge(
+                    id="e1",
+                    source="load",
+                    source_port="image",
+                    target="blur",
+                    target_port="image",
+                )
+            ],
+        ),
+        seed=0,
+        sample_count=2,
+        cache=False,
+    )
+
+    load_meta: list[tuple[int | None, int | None]] = []
+    blur_meta: list[tuple[int | None, int | None]] = []
+    DagExecutor(tmp_path / "cache", node_registry=registry).execute(
+        request,
+        on_event=lambda event: (
+            load_meta.append((event.iteration, event.batch_index))
+            if event.type.value == "preview"
+            and event.node_id == "load"
+            and event.image_b64
+            else blur_meta.append((event.iteration, event.batch_index))
+            if event.type.value == "preview"
+            and event.node_id == "blur"
+            and event.image_b64
+            else None
+        ),
+    )
+
+    # Load: always iteration 0; one entry per batch image (may repeat across iters).
+    assert set(load_meta) == {(0, 0), (0, 1)}
+    # Results: one preview per (iteration, batch).
+    assert blur_meta == [(0, 0), (0, 1), (1, 0), (1, 1)]

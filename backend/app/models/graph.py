@@ -70,6 +70,8 @@ class ExecutionEvent(BaseModel):
     progress: float | None = None
     image_b64: str | None = None
     sample_index: int | None = None
+    iteration: int | None = None
+    batch_index: int | None = None
     cache_hit: bool | None = None
     duration_ms: float | None = None
     data: dict[str, Any] | None = None

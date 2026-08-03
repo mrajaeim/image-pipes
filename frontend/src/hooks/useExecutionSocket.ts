@@ -94,6 +94,8 @@ export function useExecutionSocket() {
             addPreview({
               nodeId: event.node_id,
               sampleIndex: event.sample_index ?? 0,
+              iteration: event.iteration ?? undefined,
+              batchIndex: event.batch_index ?? undefined,
               imageB64: event.image_b64 ?? '',
               portId: event.port_id,
               cacheHit: event.cache_hit,
