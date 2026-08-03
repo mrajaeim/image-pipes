@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Button, IconButton, TextField, Typography } from '@mui/material'
+import { Box, Button, IconButton, Typography } from '@mui/material'
 import {
-  batchDisplayPath,
   batchFilePaths,
   batchPreviewUrls,
   isDesktopApp,
@@ -14,11 +13,9 @@ import { notifyError, notifySuccess } from '../../notify'
 
 interface FileParamInputProps {
   field: ParamField
-  value: string
   assetBatchId?: string
   previewUrls?: string[]
   uploadedFiles?: string[]
-  onChange: (path: string) => void
   onAssetBatchId?: (batchId: string) => void
   onPreviews?: (dataUrls: string[], uploadedFiles: string[]) => void
   onRemovePreview?: (index: number) => void
@@ -60,11 +57,9 @@ function readFileAsDataUrl(file: File): Promise<string> {
 
 export function FileParamInput({
   field,
-  value,
   assetBatchId = '',
   previewUrls = [],
   uploadedFiles = [],
-  onChange,
   onAssetBatchId,
   onPreviews,
   onRemovePreview,
@@ -80,7 +75,9 @@ export function FileParamInput({
       ? `${previewUrls.length} images selected`
       : previewUrls.length === 1
         ? '1 image selected'
-        : null
+        : assetBatchId
+          ? 'Images linked from asset registry'
+          : 'No images selected'
 
   useEffect(() => {
     const input = folderRef.current
@@ -91,13 +88,11 @@ export function FileParamInput({
 
   const applyBatch = (
     batchId: string,
-    path: string,
     urls: string[],
     files: string[],
     message: string,
   ) => {
     onAssetBatchId?.(batchId)
-    onChange(path)
     onPreviews?.(urls, files)
     notifySuccess(message)
   }
@@ -114,7 +109,6 @@ export function FileParamInput({
         const result = await registerLocalPaths([picked.path], { asFolder: true })
         applyBatch(
           result.batch.id,
-          batchDisplayPath(result.batch),
           batchPreviewUrls(result.batch),
           batchFilePaths(result.batch),
           result.count > 1 ? `${result.count} images loaded` : 'Image loaded',
@@ -131,7 +125,6 @@ export function FileParamInput({
       })
       applyBatch(
         result.batch.id,
-        batchDisplayPath(result.batch),
         batchPreviewUrls(result.batch),
         batchFilePaths(result.batch),
         appending
@@ -177,7 +170,6 @@ export function FileParamInput({
         const nextFiles = [...uploadedFiles, ...result.files]
         onAssetBatchId?.(result.asset_batch_id)
         onPreviews?.(nextUrls, nextFiles)
-        onChange(result.path)
         notifySuccess(
           result.count > 1
             ? `Added ${result.count} images (${nextUrls.length} total)`
@@ -186,7 +178,6 @@ export function FileParamInput({
       } else {
         onAssetBatchId?.(result.asset_batch_id)
         onPreviews?.(urls, result.files)
-        onChange(result.path)
         notifySuccess(
           result.count > 1 ? `${result.count} images loaded` : 'Image loaded',
         )
@@ -203,17 +194,22 @@ export function FileParamInput({
 
   return (
     <Box sx={{ display: 'grid', gap: 1 }}>
-      <TextField
-        size="small"
-        label={field.label}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        helperText={
-          desktop
-            ? 'Native file dialogs register local paths (no copy).'
-            : (field.description ?? `Allowed: ${acceptAttr(field)}`)
-        }
-      />
+      <Typography
+        sx={{
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: 'rgba(244,241,234,0.4)',
+        }}
+      >
+        {field.label}
+      </Typography>
+      <Typography sx={{ fontSize: 12, color: 'rgba(244,241,234,0.55)', lineHeight: 1.4 }}>
+        {desktop
+          ? 'Native dialogs register local paths in the asset registry (no copy).'
+          : (field.description ?? `Allowed: ${acceptAttr(field)}`)}
+      </Typography>
       <Box
         sx={{
           display: 'flex',
@@ -343,11 +339,9 @@ export function FileParamInput({
           ))}
         </Box>
       )}
-      {summary && (
-        <Typography variant="caption" color="text.secondary">
-          {summary}
-        </Typography>
-      )}
+      <Typography variant="caption" color="text.secondary">
+        {summary}
+      </Typography>
       {error && (
         <Typography variant="caption" color="error">
           {error}

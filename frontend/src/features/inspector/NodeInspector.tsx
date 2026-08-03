@@ -44,6 +44,7 @@ export function NodeInspector() {
   const fields = meta?.params ?? []
   const schema = buildSchema(fields)
   const isSaveImage = selected?.data.type === 'save_image'
+  const isLoadImage = selected?.data.type === 'load_image'
   const isAnnotations = selected?.data.type === 'annotations'
 
   const { register, handleSubmit, reset, setValue, formState } = useForm({
@@ -109,6 +110,9 @@ export function NodeInspector() {
               selected.data.params.filename ?? '{filename}_{index}.png',
             )}
             outputDir={String(selected.data.params.output_dir ?? '')}
+            packaging={
+              selected.data.params.packaging === 'zip' ? 'zip' : 'bare'
+            }
             onFilenameChange={(filename) => {
               setValue('filename', filename, { shouldDirty: true, shouldValidate: true })
               updateNodeParams(selected.id, { filename })
@@ -116,6 +120,56 @@ export function NodeInspector() {
             onOutputDirChange={(outputDir) => {
               setValue('output_dir', outputDir, { shouldDirty: true, shouldValidate: true })
               updateNodeParams(selected.id, { output_dir: outputDir })
+            }}
+            onPackagingChange={(packaging) => {
+              setValue('packaging', packaging, { shouldDirty: true, shouldValidate: true })
+              updateNodeParams(selected.id, { packaging })
+            }}
+          />
+        ) : isLoadImage ? (
+          <FileParamInput
+            field={{
+              name: 'images',
+              label: 'Images / Folder',
+              type: 'file',
+              default: '',
+              accept: ['.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp', '.gif'],
+              description: 'Select multiple images or a folder of images',
+            }}
+            assetBatchId={String(selected.data.params.asset_batch_id ?? '')}
+            previewUrls={selected.data.localPreviewUrls ?? []}
+            uploadedFiles={selected.data.uploadedFiles ?? []}
+            onAssetBatchId={(batchId) => {
+              setValue('asset_batch_id', batchId, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+              updateNodeParams(selected.id, {
+                asset_batch_id: batchId,
+                sample: '',
+              })
+            }}
+            onPreviews={(urls, files) => setLocalPreviews(selected.id, urls, files)}
+            onRemovePreview={(index) => {
+              const prevBatchId = String(selected.data.params.asset_batch_id ?? '')
+              const result = removeLocalPreview(selected.id, index)
+              if (!result) return
+              setValue('asset_batch_id', result.assetBatchId, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+              if (!result.file) return
+              if (prevBatchId) {
+                const name = result.file.replace(/^.*[\\/]/, '')
+                void fetch(
+                  `/api/assets/${prevBatchId}/files/${encodeURIComponent(name)}`,
+                  { method: 'DELETE' },
+                )
+              } else {
+                void fetch(`/api/uploads?path=${encodeURIComponent(result.file)}`, {
+                  method: 'DELETE',
+                })
+              }
             }}
           />
         ) : isAnnotations ? (
@@ -147,61 +201,16 @@ export function NodeInspector() {
               </Typography>
             )}
             {fields.map((field) => {
-              if (field.name === 'asset_batch_id' || field.name === 'output_dir') {
+              if (
+                field.name === 'asset_batch_id' ||
+                field.name === 'sample' ||
+                field.name === 'output_dir' ||
+                field.name === 'packaging'
+              ) {
                 return null
               }
               if (field.type === 'file') {
-                return (
-                  <FileParamInput
-                    key={field.name}
-                    field={field}
-                    value={String(selected.data.params[field.name] ?? '')}
-                    assetBatchId={String(selected.data.params.asset_batch_id ?? '')}
-                    previewUrls={selected.data.localPreviewUrls ?? []}
-                    uploadedFiles={selected.data.uploadedFiles ?? []}
-                    onChange={(path) => {
-                      setValue(field.name, path, { shouldDirty: true, shouldValidate: true })
-                      updateNodeParams(selected.id, { [field.name]: path })
-                    }}
-                    onAssetBatchId={(batchId) => {
-                      setValue('asset_batch_id', batchId, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      })
-                      updateNodeParams(selected.id, { asset_batch_id: batchId })
-                    }}
-                    onPreviews={(urls, files) => setLocalPreviews(selected.id, urls, files)}
-                    onRemovePreview={(index) => {
-                      const prevBatchId = String(
-                        selected.data.params.asset_batch_id ?? '',
-                      )
-                      const result = removeLocalPreview(selected.id, index)
-                      if (!result) return
-                      setValue(field.name, result.path, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      })
-                      if (result.assetBatchId !== undefined) {
-                        setValue('asset_batch_id', result.assetBatchId, {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        })
-                      }
-                      if (!result.file) return
-                      if (prevBatchId) {
-                        const name = result.file.replace(/^.*[\\/]/, '')
-                        void fetch(
-                          `/api/assets/${prevBatchId}/files/${encodeURIComponent(name)}`,
-                          { method: 'DELETE' },
-                        )
-                      } else {
-                        void fetch(`/api/uploads?path=${encodeURIComponent(result.file)}`, {
-                          method: 'DELETE',
-                        })
-                      }
-                    }}
-                  />
-                )
+                return null
               }
               if (field.type === 'select' && field.options) {
                 return (
