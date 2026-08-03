@@ -14,15 +14,10 @@ venv/
 dist/
 build/
 
-# Backend cache & uploads
-backend/cache/*
-!backend/cache/.gitkeep
-backend/uploads/*
-!backend/uploads/.gitkeep
-backend/outputs/*
-!backend/outputs/.gitkeep
-backend/outputs/downloads/*
-!backend/outputs/downloads/.gitkeep
+# Backend runtime state (created on demand by paths.py)
+backend/cache/
+backend/uploads/
+backend/outputs/
 backend/assets/
 backend/build/
 backend/dist/
