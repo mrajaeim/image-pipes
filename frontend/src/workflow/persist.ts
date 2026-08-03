@@ -8,7 +8,7 @@ import {
 export const WORKFLOW_SESSION_KEY = 'image-pipes.workflow.v1'
 
 export interface WorkflowSession {
-  activeProjectId: string | null
+  activeWorkflowId: string | null
   document: WorkflowDocument
 }
 
@@ -22,14 +22,16 @@ function readOptionalString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
-/** Accept the new session envelope or a legacy bare WorkflowDocument. */
+/** Accept the session envelope or a legacy bare WorkflowDocument. */
 export function coerceWorkflowSession(value: unknown): WorkflowSession | null {
   if (!isRecord(value)) return null
 
   if (isRecord(value.document)) {
     try {
       return {
-        activeProjectId: readOptionalString(value.activeProjectId),
+        activeWorkflowId:
+          readOptionalString(value.activeWorkflowId) ??
+          readOptionalString(value.activeProjectId),
         document: coerceWorkflowDocument(value.document),
       }
     } catch {
@@ -39,7 +41,7 @@ export function coerceWorkflowSession(value: unknown): WorkflowSession | null {
 
   try {
     return {
-      activeProjectId: null,
+      activeWorkflowId: null,
       document: coerceWorkflowDocument(value),
     }
   } catch {
@@ -49,11 +51,11 @@ export function coerceWorkflowSession(value: unknown): WorkflowSession | null {
 
 export function saveWorkflowSession(
   doc: WorkflowDocument,
-  activeProjectId: string | null = doc.id ?? null,
+  activeWorkflowId: string | null = doc.id ?? null,
 ): void {
   try {
     const session: WorkflowSession = {
-      activeProjectId,
+      activeWorkflowId,
       document: doc,
     }
     localStorage.setItem(WORKFLOW_SESSION_KEY, JSON.stringify(session))

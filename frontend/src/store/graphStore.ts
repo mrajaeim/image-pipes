@@ -11,7 +11,7 @@ import {
 import { create } from 'zustand'
 import type { ExecutionPreview, GraphNodeData, NodeMetadata } from '../types'
 import {
-  DEFAULT_PROJECT_NAME,
+  DEFAULT_WORKFLOW_NAME,
   type WorkflowDocument,
   type WorkflowGraphPayload,
 } from '../workflow/io'
@@ -58,12 +58,12 @@ interface GraphState {
   sampleCount: number
   /** Bumped on loadWorkflow so the canvas can refit the viewport. */
   graphRevision: number
-  projectId: string | null
-  projectName: string
-  projectDescription: string
-  projectCreatedAt: string | null
-  projectUpdatedAt: string | null
-  projectDirty: boolean
+  workflowId: string | null
+  workflowName: string
+  workflowDescription: string
+  workflowCreatedAt: string | null
+  workflowUpdatedAt: string | null
+  workflowDirty: boolean
   setNodeCatalog: (catalog: NodeMetadata[]) => void
   onNodesChange: (changes: NodeChange<PipelineNode>[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
@@ -90,16 +90,16 @@ interface GraphState {
   setIsExecuting: (value: boolean) => void
   setSeed: (seed: number) => void
   setSampleCount: (count: number) => void
-  setProjectMeta: (meta: { name?: string; description?: string }) => void
-  markProjectDirty: () => void
-  markProjectClean: (record?: {
+  setWorkflowMeta: (meta: { name?: string; description?: string }) => void
+  markworkflowDirty: () => void
+  markWorkflowClean: (record?: {
     id: string
     name: string
     description?: string
     createdAt?: string
     updatedAt?: string
   }) => void
-  newProject: () => void
+  newWorkflow: () => void
   getInputImages: (nodeId: string) => string[]
   getResultImages: (nodeId: string) => string[]
   toGraphPayload: () => WorkflowGraphPayload
@@ -167,12 +167,12 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   seed: 0,
   sampleCount: 1,
   graphRevision: 0,
-  projectId: null,
-  projectName: DEFAULT_PROJECT_NAME,
-  projectDescription: '',
-  projectCreatedAt: null,
-  projectUpdatedAt: null,
-  projectDirty: false,
+  workflowId: null,
+  workflowName: DEFAULT_WORKFLOW_NAME,
+  workflowDescription: '',
+  workflowCreatedAt: null,
+  workflowUpdatedAt: null,
+  workflowDirty: false,
 
   setNodeCatalog: (catalog) => set({ nodeCatalog: catalog }),
 
@@ -186,7 +186,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
 
     set((state) => {
       const nodes = applyNodeChanges(changes, state.nodes)
-      const dirtyPatch = structural && !state.projectDirty ? { projectDirty: true } : {}
+      const dirtyPatch = structural && !state.workflowDirty ? { workflowDirty: true } : {}
       if (removedIds.length === 0) {
         return { nodes, ...dirtyPatch }
       }
@@ -221,7 +221,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     )
     set((state) => ({
       edges: applyEdgeChanges(changes, state.edges),
-      ...(structural ? { projectDirty: true } : {}),
+      ...(structural ? { workflowDirty: true } : {}),
     }))
   },
 
@@ -248,7 +248,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         },
         get().edges,
       ),
-      projectDirty: true,
+      workflowDirty: true,
     })
   },
 
@@ -269,7 +269,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         selectable: true,
         data: oldEdge.data ?? { waypoints: [] },
       })
-    set({ edges: next, projectDirty: true })
+    set({ edges: next, workflowDirty: true })
   },
 
   setEdgeWaypoints: (edgeId, waypoints) =>
@@ -285,7 +285,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             }
           : edge,
       ),
-      projectDirty: true,
+      workflowDirty: true,
     }),
 
   addNodeFromType: (meta, position) => {
@@ -304,7 +304,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         localPreviewUrls: [],
       },
     }
-    set({ nodes: [...get().nodes, node], selectedNodeId: id, projectDirty: true })
+    set({ nodes: [...get().nodes, node], selectedNodeId: id, workflowDirty: true })
   },
 
   removeNode: (nodeId) => {
@@ -334,7 +334,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     set({
       nodes: [...get().nodes.map((node) => ({ ...node, selected: false })), copy],
       selectedNodeId: id,
-      projectDirty: true,
+      workflowDirty: true,
     })
   },
 
@@ -347,7 +347,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
           ? { ...node, data: { ...node.data, params: { ...node.data.params, ...params } } }
           : node,
       ),
-      projectDirty: true,
+      workflowDirty: true,
     }),
 
   setLocalPreview: (nodeId, dataUrl) =>
@@ -364,7 +364,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             }
           : node,
       ),
-      projectDirty: true,
+      workflowDirty: true,
     }),
 
   setLocalPreviews: (nodeId, dataUrls, uploadedFiles = []) =>
@@ -381,7 +381,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
             }
           : node,
       ),
-      projectDirty: true,
+      workflowDirty: true,
     }),
 
   removeLocalPreview: (nodeId, index) => {
@@ -420,7 +420,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
           : item,
       ),
       sampleCount: Math.max(1, previews.length),
-      projectDirty: true,
+      workflowDirty: true,
     })
     return { file: removedFile, path: nextPath }
   },
@@ -504,36 +504,36 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     }),
   setGeneratedCode: (code) => set({ generatedCode: code }),
   setIsExecuting: (value) => set({ isExecuting: value }),
-  setSeed: (seed) => set({ seed, projectDirty: true }),
-  setSampleCount: (count) => set({ sampleCount: Math.max(1, count), projectDirty: true }),
+  setSeed: (seed) => set({ seed, workflowDirty: true }),
+  setSampleCount: (count) => set({ sampleCount: Math.max(1, count), workflowDirty: true }),
 
-  setProjectMeta: (meta) =>
+  setWorkflowMeta: (meta) =>
     set((state) => ({
-      projectName:
+      workflowName:
         meta.name !== undefined
-          ? meta.name.trim() || DEFAULT_PROJECT_NAME
-          : state.projectName,
-      projectDescription:
-        meta.description !== undefined ? meta.description : state.projectDescription,
-      projectDirty: true,
+          ? meta.name.trim() || DEFAULT_WORKFLOW_NAME
+          : state.workflowName,
+      workflowDescription:
+        meta.description !== undefined ? meta.description : state.workflowDescription,
+      workflowDirty: true,
     })),
 
-  markProjectDirty: () => set({ projectDirty: true }),
+  markworkflowDirty: () => set({ workflowDirty: true }),
 
-  markProjectClean: (record) =>
+  markWorkflowClean: (record) =>
     set((state) => ({
-      projectDirty: false,
-      projectId: record?.id ?? state.projectId,
-      projectName: record?.name ?? state.projectName,
-      projectDescription:
+      workflowDirty: false,
+      workflowId: record?.id ?? state.workflowId,
+      workflowName: record?.name ?? state.workflowName,
+      workflowDescription:
         record?.description !== undefined
           ? record.description
-          : state.projectDescription,
-      projectCreatedAt: record?.createdAt ?? state.projectCreatedAt,
-      projectUpdatedAt: record?.updatedAt ?? state.projectUpdatedAt,
+          : state.workflowDescription,
+      workflowCreatedAt: record?.createdAt ?? state.workflowCreatedAt,
+      workflowUpdatedAt: record?.updatedAt ?? state.workflowUpdatedAt,
     })),
 
-  newProject: () => {
+  newWorkflow: () => {
     nodeCounter = 1
     set({
       nodes: [],
@@ -549,12 +549,12 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       seed: 0,
       sampleCount: 1,
       graphRevision: get().graphRevision + 1,
-      projectId: null,
-      projectName: DEFAULT_PROJECT_NAME,
-      projectDescription: '',
-      projectCreatedAt: null,
-      projectUpdatedAt: null,
-      projectDirty: false,
+      workflowId: null,
+      workflowName: DEFAULT_WORKFLOW_NAME,
+      workflowDescription: '',
+      workflowCreatedAt: null,
+      workflowUpdatedAt: null,
+      workflowDirty: false,
     })
   },
 
@@ -622,19 +622,19 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     const {
       seed,
       sampleCount,
-      projectId,
-      projectName,
-      projectDescription,
-      projectCreatedAt,
-      projectUpdatedAt,
+      workflowId,
+      workflowName,
+      workflowDescription,
+      workflowCreatedAt,
+      workflowUpdatedAt,
     } = get()
     return {
       version: 1 as const,
-      ...(projectId ? { id: projectId } : {}),
-      name: projectName || DEFAULT_PROJECT_NAME,
-      ...(projectDescription.trim() ? { description: projectDescription.trim() } : {}),
-      ...(projectCreatedAt ? { createdAt: projectCreatedAt } : {}),
-      ...(projectUpdatedAt ? { updatedAt: projectUpdatedAt } : {}),
+      ...(workflowId ? { id: workflowId } : {}),
+      name: workflowName || DEFAULT_WORKFLOW_NAME,
+      ...(workflowDescription.trim() ? { description: workflowDescription.trim() } : {}),
+      ...(workflowCreatedAt ? { createdAt: workflowCreatedAt } : {}),
+      ...(workflowUpdatedAt ? { updatedAt: workflowUpdatedAt } : {}),
       seed,
       sampleCount,
       graph: get().toGraphPayload(),
@@ -713,12 +713,12 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       seed: doc.seed,
       sampleCount: Math.max(1, doc.sampleCount),
       graphRevision: get().graphRevision + 1,
-      projectId: doc.id ?? null,
-      projectName: doc.name || DEFAULT_PROJECT_NAME,
-      projectDescription: doc.description ?? '',
-      projectCreatedAt: doc.createdAt ?? null,
-      projectUpdatedAt: doc.updatedAt ?? null,
-      projectDirty: false,
+      workflowId: doc.id ?? null,
+      workflowName: doc.name || DEFAULT_WORKFLOW_NAME,
+      workflowDescription: doc.description ?? '',
+      workflowCreatedAt: doc.createdAt ?? null,
+      workflowUpdatedAt: doc.updatedAt ?? null,
+      workflowDirty: false,
     })
 
     return { skippedTypes: [...skipped].sort() }

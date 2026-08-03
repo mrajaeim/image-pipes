@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  Divider,
   IconButton,
   Menu,
   MenuItem,
@@ -128,11 +129,13 @@ interface AppHeaderProps {
   onRun: () => void
   onRunToSelected: () => void
   onCancel: () => void
-  onExportPython: () => void
-  onExportWorkflow: () => void
-  onLoadWorkflow: () => void
+  onNewWorkflow: () => void
+  onSaveWorkflow: () => void
+  onSaveAsWorkflow: () => void
+  onRenameWorkflow: () => void
+  onImportWorkflow: () => void
   onOpenTemplates: () => void
-  onOpenProjects: () => void
+  onOpenRecent: () => void
 }
 
 const outlineBtnSx = {
@@ -153,15 +156,24 @@ const outlineBtnSx = {
   },
 } as const
 
+const menuItemSx = {
+  fontSize: 13,
+  fontWeight: 600,
+  py: 1,
+  '&:hover': { bgcolor: 'rgba(125,206,160,0.1)' },
+} as const
+
 export function AppHeader({
   onRun,
   onRunToSelected,
   onCancel,
-  onExportPython,
-  onExportWorkflow,
-  onLoadWorkflow,
+  onNewWorkflow,
+  onSaveWorkflow,
+  onSaveAsWorkflow,
+  onRenameWorkflow,
+  onImportWorkflow,
   onOpenTemplates,
-  onOpenProjects,
+  onOpenRecent,
 }: AppHeaderProps) {
   const seed = useGraphStore((s) => s.seed)
   const sampleCount = useGraphStore((s) => s.sampleCount)
@@ -171,13 +183,18 @@ export function AppHeader({
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
   const nodeCount = useGraphStore((s) => s.nodes.length)
   const edgeCount = useGraphStore((s) => s.edges.length)
-  const projectName = useGraphStore((s) => s.projectName)
-  const projectDirty = useGraphStore((s) => s.projectDirty)
+  const workflowName = useGraphStore((s) => s.workflowName)
+  const workflowDirty = useGraphStore((s) => s.workflowDirty)
   const [infoOpen, setInfoOpen] = useState(false)
-  const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null)
-  const exportMenuOpen = Boolean(exportAnchor)
+  const [workflowAnchor, setWorkflowAnchor] = useState<null | HTMLElement>(null)
+  const workflowMenuOpen = Boolean(workflowAnchor)
 
-  const closeExportMenu = () => setExportAnchor(null)
+  const closeWorkflowMenu = () => setWorkflowAnchor(null)
+
+  const runMenuAction = (action: () => void) => {
+    closeWorkflowMenu()
+    action()
+  }
 
   return (
     <Box
@@ -289,10 +306,10 @@ export function AppHeader({
               lineHeight: 1.2,
             }}
           >
-            Project
+            Workflow
           </Typography>
           <Typography
-            title={projectName}
+            title={workflowName}
             sx={{
               fontSize: 13,
               fontWeight: 650,
@@ -303,8 +320,8 @@ export function AppHeader({
               whiteSpace: 'nowrap',
             }}
           >
-            {projectName}
-            {projectDirty ? (
+            {workflowName}
+            {workflowDirty ? (
               <Box component="span" sx={{ color: '#e67e22', ml: 0.35 }}>
                 *
               </Box>
@@ -414,25 +431,6 @@ export function AppHeader({
           }}
         >
           <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-            {isExecuting ? (
-              <Box
-                sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  bgcolor: '#0f0f0f',
-                  animation: 'pulse 1s ease-in-out infinite',
-                  '@keyframes pulse': {
-                    '0%, 100%': { opacity: 0.35 },
-                    '50%': { opacity: 1 },
-                  },
-                }}
-              />
-            ) : (
-              <Box component="span" sx={{ fontSize: 11, lineHeight: 1 }}>
-                ▶
-              </Box>
-            )}
             {isExecuting ? 'Running…' : 'Run'}
           </Box>
         </Button>
@@ -462,50 +460,23 @@ export function AppHeader({
         <Button
           variant="outlined"
           disabled={isExecuting}
-          onClick={onOpenProjects}
-          sx={outlineBtnSx}
-        >
-          Projects
-        </Button>
-
-        <Button
-          variant="outlined"
-          disabled={isExecuting}
-          onClick={onOpenTemplates}
-          sx={outlineBtnSx}
-        >
-          Templates
-        </Button>
-
-        <Button
-          variant="outlined"
-          disabled={isExecuting}
-          onClick={onLoadWorkflow}
-          sx={outlineBtnSx}
-        >
-          Load
-        </Button>
-
-        <Button
-          variant="outlined"
-          disabled={isExecuting}
           aria-haspopup="menu"
-          aria-expanded={exportMenuOpen ? 'true' : undefined}
-          aria-controls={exportMenuOpen ? 'export-menu' : undefined}
-          onClick={(event) => setExportAnchor(event.currentTarget)}
+          aria-expanded={workflowMenuOpen ? 'true' : undefined}
+          aria-controls={workflowMenuOpen ? 'workflow-menu' : undefined}
+          onClick={(event) => setWorkflowAnchor(event.currentTarget)}
           sx={outlineBtnSx}
         >
-          Export
+          Workflow
           <Box component="span" sx={{ ml: 0.75, fontSize: 10, opacity: 0.7, lineHeight: 1 }}>
             ▾
           </Box>
         </Button>
 
         <Menu
-          id="export-menu"
-          anchorEl={exportAnchor}
-          open={exportMenuOpen}
-          onClose={closeExportMenu}
+          id="workflow-menu"
+          anchorEl={workflowAnchor}
+          open={workflowMenuOpen}
+          onClose={closeWorkflowMenu}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
           transformOrigin={{ vertical: 'top', horizontal: 'right' }}
           slotProps={{
@@ -513,7 +484,7 @@ export function AppHeader({
               elevation: 0,
               sx: {
                 mt: 0.75,
-                minWidth: 180,
+                minWidth: 200,
                 bgcolor: '#161616',
                 color: '#f4f1ea',
                 border: '1px solid rgba(255,255,255,0.1)',
@@ -529,33 +500,27 @@ export function AppHeader({
             },
           }}
         >
-          <MenuItem
-            onClick={() => {
-              closeExportMenu()
-              onExportWorkflow()
-            }}
-            sx={{
-              fontSize: 13,
-              fontWeight: 600,
-              py: 1,
-              '&:hover': { bgcolor: 'rgba(125,206,160,0.1)' },
-            }}
-          >
-            Workflow JSON
+          <MenuItem onClick={() => runMenuAction(onNewWorkflow)} sx={menuItemSx}>
+            New
           </MenuItem>
-          <MenuItem
-            onClick={() => {
-              closeExportMenu()
-              onExportPython()
-            }}
-            sx={{
-              fontSize: 13,
-              fontWeight: 600,
-              py: 1,
-              '&:hover': { bgcolor: 'rgba(125,206,160,0.1)' },
-            }}
-          >
-            Python script
+          <MenuItem onClick={() => runMenuAction(onSaveWorkflow)} sx={menuItemSx}>
+            Save
+          </MenuItem>
+          <MenuItem onClick={() => runMenuAction(onSaveAsWorkflow)} sx={menuItemSx}>
+            Save as…
+          </MenuItem>
+          <MenuItem onClick={() => runMenuAction(onRenameWorkflow)} sx={menuItemSx}>
+            Rename…
+          </MenuItem>
+          <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', my: 0.5 }} />
+          <MenuItem onClick={() => runMenuAction(onImportWorkflow)} sx={menuItemSx}>
+            Import…
+          </MenuItem>
+          <MenuItem onClick={() => runMenuAction(onOpenTemplates)} sx={menuItemSx}>
+            Templates…
+          </MenuItem>
+          <MenuItem onClick={() => runMenuAction(onOpenRecent)} sx={menuItemSx}>
+            Recent…
           </MenuItem>
         </Menu>
       </Stack>

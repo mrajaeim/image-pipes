@@ -6,12 +6,12 @@ import { NodeInspector } from '../features/inspector/NodeInspector'
 import { CodePanel } from '../features/code/CodePanel'
 import { ExecutionLogPanel } from '../features/execution/ExecutionLogPanel'
 import { PreviewGrid } from '../features/preview/PreviewGrid'
-import { ProjectsDialog } from '../features/projects/ProjectsDialog'
+import { RecentWorkflowsDialog } from '../features/workflows/RecentWorkflowsDialog'
+import { WorkflowNameDialog } from '../features/workflows/WorkflowNameDialog'
 import { TemplateGallery } from '../features/templates/TemplateGallery'
 import { useGraphStore } from '../store/graphStore'
 import {
   bindExecutionRunner,
-  requestCodegen,
   useExecutionSocket,
 } from '../hooks/useExecutionSocket'
 import { useWorkflowPersistence } from '../hooks/useWorkflowPersistence'
@@ -21,43 +21,33 @@ import { materializeSampleImages } from '../workflow/materializeSampleImages'
 import {
   confirmDiscardIfDirty,
   loadExternalDocument,
-} from '../workflow/projectActions'
+  newWorkflow,
+  renameActiveWorkflow,
+  saveWorkflow,
+  saveWorkflowAs,
+} from '../workflow/workflowActions'
 import type { WorkflowTemplate } from '../workflow/templates'
 import { AppHeader } from './AppHeader'
 
+type NamePrompt = 'saveAs' | 'rename' | null
+
 export default function App() {
-  const setGeneratedCode = useGraphStore((s) => s.setGeneratedCode)
   const toWorkflowDocument = useGraphStore((s) => s.toWorkflowDocument)
+  const workflowId = useGraphStore((s) => s.workflowId)
+  const workflowName = useGraphStore((s) => s.workflowName)
+  const workflowDescription = useGraphStore((s) => s.workflowDescription)
   const nodeCatalog = useGraphStore((s) => s.nodeCatalog)
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
   const isExecuting = useGraphStore((s) => s.isExecuting)
   const { run, cancel } = useExecutionSocket()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [templatesOpen, setTemplatesOpen] = useState(false)
-  const [projectsOpen, setProjectsOpen] = useState(false)
+  const [recentOpen, setRecentOpen] = useState(false)
+  const [namePrompt, setNamePrompt] = useState<NamePrompt>(null)
   const [sideTab, setSideTab] = useState(0)
 
   useEffect(() => bindExecutionRunner(run), [run])
   useWorkflowPersistence()
-
-  const onExportPython = async () => {
-    try {
-      const code = await requestCodegen()
-      setGeneratedCode(code)
-      notifySuccess('Python script exported')
-    } catch (error) {
-      notifyError(error instanceof Error ? error.message : 'Codegen failed')
-    }
-  }
-
-  const onExportWorkflow = () => {
-    try {
-      downloadWorkflowJson(toWorkflowDocument())
-      notifySuccess('Workflow exported')
-    } catch (error) {
-      notifyError(error instanceof Error ? error.message : 'Export failed')
-    }
-  }
 
   const applyLoadedWorkflow = async (
     text: string,
@@ -77,7 +67,34 @@ export default function App() {
     }
   }
 
-  const onLoadWorkflowClick = () => {
+  const onNewWorkflow = () => {
+    if (!confirmDiscardIfDirty()) return
+    newWorkflow()
+    notifySuccess('New workflow')
+  }
+
+  const onSaveWorkflow = () => {
+    try {
+      if (!workflowId) {
+        setNamePrompt('saveAs')
+        return
+      }
+      saveWorkflow()
+      notifySuccess('Workflow saved')
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : 'Save failed')
+    }
+  }
+
+  const onSaveAsWorkflow = () => {
+    setNamePrompt('saveAs')
+  }
+
+  const onRenameWorkflow = () => {
+    setNamePrompt('rename')
+  }
+
+  const onImportWorkflow = () => {
     if (nodeCatalog.length === 0) {
       notifyError('Node catalog is still loading — try again in a moment')
       return
@@ -91,10 +108,10 @@ export default function App() {
     if (!file) return
     try {
       const text = await file.text()
-      await applyLoadedWorkflow(text, 'Workflow loaded')
-      setProjectsOpen(false)
+      await applyLoadedWorkflow(text, 'Workflow imported')
+      setRecentOpen(false)
     } catch (error) {
-      notifyError(error instanceof Error ? error.message : 'Load failed')
+      notifyError(error instanceof Error ? error.message : 'Import failed')
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
@@ -108,8 +125,27 @@ export default function App() {
     setTemplatesOpen(true)
   }
 
-  const onOpenProjects = () => {
-    setProjectsOpen(true)
+  const onOpenRecent = () => {
+    setRecentOpen(true)
+  }
+
+  const onConfirmNamePrompt = (meta: { name: string; description: string }) => {
+    try {
+      if (namePrompt === 'saveAs') {
+        const record = saveWorkflowAs(meta)
+        downloadWorkflowJson({
+          ...toWorkflowDocument(),
+          ...record,
+        })
+        notifySuccess(`Saved “${record.name}”`)
+      } else if (namePrompt === 'rename') {
+        renameActiveWorkflow(meta)
+        notifySuccess('Workflow renamed')
+      }
+      setNamePrompt(null)
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : 'Could not update workflow')
+    }
   }
 
   const onSelectTemplate = async (template: WorkflowTemplate) => {
@@ -146,16 +182,26 @@ export default function App() {
           run({ targetNodeId: selectedNodeId })
         }}
         onCancel={cancel}
-        onExportPython={() => void onExportPython()}
-        onExportWorkflow={onExportWorkflow}
-        onLoadWorkflow={onLoadWorkflowClick}
+        onNewWorkflow={onNewWorkflow}
+        onSaveWorkflow={onSaveWorkflow}
+        onSaveAsWorkflow={onSaveAsWorkflow}
+        onRenameWorkflow={onRenameWorkflow}
+        onImportWorkflow={onImportWorkflow}
         onOpenTemplates={onOpenTemplates}
-        onOpenProjects={onOpenProjects}
+        onOpenRecent={onOpenRecent}
       />
-      <ProjectsDialog
-        open={projectsOpen}
-        onClose={() => setProjectsOpen(false)}
-        onImportFile={onLoadWorkflowClick}
+      <WorkflowNameDialog
+        open={namePrompt != null}
+        title={namePrompt === 'rename' ? 'Rename workflow' : 'Save as'}
+        confirmLabel={namePrompt === 'rename' ? 'Rename' : 'Save'}
+        initialName={workflowName}
+        initialDescription={workflowDescription}
+        onClose={() => setNamePrompt(null)}
+        onConfirm={onConfirmNamePrompt}
+      />
+      <RecentWorkflowsDialog
+        open={recentOpen}
+        onClose={() => setRecentOpen(false)}
         disabled={isExecuting}
       />
       <TemplateGallery

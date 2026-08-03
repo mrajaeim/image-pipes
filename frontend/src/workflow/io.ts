@@ -1,6 +1,6 @@
 /** Versioned workflow JSON for export / load. */
 
-export const DEFAULT_PROJECT_NAME = 'Untitled'
+export const DEFAULT_WORKFLOW_NAME = 'Untitled'
 
 export interface WorkflowWaypoint {
   x: number
@@ -128,7 +128,7 @@ export function coerceWorkflowDocument(value: unknown): WorkflowDocument {
     )
   }
 
-  const name = readOptionalString(value.name) ?? DEFAULT_PROJECT_NAME
+  const name = readOptionalString(value.name) ?? DEFAULT_WORKFLOW_NAME
   const description = readOptionalString(value.description)
   const id = readOptionalString(value.id)
   const createdAt = readOptionalString(value.createdAt)
@@ -166,7 +166,7 @@ export function parseWorkflowJson(text: string): WorkflowDocument {
   return coerceWorkflowDocument(parsed)
 }
 
-/** Sanitize a project name into a safe download filename stem. */
+/** Sanitize a workflow name into a safe download filename stem. */
 export function workflowFilename(name: string, fallback = 'workflow'): string {
   const stem = name
     .trim()

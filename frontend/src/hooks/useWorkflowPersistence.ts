@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useGraphStore } from '../store/graphStore'
 import { materializeSampleImages } from '../workflow/materializeSampleImages'
 import { loadWorkflowSession, saveWorkflowSession } from '../workflow/persist'
-import { getProject } from '../workflow/projectLibrary'
+import { getWorkflow } from '../workflow/workflowLibrary'
 
 const SAVE_DEBOUNCE_MS = 400
 
@@ -18,9 +18,9 @@ export function useWorkflowPersistence() {
   const edges = useGraphStore((s) => s.edges)
   const seed = useGraphStore((s) => s.seed)
   const sampleCount = useGraphStore((s) => s.sampleCount)
-  const projectId = useGraphStore((s) => s.projectId)
-  const projectName = useGraphStore((s) => s.projectName)
-  const projectDescription = useGraphStore((s) => s.projectDescription)
+  const workflowId = useGraphStore((s) => s.workflowId)
+  const workflowName = useGraphStore((s) => s.workflowName)
+  const workflowDescription = useGraphStore((s) => s.workflowDescription)
   const [sessionReady, setSessionReady] = useState(false)
   const restoredRef = useRef(false)
 
@@ -29,16 +29,16 @@ export function useWorkflowPersistence() {
     restoredRef.current = true
     const saved = loadWorkflowSession()
     if (saved && saved.document.graph.nodes.length > 0) {
-      const libraryProject =
-        saved.activeProjectId != null ? getProject(saved.activeProjectId) : null
-      const doc = libraryProject
+      const libraryWorkflow =
+        saved.activeWorkflowId != null ? getWorkflow(saved.activeWorkflowId) : null
+      const doc = libraryWorkflow
         ? {
             ...saved.document,
-            id: libraryProject.id,
-            name: libraryProject.name,
-            description: libraryProject.description,
-            createdAt: libraryProject.createdAt,
-            updatedAt: libraryProject.updatedAt,
+            id: libraryWorkflow.id,
+            name: libraryWorkflow.name,
+            description: libraryWorkflow.description,
+            createdAt: libraryWorkflow.createdAt,
+            updatedAt: libraryWorkflow.updatedAt,
           }
         : {
             ...saved.document,
@@ -66,9 +66,9 @@ export function useWorkflowPersistence() {
     edges,
     seed,
     sampleCount,
-    projectId,
-    projectName,
-    projectDescription,
+    workflowId,
+    workflowName,
+    workflowDescription,
     toWorkflowDocument,
   ])
 
