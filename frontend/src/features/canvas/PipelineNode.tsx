@@ -11,6 +11,8 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  IconButton,
+  Slider,
   Stack,
   Typography,
 } from '@mui/material'
@@ -31,9 +33,9 @@ type ImageItem = {
 const CELL_WIDTH = 150
 const IMAGE_HEIGHT = 140
 const HEADER_HEIGHT = 44
+const PAGER_HEIGHT = 44
 const PORT_SLOT = 56
 const PORT_INSET = 14
-const MAX_VISIBLE_ROWS = 8
 
 const handleBaseStyle: React.CSSProperties = {
   width: 14,
@@ -127,24 +129,17 @@ function buildRowsFromColumns(
   const hasAny = columnImages.some((images) => images.some(Boolean))
   if (!hasAny) return []
 
-  const visibleRows = Math.min(totalRows, MAX_VISIBLE_ROWS)
   const rows: ImageItem[][] = []
-  for (let row = 0; row < visibleRows; row += 1) {
+  for (let row = 0; row < totalRows; row += 1) {
     rows.push(
       columns.map((portId, col) => {
         const src = columnImages[col][row] ?? ''
-        const overflow =
-          totalRows > visibleRows && row === visibleRows - 1
-            ? `+${totalRows - visibleRows + 1} more`
-            : undefined
         const channel = portLabel(portId, sectionPorts)
-        const sampleTag = totalRows > 1 ? `In ${row + 1}` : undefined
-        const parts = [sampleTag, channel].filter(Boolean)
         return {
           src,
           portId,
           sampleIndex: row,
-          label: overflow ?? (parts.length > 0 ? parts.join(' · ') : undefined),
+          label: channel,
         }
       }),
     )
@@ -191,18 +186,12 @@ function buildPreviewGrid({
   }
 
   if (localPreviewUrls.length > 0) {
-    const visible = localPreviewUrls.slice(0, MAX_VISIBLE_ROWS)
-    const rows = visible.map((src, index) => [
+    const rows = localPreviewUrls.map((src, index) => [
       {
         src,
         portId: columns[0],
         sampleIndex: index,
-        label:
-          localPreviewUrls.length > visible.length && index === visible.length - 1
-            ? `+${localPreviewUrls.length - visible.length + 1} more`
-            : localPreviewUrls.length > 1
-              ? `In ${index + 1}`
-              : undefined,
+        label: undefined as string | undefined,
       },
     ])
     return { columns: [columns[0]], rows, sectionPorts }
@@ -211,8 +200,105 @@ function buildPreviewGrid({
   return { columns, rows: [], sectionPorts }
 }
 
+function SamplePager({
+  index,
+  total,
+  onChange,
+}: {
+  index: number
+  total: number
+  onChange: (next: number) => void
+}) {
+  if (total <= 1) return null
+  const display = index + 1
+  return (
+    <Box
+      className="nodrag nopan"
+      onPointerDown={(event) => event.stopPropagation()}
+      sx={{
+        height: PAGER_HEIGHT,
+        px: 0.75,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.5,
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        bgcolor: '#171717',
+      }}
+    >
+      <IconButton
+        size="small"
+        aria-label="Previous result"
+        disabled={index <= 0}
+        onClick={() => onChange(Math.max(0, index - 1))}
+        sx={{
+          width: 26,
+          height: 26,
+          color: '#f0ebe3',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 1,
+          fontSize: 14,
+          '&.Mui-disabled': { color: 'rgba(255,255,255,0.25)' },
+        }}
+      >
+        ‹
+      </IconButton>
+      <Typography
+        sx={{
+          minWidth: 42,
+          textAlign: 'center',
+          fontSize: 11,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: 'rgba(244,241,234,0.85)',
+        }}
+      >
+        {display}/{total}
+      </Typography>
+      <IconButton
+        size="small"
+        aria-label="Next result"
+        disabled={index >= total - 1}
+        onClick={() => onChange(Math.min(total - 1, index + 1))}
+        sx={{
+          width: 26,
+          height: 26,
+          color: '#f0ebe3',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 1,
+          fontSize: 14,
+          '&.Mui-disabled': { color: 'rgba(255,255,255,0.25)' },
+        }}
+      >
+        ›
+      </IconButton>
+      <Slider
+        size="small"
+        min={0}
+        max={total - 1}
+        step={1}
+        value={index}
+        onChange={(_, value) => onChange(Array.isArray(value) ? value[0] : value)}
+        sx={{
+          flex: 1,
+          mx: 0.5,
+          color: '#7dcea0',
+          py: 0.75,
+          '& .MuiSlider-thumb': {
+            width: 12,
+            height: 12,
+          },
+          '& .MuiSlider-rail': {
+            opacity: 0.35,
+          },
+        }}
+      />
+    </Box>
+  )
+}
+
 export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowNode>) {
   const [viewer, setViewer] = useState<ImageItem | null>(null)
+  const [slideIndex, setSlideIndex] = useState(0)
   const updateNodeInternals = useUpdateNodeInternals()
   const nodeImages = useGraphStore((state) => state.nodeImages)
   const catalog = useGraphStore((state) => state.nodeCatalog)
@@ -252,18 +338,28 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
 
   const sectionPorts = grid.sectionPorts
   const columnCount = Math.max(1, grid.columns.length)
-  const rowCount = Math.max(1, grid.rows.length)
+  const totalSlides = grid.rows.length
+  const hasPager = totalSlides > 1
+  const activeIndex =
+    totalSlides === 0 ? 0 : Math.min(Math.max(0, slideIndex), totalSlides - 1)
+  const activeRow = totalSlides > 0 ? grid.rows[activeIndex] : []
+
   // Grow the body so every stacked port handle stays inside the node chrome.
   const portCount = Math.max(inputPorts.length, outputPorts.length, 1)
-  const contentHeight = Math.max(rowCount * IMAGE_HEIGHT, portCount * PORT_SLOT)
-  const nodeWidth = columnCount * CELL_WIDTH
+  const previewHeight = IMAGE_HEIGHT
+  const contentHeight = Math.max(
+    previewHeight + (hasPager ? PAGER_HEIGHT : 0),
+    portCount * PORT_SLOT,
+  )
+  const nodeWidth = Math.max(columnCount * CELL_WIDTH, hasPager ? 180 : CELL_WIDTH)
 
   useEffect(() => {
     updateNodeInternals(id)
   }, [
     id,
     columnCount,
-    rowCount,
+    totalSlides,
+    hasPager,
     contentHeight,
     nodeWidth,
     inputPorts.length,
@@ -289,6 +385,14 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
     if (kpCount > 0) parts.push(`${kpCount} kp`)
     return parts.join(' · ')
   }, [id, nodeImages])
+
+  const openSlide = (index: number) => {
+    const row = grid.rows[index]
+    const first = row?.find((item) => item.src) ?? row?.[0]
+    if (!first?.src) return
+    setSlideIndex(index)
+    setViewer(first)
+  }
 
   return (
     <>
@@ -364,6 +468,8 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
             borderBottomLeftRadius: 10,
             borderBottomRightRadius: 10,
             bgcolor: '#141414',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
           {timing && (
@@ -406,7 +512,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               title="Annotation targets from last run"
               sx={{
                 position: 'absolute',
-                bottom: 6,
+                top: 6,
                 left: 6,
                 zIndex: 2,
                 px: 0.7,
@@ -425,135 +531,148 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               {annotationSummary}
             </Box>
           )}
-          {grid.rows.length === 0
-            ? (
+
+          {totalSlides === 0 ? (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${columnCount}, ${CELL_WIDTH}px)`,
+                height: Math.max(previewHeight, contentHeight),
+                flex: 1,
+              }}
+            >
+              {Array.from({ length: columnCount }).map((__, col) => (
                 <Box
+                  key={`empty-0-${col}`}
                   sx={{
+                    position: 'relative',
+                    height: '100%',
+                    borderLeft: col === 0 ? 'none' : '1px solid rgba(255,255,255,0.08)',
                     display: 'grid',
-                    gridTemplateColumns: `repeat(${columnCount}, ${CELL_WIDTH}px)`,
-                    height: contentHeight,
+                    placeItems: 'center',
+                    bgcolor: '#141414',
+                    backgroundImage:
+                      'repeating-linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 10px, transparent 10px, transparent 20px)',
                   }}
                 >
-                  {Array.from({ length: columnCount }).map((__, col) => (
-                    <Box
-                      key={`empty-0-${col}`}
+                  {col === Math.floor((columnCount - 1) / 2) && (
+                    <Typography
                       sx={{
-                        position: 'relative',
-                        height: contentHeight,
-                        borderLeft: col === 0 ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                        display: 'grid',
-                        placeItems: 'center',
-                        bgcolor: '#141414',
-                        backgroundImage:
-                          'repeating-linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 10px, transparent 10px, transparent 20px)',
+                        color: 'rgba(255,255,255,0.45)',
+                        fontSize: 12,
+                        textAlign: 'center',
+                        px: 1.5,
+                        lineHeight: 1.4,
                       }}
                     >
-                      {col === Math.floor((columnCount - 1) / 2) && (
-                        <Typography
-                          sx={{
-                            color: 'rgba(255,255,255,0.45)',
-                            fontSize: 12,
-                            textAlign: 'center',
-                            px: 1.5,
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          {emptyHint}
-                        </Typography>
-                      )}
-                      {columnCount > 1 && sectionPorts[col] && (
-                        <Typography
-                          sx={{
-                            position: 'absolute',
-                            top: 6,
-                            left: 6,
-                            px: 0.7,
-                            py: 0.15,
-                            borderRadius: 0.75,
-                            bgcolor: 'rgba(0,0,0,0.55)',
-                            color: 'rgba(255,255,255,0.8)',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            letterSpacing: '0.04em',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          {sectionPorts[col].name}
-                        </Typography>
-                      )}
-                    </Box>
-                  ))}
-                </Box>
-              )
-            : grid.rows.map((rowItems, row) => (
-                <Box
-                  key={`row-${row}`}
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: `repeat(${columnCount}, ${CELL_WIDTH}px)`,
-                    height: IMAGE_HEIGHT,
-                    borderTop: row === 0 ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                  }}
-                >
-                  {rowItems.map((item, col) => (
-                    <Box
-                      key={`${item.portId ?? 'img'}-${row}-${col}`}
-                      className="nodrag nopan"
-                      onClick={(event) => {
-                        if (!item.src) return
-                        event.stopPropagation()
-                        setViewer(item)
-                      }}
+                      {emptyHint}
+                    </Typography>
+                  )}
+                  {columnCount > 1 && sectionPorts[col] && (
+                    <Typography
                       sx={{
-                        position: 'relative',
-                        height: IMAGE_HEIGHT,
-                        borderLeft: col === 0 ? 'none' : '1px solid rgba(255,255,255,0.08)',
-                        ...checkerboard,
-                        cursor: item.src ? 'zoom-in' : 'default',
+                        position: 'absolute',
+                        top: 6,
+                        left: 6,
+                        px: 0.7,
+                        py: 0.15,
+                        borderRadius: 0.75,
+                        bgcolor: 'rgba(0,0,0,0.55)',
+                        color: 'rgba(255,255,255,0.8)',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: '0.04em',
+                        textTransform: 'uppercase',
                       }}
                     >
-                      {item.src ? (
-                        <Box
-                          component="img"
-                          src={toSrc(item.src)}
-                          alt={item.label ?? 'node image'}
-                          draggable={false}
-                          sx={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            display: 'block',
-                            pointerEvents: 'none',
-                          }}
-                        />
-                      ) : null}
-                      {(item.label || (row === 0 && columnCount > 1)) && (
-                        <Typography
-                          sx={{
-                            position: 'absolute',
-                            top: 6,
-                            left: 6,
-                            px: 0.7,
-                            py: 0.15,
-                            borderRadius: 0.75,
-                            bgcolor: 'rgba(0,0,0,0.72)',
-                            color: '#fff',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            letterSpacing: '0.04em',
-                            textTransform: 'uppercase',
-                            pointerEvents: 'none',
-                          }}
-                        >
-                          {item.label ??
-                            portLabel(item.portId, sectionPorts) ??
-                            `Out ${col + 1}`}
-                        </Typography>
-                      )}
-                    </Box>
-                  ))}
+                      {sectionPorts[col].name}
+                    </Typography>
+                  )}
                 </Box>
               ))}
+            </Box>
+          ) : (
+            <>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${columnCount}, ${CELL_WIDTH}px)`,
+                  height: previewHeight,
+                  flex: '0 0 auto',
+                }}
+              >
+                {activeRow.map((item, col) => (
+                  <Box
+                    key={`${item.portId ?? 'img'}-${activeIndex}-${col}`}
+                    className="nodrag nopan"
+                    onClick={(event) => {
+                      if (!item.src) return
+                      event.stopPropagation()
+                      setViewer(item)
+                    }}
+                    sx={{
+                      position: 'relative',
+                      height: previewHeight,
+                      borderLeft: col === 0 ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                      ...checkerboard,
+                      cursor: item.src ? 'zoom-in' : 'default',
+                    }}
+                  >
+                    {item.src ? (
+                      <Box
+                        component="img"
+                        src={toSrc(item.src)}
+                        alt={item.label ?? 'node image'}
+                        draggable={false}
+                        sx={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                          display: 'block',
+                          pointerEvents: 'none',
+                        }}
+                      />
+                    ) : null}
+                    {(item.label || columnCount > 1) && (
+                      <Typography
+                        sx={{
+                          position: 'absolute',
+                          top: 6,
+                          left: 6,
+                          px: 0.7,
+                          py: 0.15,
+                          borderRadius: 0.75,
+                          bgcolor: 'rgba(0,0,0,0.72)',
+                          color: '#fff',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                          textTransform: 'uppercase',
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        {item.label ??
+                          portLabel(item.portId, sectionPorts) ??
+                          `Out ${col + 1}`}
+                      </Typography>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+              <SamplePager
+                index={activeIndex}
+                total={totalSlides}
+                onChange={(next) => {
+                  setSlideIndex(next)
+                  if (viewer) {
+                    const row = grid.rows[next]
+                    const first = row?.find((item) => item.src) ?? row?.[0]
+                    if (first?.src) setViewer(first)
+                  }
+                }}
+              />
+            </>
+          )}
         </Box>
 
         {inputPorts.map((port, index) => {
@@ -634,9 +753,42 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
         className="nodrag nopan"
         onClick={(event) => event.stopPropagation()}
       >
-        <DialogTitle sx={{ fontFamily: '"Fraunces", Georgia, serif' }}>
-          {data.label}
-          {viewer?.label ? ` · ${viewer.label}` : ''}
+        <DialogTitle
+          sx={{
+            fontFamily: '"Fraunces", Georgia, serif',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 1,
+          }}
+        >
+          <Box component="span">
+            {data.label}
+            {totalSlides > 1 ? ` · ${activeIndex + 1}/${totalSlides}` : ''}
+            {viewer?.label ? ` · ${viewer.label}` : ''}
+          </Box>
+          {totalSlides > 1 ? (
+            <Stack direction="row" spacing={0.5} className="nodrag nopan">
+              <IconButton
+                size="small"
+                aria-label="Previous result"
+                disabled={activeIndex <= 0}
+                onClick={() => openSlide(activeIndex - 1)}
+                sx={{ color: '#f0ebe3' }}
+              >
+                ‹
+              </IconButton>
+              <IconButton
+                size="small"
+                aria-label="Next result"
+                disabled={activeIndex >= totalSlides - 1}
+                onClick={() => openSlide(activeIndex + 1)}
+                sx={{ color: '#f0ebe3' }}
+              >
+                ›
+              </IconButton>
+            </Stack>
+          ) : null}
         </DialogTitle>
         <DialogContent>
           <Box
@@ -658,6 +810,21 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               />
             )}
           </Box>
+          {totalSlides > 1 ? (
+            <Box sx={{ px: 1, pt: 1.5, pb: 0.5 }}>
+              <Slider
+                size="small"
+                min={0}
+                max={totalSlides - 1}
+                step={1}
+                value={activeIndex}
+                onChange={(_, value) =>
+                  openSlide(Array.isArray(value) ? value[0] : value)
+                }
+                sx={{ color: '#7dcea0' }}
+              />
+            </Box>
+          ) : null}
         </DialogContent>
       </Dialog>
     </>
