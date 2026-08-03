@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-08-03
+
+### Fixed
+
+- Frontend `npm ci` (Docker and desktop CI) failing when the lockfile lacked `@emnapi/core` / `@emnapi/runtime` for optional Rolldown wasm bindings
+
+### Documentation
+
+- Full-release skill clarified: agent never pushes; print manual push commands instead
+
 ## [0.2.1] - 2026-08-03
 
 ### Added
@@ -63,7 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Baseline release tag preceding the workflow library and asset-registry work.
 
-[Unreleased]: https://github.com/mrajaeim/image-pipes/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/mrajaeim/image-pipes/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.2.2
 [0.2.1]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.2.1
 [0.2.0]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.2.0
 [0.1.1]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.1.1
