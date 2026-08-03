@@ -270,11 +270,11 @@ def download_result_archive(filename: str) -> FileResponse:
     safe_name = Path(filename).name
     if safe_name != filename or not safe_name.endswith(".zip"):
         raise HTTPException(status_code=400, detail="Invalid download name")
-    downloads = save_bundle_module.DOWNLOAD_DIR
-    target = (downloads / safe_name).resolve()
-    downloads_root = downloads.resolve()
-    if downloads_root not in target.parents and target != downloads_root:
-        raise HTTPException(status_code=400, detail="Path is outside downloads directory")
+    outputs = save_bundle_module.OUTPUT_DIR
+    target = (outputs / safe_name).resolve()
+    outputs_root = outputs.resolve()
+    if outputs_root not in target.parents and target != outputs_root:
+        raise HTTPException(status_code=400, detail="Path is outside output directory")
     if not target.is_file():
         raise HTTPException(status_code=404, detail="Download not found")
     return FileResponse(

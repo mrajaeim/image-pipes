@@ -1,4 +1,4 @@
-"""Collect Save Image outputs into a downloadable ZIP for the browser."""
+"""Collect Save Image outputs into ZIP archives under the output folder."""
 
 from __future__ import annotations
 
@@ -13,30 +13,50 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from app.paths import download_dir
+from app.paths import output_dir
 
-DOWNLOAD_DIR = download_dir()
+OUTPUT_DIR = output_dir()
+
+
+def _unique_name(existing: dict[str, bytes], name: str) -> str:
+    safe = Path(name).name or "image.png"
+    suffix = Path(safe).suffix.lower()
+    if suffix not in {".png", ".jpg", ".jpeg", ".bmp", ".webp"}:
+        safe = f"{Path(safe).stem}.png"
+    final_name = safe
+    stem = Path(safe).stem
+    file_suffix = Path(safe).suffix
+    index = 2
+    while final_name in existing:
+        final_name = f"{stem}_{index}{file_suffix}"
+        index += 1
+    return final_name
 
 
 @dataclass
 class SaveBundle:
-    """In-memory image files that will be zipped at the end of a run."""
+    """In-memory image files grouped by destination directory for ZIP writes."""
 
-    files: dict[str, bytes] = field(default_factory=dict)
+    files_by_dest: dict[str, dict[str, bytes]] = field(default_factory=dict)
 
-    def add_image(self, name: str, image: np.ndarray) -> str:
-        safe = Path(name).name or "image.png"
-        suffix = Path(safe).suffix.lower()
-        if suffix not in {".png", ".jpg", ".jpeg", ".bmp", ".webp"}:
-            safe = f"{Path(safe).stem}.png"
-            suffix = ".png"
-        final_name = safe
-        stem = Path(safe).stem
-        file_suffix = Path(safe).suffix
-        index = 2
-        while final_name in self.files:
-            final_name = f"{stem}_{index}{file_suffix}"
-            index += 1
+    @property
+    def files(self) -> dict[str, bytes]:
+        """Flattened view of all pending ZIP entries (tests / legacy checks)."""
+        merged: dict[str, bytes] = {}
+        for bucket in self.files_by_dest.values():
+            merged.update(bucket)
+        return merged
+
+    def add_image(
+        self,
+        name: str,
+        image: np.ndarray,
+        destination: Path | None = None,
+    ) -> str:
+        dest_key = str((destination or OUTPUT_DIR).resolve())
+        bucket = self.files_by_dest.setdefault(dest_key, {})
+        final_name = _unique_name(bucket, name)
+        suffix = Path(final_name).suffix.lower()
         encode_ext = ".jpg" if suffix in {".jpg", ".jpeg"} else suffix
         success, buffer = cv2.imencode(encode_ext, image)
         if not success:
@@ -44,25 +64,50 @@ class SaveBundle:
             final_name = f"{Path(final_name).stem}.png"
         if not success:
             raise RuntimeError(f"Failed to encode image for '{final_name}'")
-        self.files[final_name] = buffer.tobytes()
+        bucket[final_name] = buffer.tobytes()
         return final_name
 
-    def write_zip(self, destination: Path | None = None) -> Path:
-        if not self.files:
+    def write_zips(self) -> list[Path]:
+        """Write one ZIP per destination directory; return written paths."""
+        if not self.files_by_dest:
             raise ValueError("No images were saved")
-        DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        written: list[Path] = []
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        out = destination or (DOWNLOAD_DIR / f"results_{stamp}_{uuid.uuid4().hex[:8]}.zip")
-        out.parent.mkdir(parents=True, exist_ok=True)
-        with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            for name, payload in self.files.items():
-                archive.writestr(name, payload)
-        return out.resolve()
+        for dest_key, files in self.files_by_dest.items():
+            if not files:
+                continue
+            dest = Path(dest_key)
+            dest.mkdir(parents=True, exist_ok=True)
+            out = dest / f"results_{stamp}_{uuid.uuid4().hex[:8]}.zip"
+            with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                for name, payload in files.items():
+                    archive.writestr(name, payload)
+            written.append(out.resolve())
+        if not written:
+            raise ValueError("No images were saved")
+        return written
+
+    def write_zip(self, destination: Path | None = None) -> Path:
+        """Write a single ZIP (tests / helpers). Uses destination or first bucket."""
+        if destination is not None:
+            dest_key = str(destination.resolve())
+            files = self.files_by_dest.get(dest_key) or self.files
+            if not files:
+                raise ValueError("No images were saved")
+            destination.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            out = destination / f"results_{stamp}_{uuid.uuid4().hex[:8]}.zip"
+            with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                for name, payload in files.items():
+                    archive.writestr(name, payload)
+            return out.resolve()
+        paths = self.write_zips()
+        return paths[0]
 
 
 @dataclass
 class FolderSaveTracker:
-    """Tracks directories written by Save Image when output_dir is set."""
+    """Tracks directories written by Save Image when writing bare files."""
 
     directories: set[str] = field(default_factory=set)
     files: list[str] = field(default_factory=list)
