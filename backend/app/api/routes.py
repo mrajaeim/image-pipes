@@ -17,7 +17,7 @@ from app.models.assets import RegisterAssetsRequest, RegisterAssetsResponse
 from app.models.graph import ExecuteRequest, Graph, NodeMetadata
 from app.nodes import register_builtin_nodes
 from app.nodes.common import IMAGE_EXTENSIONS
-from app.paths import cache_dir, output_dir, upload_dir
+from app.paths import cache_dir, upload_dir
 from app.services import assets as assets_service
 from app.services.codegen import generate_python
 
@@ -25,7 +25,6 @@ router = APIRouter(prefix="/api")
 
 CACHE_DIR = cache_dir()
 UPLOAD_DIR = upload_dir()
-OUTPUT_DIR = output_dir()
 
 
 class CodegenBody(BaseModel):
@@ -43,11 +42,6 @@ class UploadResponse(BaseModel):
     files: list[str]
     count: int
     asset_batch_id: str
-
-
-class OutputDirResponse(BaseModel):
-    path: str
-    name: str
 
 
 def _allowed_extension(filename: str) -> bool:
@@ -266,16 +260,6 @@ def delete_uploaded_file(path: str) -> dict[str, str]:
         raise
     except OSError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.post("/outputs", response_model=OutputDirResponse)
-def create_output_directory() -> OutputDirResponse:
-    """Create a new root folder under outputs/ (legacy helper)."""
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    name = uuid.uuid4().hex[:12]
-    folder = OUTPUT_DIR / name
-    folder.mkdir(parents=True, exist_ok=False)
-    return OutputDirResponse(path=str(folder.resolve()), name=name)
 
 
 @router.get("/downloads/{filename}")

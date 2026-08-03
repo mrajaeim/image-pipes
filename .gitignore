@@ -23,10 +23,11 @@ backend/outputs/*
 !backend/outputs/.gitkeep
 backend/outputs/downloads/*
 !backend/outputs/downloads/.gitkeep
+backend/assets/
 backend/build/
 backend/dist/
 
-# App data at repo root (default data_root when IMAGE_PIPES_DATA_DIR is unset)
+# Legacy repo-root app data (pre data_root=backend/); safe to delete locally
 /uploads/
 /cache/
 /outputs/

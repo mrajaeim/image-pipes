@@ -1,4 +1,4 @@
-"""Shared filesystem locations for cache, uploads, and downloads."""
+"""Shared filesystem locations for cache, uploads, downloads, and assets."""
 
 from __future__ import annotations
 
@@ -12,7 +12,8 @@ def data_root() -> Path:
     if override:
         root = Path(override)
     else:
-        root = Path(__file__).resolve().parents[2]
+        # backend/app/paths.py → backend/
+        root = Path(__file__).resolve().parents[1]
     root.mkdir(parents=True, exist_ok=True)
     return root
 
