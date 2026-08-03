@@ -25,6 +25,22 @@ export interface WorkflowGraphPayload {
   }>
 }
 
+export type WorkflowAssetFile = {
+  name: string
+  /** Absolute path when available (same-machine restore). */
+  path?: string
+  /** Portable file bytes for cross-machine import. */
+  content_b64?: string
+}
+
+export type WorkflowAssetBatch = {
+  kind: 'external' | 'staged' | 'folder'
+  root?: string | null
+  files: WorkflowAssetFile[]
+}
+
+export type WorkflowAssets = Record<string, WorkflowAssetBatch>
+
 export interface WorkflowDocument {
   version: 1
   id?: string
@@ -36,6 +52,8 @@ export interface WorkflowDocument {
   /** How many times to run the pipeline (stochastic variation). */
   iterationCount: number
   graph: WorkflowGraphPayload
+  /** Asset registry batches referenced by load_image nodes (export/import). */
+  assets?: WorkflowAssets
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -65,6 +83,10 @@ function normalizeGraph(graph: WorkflowGraphPayload): WorkflowGraphPayload {
       const record = node as unknown as Record<string, unknown>
       const position = isRecord(record.position) ? record.position : {}
       const params = isRecord(record.params) ? { ...record.params } : {}
+      // Drop legacy load_image.path — assets use asset_batch_id + embedded registry.
+      if (String(record.type ?? '') === 'load_image') {
+        delete params.path
+      }
       return {
         id: String(record.id ?? ''),
         type: String(record.type ?? ''),
@@ -88,6 +110,38 @@ function normalizeGraph(graph: WorkflowGraphPayload): WorkflowGraphPayload {
       }
     }),
   }
+}
+
+function normalizeAssets(value: unknown): WorkflowAssets | undefined {
+  if (!isRecord(value)) return undefined
+  const assets: WorkflowAssets = {}
+  for (const [batchId, rawBatch] of Object.entries(value)) {
+    if (!isRecord(rawBatch) || !Array.isArray(rawBatch.files)) continue
+    const kindRaw = String(rawBatch.kind ?? 'external')
+    const kind: WorkflowAssetBatch['kind'] =
+      kindRaw === 'staged' || kindRaw === 'folder' ? kindRaw : 'external'
+    const files: WorkflowAssetFile[] = []
+    for (const item of rawBatch.files) {
+      if (!isRecord(item)) continue
+      const name = String(item.name ?? '').trim()
+      if (!name) continue
+      const path = typeof item.path === 'string' ? item.path : undefined
+      const content_b64 =
+        typeof item.content_b64 === 'string' ? item.content_b64 : undefined
+      files.push({
+        name,
+        ...(path ? { path } : {}),
+        ...(content_b64 ? { content_b64 } : {}),
+      })
+    }
+    if (files.length === 0) continue
+    assets[batchId] = {
+      kind,
+      root: typeof rawBatch.root === 'string' ? rawBatch.root : null,
+      files,
+    }
+  }
+  return Object.keys(assets).length > 0 ? assets : undefined
 }
 
 function readIterationCount(value: Record<string, unknown>): number {
@@ -138,6 +192,7 @@ export function coerceWorkflowDocument(value: unknown): WorkflowDocument {
   const id = readOptionalString(value.id)
   const createdAt = readOptionalString(value.createdAt)
   const updatedAt = readOptionalString(value.updatedAt)
+  const assets = normalizeAssets(value.assets)
 
   return {
     version: 1,
@@ -149,6 +204,7 @@ export function coerceWorkflowDocument(value: unknown): WorkflowDocument {
     seed: typeof value.seed === 'number' ? value.seed : 0,
     iterationCount: readIterationCount(value),
     graph: normalizeGraph(graph),
+    ...(assets ? { assets } : {}),
   }
 }
 
