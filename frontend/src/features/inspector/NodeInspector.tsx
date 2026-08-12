@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -47,7 +47,7 @@ export function NodeInspector() {
   const isLoadImage = selected?.data.type === 'load_image'
   const isAnnotations = selected?.data.type === 'annotations'
 
-  const { register, handleSubmit, reset, setValue, formState } = useForm({
+  const { register, handleSubmit, reset, control, setValue, formState } = useForm({
     resolver: zodResolver(schema),
     defaultValues: selected?.data.params ?? {},
   })
@@ -213,24 +213,38 @@ export function NodeInspector() {
                 return null
               }
               if (field.type === 'select' && field.options) {
+                const options = field.options
                 return (
-                  <TextField
-                    key={field.name}
-                    select
-                    size="small"
-                    label={field.label}
-                    helperText={field.description ?? undefined}
-                    defaultValue={String(
-                      selected.data.params[field.name] ?? field.default ?? '',
+                  <Controller
+                    key={`${selected.id}:${field.name}`}
+                    name={field.name}
+                    control={control}
+                    render={({ field: inputField }) => (
+                      <TextField
+                        select
+                        size="small"
+                        label={field.label}
+                        helperText={field.description ?? undefined}
+                        value={String(selected.data.params[field.name] ?? '')}
+                        onChange={(event) => {
+                          const value = event.target.value
+                          inputField.onChange(value)
+                          setValue(field.name, value, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          })
+                          updateNodeParams(selected.id, { [field.name]: value })
+                        }}
+                        onBlur={inputField.onBlur}
+                      >
+                        {options.map((option) => (
+                          <MenuItem key={option} value={option}>
+                            {option}
+                          </MenuItem>
+                        ))}
+                      </TextField>
                     )}
-                    {...register(field.name)}
-                  >
-                    {field.options.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {option}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                  />
                 )
               }
 
@@ -238,7 +252,7 @@ export function NodeInspector() {
 
               return (
                 <TextField
-                  key={field.name}
+                  key={`${selected.id}:${field.name}`}
                   size="small"
                   label={field.label}
                   type={field.type === 'string' ? 'text' : 'number'}
