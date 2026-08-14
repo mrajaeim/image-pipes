@@ -1,15 +1,10 @@
 name: Docker
 
 on:
+  # Path filters on push would skip tag-only publishes; keep filters on PRs only.
   push:
     branches: [main]
-    paths:
-      - "Dockerfile"
-      - "docker-compose.yml"
-      - ".dockerignore"
-      - "frontend/**"
-      - "backend/**"
-      - ".github/workflows/docker.yml"
+    tags: ["v*"]
   pull_request:
     branches: [main]
     paths:
@@ -21,6 +16,9 @@ on:
       - ".github/workflows/docker.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: docker-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -30,6 +28,9 @@ jobs:
     name: Build image
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,20 +38,49 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Login to GHCR
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ startsWith(github.ref, 'refs/tags/v') && format('ghcr.io/{0}', github.repository) || 'image-pipes' }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=ci,enable=${{ !startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
       - name: Build
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          push: false
-          load: true
-          tags: image-pipes:ci
+          # load and push are mutually exclusive; push versioned images on tags only.
+          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          load: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Smoke health check
         run: |
-          docker run -d --name image-pipes-ci -p 8000:8000 image-pipes:ci
+          set -euo pipefail
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]'):${VERSION}"
+            docker pull "$IMAGE"
+          else
+            IMAGE="image-pipes:ci"
+          fi
+          docker run -d --name image-pipes-ci -p 8000:8000 "$IMAGE"
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8000/api/health; then
               echo

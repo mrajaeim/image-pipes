@@ -2,19 +2,38 @@ name: Desktop
 
 on:
   push:
-    branches: [main]
     tags: ["v*"]
   pull_request:
     branches: [main]
+    paths:
+      - "desktop/**"
+      - "frontend/**"
+      - "backend/**"
+      - "scripts/build-desktop.mjs"
+      - ".github/workflows/desktop.yml"
+      - ".github/workflows/ci.yml"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: desktop-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  quality:
+    name: Quality gates
+    if: startsWith(github.ref, 'refs/tags/v')
+    uses: ./.github/workflows/ci.yml
+
   build:
     name: Build (${{ matrix.artifact }})
+    needs: quality
+    # Tag releases require green CI; PRs / manual runs skip the quality job.
+    if: |
+      always() &&
+      (needs.quality.result == 'success' || needs.quality.result == 'skipped')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
