@@ -16,7 +16,9 @@ RUN apt-get update \
     libglib2.0-0 \
     libgomp1 \
     libgl1 \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && groupadd --gid 10001 app \
+  && useradd --uid 10001 --gid app --shell /usr/sbin/nologin --create-home app
 
 COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /usr/local/bin/uv
 
@@ -36,12 +38,16 @@ RUN uv sync --frozen --no-dev \
 
 COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
 
+RUN chown -R app:app /app
+
 ENV IMAGE_PIPES_HOST=0.0.0.0 \
     IMAGE_PIPES_PORT=8000 \
     IMAGE_PIPES_DATA_DIR=/app/backend \
     IMAGE_PIPES_FRONTEND_DIST=/app/frontend/dist \
     IMAGE_PIPES_LOG_LEVEL=warning \
     PYTHONUNBUFFERED=1
+
+USER app
 
 EXPOSE 8000
 
