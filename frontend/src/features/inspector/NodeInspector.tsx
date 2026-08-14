@@ -215,15 +215,22 @@ export function NodeInspector() {
               if (field.type === 'select' && field.options) {
                 return (
                   <TextField
-                    key={field.name}
+                    key={`${selected.id}:${field.name}`}
                     select
                     size="small"
                     label={field.label}
                     helperText={field.description ?? undefined}
-                    defaultValue={String(
+                    value={String(
                       selected.data.params[field.name] ?? field.default ?? '',
                     )}
-                    {...register(field.name)}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      setValue(field.name, value, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                      updateNodeParams(selected.id, { [field.name]: value })
+                    }}
                   >
                     {field.options.map((option) => (
                       <MenuItem key={option} value={option}>
@@ -238,7 +245,7 @@ export function NodeInspector() {
 
               return (
                 <TextField
-                  key={field.name}
+                  key={`${selected.id}:${field.name}`}
                   size="small"
                   label={field.label}
                   type={field.type === 'string' ? 'text' : 'number'}
