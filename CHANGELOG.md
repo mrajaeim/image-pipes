@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-08-15
+
+### Fixed
+
+- Inspector **select** parameters (for example Sharpen **Kernel**) no longer reset or cross-contaminate when switching nodes or deselecting and reselecting — selects are controlled from graph state with node-scoped field keys
+
+### Added
+
+- Frontend Vitest + Testing Library setup, with NodeInspector tests for select/number persistence across node switches and deselect
+- Backend regression test that first-party node params change execute output
+- **CI** workflow — frontend typecheck, lint, test, and production build; backend ruff and pytest
+- Dependabot weekly updates for frontend/desktop npm, backend uv, and GitHub Actions
+- Docker images published to **GHCR** on `v*` tags (`version`, `major.minor`, `latest`)
+
+### Changed
+
+- Desktop workflow no longer builds installers on every `main` push; PRs only when desktop-related paths change; **tag releases run CI quality gates first**
+- Docker runtime runs as non-root user `app` (uid 10001)
+- Workflows default to least-privilege `contents: read` (elevated only for release / package publish)
+
 ## [0.2.2] - 2026-08-03
 
 ### Fixed
@@ -73,7 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Baseline release tag preceding the workflow library and asset-registry work.
 
-[Unreleased]: https://github.com/mrajaeim/image-pipes/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/mrajaeim/image-pipes/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.2.3
 [0.2.2]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.2.2
 [0.2.1]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.2.1
 [0.2.0]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.2.0
