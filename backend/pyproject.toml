@@ -11,7 +11,7 @@ dependencies = [
     "pillow>=11.0.0",
     "pydantic>=2.9.0",
     "python-multipart>=0.0.12",
-    "websockets>=13.0",
+    "websockets>=17.0.1",
     "albumentations==2.0.8",
 ]
 
