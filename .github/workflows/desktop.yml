@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Needed so untagged builds can resolve the nearest `v*` tag for versioning.
           fetch-depth: 0
