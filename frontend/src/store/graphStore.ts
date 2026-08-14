@@ -15,6 +15,11 @@ import {
   type WorkflowDocument,
   type WorkflowGraphPayload,
 } from '../workflow/io'
+import {
+  computeCustomCodeHash,
+  graphHasCustomCode,
+  isCustomCodeTrusted,
+} from '../workflow/customCodeTrust'
 import { portTypeColor } from '../lib/portTypes'
 
 
@@ -69,6 +74,12 @@ interface GraphState {
   workflowCreatedAt: string | null
   workflowUpdatedAt: string | null
   workflowDirty: boolean
+  /** Session-only fingerprint of trusted custom_python code; null = untrusted when code exists. */
+  trustedCustomCodeHash: string | null
+  customCodeTrustDialogOpen: boolean
+  pendingRunOptions: { targetNodeId?: string } | null
+  /** When true, confirming the trust dialog also starts a pipeline run. */
+  pendingRunAfterTrust: boolean
   setNodeCatalog: (catalog: NodeMetadata[]) => void
   onNodesChange: (changes: NodeChange<PipelineNode>[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
@@ -111,6 +122,14 @@ interface GraphState {
   toGraphPayload: () => WorkflowGraphPayload
   toWorkflowDocument: () => WorkflowDocument
   loadWorkflow: (doc: WorkflowDocument) => { skippedTypes: string[] }
+  trustCustomCode: () => void
+  openCustomCodeTrustDialog: (
+    options?: { targetNodeId?: string },
+    runAfterTrust?: boolean,
+  ) => void
+  closeCustomCodeTrustDialog: () => void
+  isCustomCodeTrusted: () => boolean
+  graphHasCustomCode: () => boolean
 }
 
 const STRUCTURAL_NODE_CHANGE_TYPES = new Set(['add', 'remove', 'position', 'replace'])
@@ -179,6 +198,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   workflowCreatedAt: null,
   workflowUpdatedAt: null,
   workflowDirty: false,
+  trustedCustomCodeHash: null,
+  customCodeTrustDialogOpen: false,
+  pendingRunOptions: null,
+  pendingRunAfterTrust: false,
 
   setNodeCatalog: (catalog) => set({ nodeCatalog: catalog }),
 
@@ -310,7 +333,14 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         localPreviewUrls: [],
       },
     }
-    set({ nodes: [...get().nodes, node], selectedNodeId: id, workflowDirty: true })
+    set({
+      nodes: [...get().nodes, node],
+      selectedNodeId: id,
+      workflowDirty: true,
+      ...(meta.type === 'custom_python'
+        ? { trustedCustomCodeHash: computeCustomCodeHash([...get().nodes, node]) }
+        : {}),
+    })
   },
 
   removeNode: (nodeId) => {
@@ -341,20 +371,34 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       nodes: [...get().nodes.map((node) => ({ ...node, selected: false })), copy],
       selectedNodeId: id,
       workflowDirty: true,
+      ...(source.data.type === 'custom_python'
+        ? {
+            trustedCustomCodeHash: computeCustomCodeHash([
+              ...get().nodes,
+              copy,
+            ]),
+          }
+        : {}),
     })
   },
 
   selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
 
-  updateNodeParams: (nodeId, params) =>
+  updateNodeParams: (nodeId, params) => {
+    const nodes = get().nodes.map((node) =>
+      node.id === nodeId
+        ? { ...node, data: { ...node.data, params: { ...node.data.params, ...params } } }
+        : node,
+    )
+    const target = nodes.find((node) => node.id === nodeId)
+    const autoTrust =
+      target?.data.type === 'custom_python' && Object.prototype.hasOwnProperty.call(params, 'code')
     set({
-      nodes: get().nodes.map((node) =>
-        node.id === nodeId
-          ? { ...node, data: { ...node.data, params: { ...node.data.params, ...params } } }
-          : node,
-      ),
+      nodes,
       workflowDirty: true,
-    }),
+      ...(autoTrust ? { trustedCustomCodeHash: computeCustomCodeHash(nodes) } : {}),
+    })
+  },
 
   setLocalPreview: (nodeId, dataUrl) =>
     set({
@@ -574,6 +618,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       workflowCreatedAt: null,
       workflowUpdatedAt: null,
       workflowDirty: false,
+      trustedCustomCodeHash: null,
+      customCodeTrustDialogOpen: false,
+      pendingRunOptions: null,
+      pendingRunAfterTrust: false,
     })
   },
 
@@ -744,8 +792,35 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       workflowCreatedAt: doc.createdAt ?? null,
       workflowUpdatedAt: doc.updatedAt ?? null,
       workflowDirty: false,
+      // Imported / restored / template workflows with custom code start untrusted.
+      trustedCustomCodeHash: null,
+      customCodeTrustDialogOpen: false,
+      pendingRunOptions: null,
+      pendingRunAfterTrust: false,
     })
 
     return { skippedTypes: [...skipped].sort() }
   },
+
+  trustCustomCode: () => {
+    set({ trustedCustomCodeHash: computeCustomCodeHash(get().nodes) })
+  },
+
+  openCustomCodeTrustDialog: (options, runAfterTrust = true) =>
+    set({
+      customCodeTrustDialogOpen: true,
+      pendingRunOptions: options ?? {},
+      pendingRunAfterTrust: runAfterTrust,
+    }),
+
+  closeCustomCodeTrustDialog: () =>
+    set({
+      customCodeTrustDialogOpen: false,
+      pendingRunOptions: null,
+      pendingRunAfterTrust: false,
+    }),
+
+  isCustomCodeTrusted: () => isCustomCodeTrusted(get().nodes, get().trustedCustomCodeHash),
+
+  graphHasCustomCode: () => graphHasCustomCode(get().nodes),
 }))

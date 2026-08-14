@@ -32,6 +32,8 @@ import {
 } from '../workflow/workflowActions'
 import type { WorkflowTemplate } from '../workflow/templates'
 import { AppHeader } from './AppHeader'
+import { CustomCodeTrustBanner } from '../features/execution/CustomCodeTrustBanner'
+import { CustomCodeTrustDialog } from '../features/execution/CustomCodeTrustDialog'
 
 type NamePrompt = 'save' | 'export' | 'rename' | null
 
@@ -210,6 +212,8 @@ export default function App() {
         onOpenTemplates={onOpenTemplates}
         onOpenRecent={onOpenRecent}
       />
+      <CustomCodeTrustBanner />
+      <CustomCodeTrustDialog />
       <WorkflowNameDialog
         open={namePrompt != null}
         title={

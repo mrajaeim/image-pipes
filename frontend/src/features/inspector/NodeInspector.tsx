@@ -13,6 +13,7 @@ import type { ParamField } from '../../types'
 import { FileParamInput } from './FileParamInput'
 import { SaveImageParams } from './SaveImageParams'
 import { AnnotationsParams } from './AnnotationsParams'
+import { CustomPythonParams } from './CustomPythonParams'
 
 function buildSchema(fields: ParamField[]) {
   const shape: Record<string, z.ZodTypeAny> = {}
@@ -46,6 +47,7 @@ export function NodeInspector() {
   const isSaveImage = selected?.data.type === 'save_image'
   const isLoadImage = selected?.data.type === 'load_image'
   const isAnnotations = selected?.data.type === 'annotations'
+  const isCustomPython = selected?.data.type === 'custom_python'
 
   const { register, handleSubmit, reset, setValue, formState } = useForm({
     resolver: zodResolver(schema),
@@ -124,6 +126,15 @@ export function NodeInspector() {
             onPackagingChange={(packaging) => {
               setValue('packaging', packaging, { shouldDirty: true, shouldValidate: true })
               updateNodeParams(selected.id, { packaging })
+            }}
+          />
+        ) : isCustomPython ? (
+          <CustomPythonParams
+            key={selected.id}
+            code={String(selected.data.params.code ?? '')}
+            onCodeChange={(nextCode) => {
+              setValue('code', nextCode, { shouldDirty: true, shouldValidate: true })
+              updateNodeParams(selected.id, { code: nextCode })
             }}
           />
         ) : isLoadImage ? (

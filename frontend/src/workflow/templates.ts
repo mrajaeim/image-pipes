@@ -5,6 +5,7 @@ export type TemplateCategory =
   | 'structure'
   | 'augment'
   | 'color'
+  | 'script'
 
 export type WorkflowTemplate = {
   id: string
@@ -27,6 +28,7 @@ export const TEMPLATE_CATEGORY_META: Record<
   structure: { label: 'Structure', accent: '#af7ac5' },
   augment: { label: 'Augment', accent: '#e74c3c' },
   color: { label: 'Color', accent: '#f5b041' },
+  script: { label: 'Script', accent: '#58d68d' },
 }
 
 export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
@@ -117,5 +119,14 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     path: '/examples/kmeans_palette.json',
     category: 'color',
     steps: ['Load', 'K-Means'],
+  },
+  {
+    id: 'custom_python_sepia',
+    name: 'Custom Python Sepia',
+    description:
+      'Load Lena, then apply a sepia look via inline Custom Python (requires trust before Run).',
+    path: '/examples/custom_python_sepia.json',
+    category: 'script',
+    steps: ['Load', 'Custom Python'],
   },
 ]

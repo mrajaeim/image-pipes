@@ -49,9 +49,16 @@ export function useExecutionSocket() {
 
   const run = useCallback(
     (options?: RunOptions) => {
+      const state = useGraphStore.getState()
+      if (!state.isCustomCodeTrusted()) {
+        state.openCustomCodeTrustDialog(options)
+        return
+      }
+
       clearExecution()
       setIsExecuting(true)
       targetLabelRef.current = options?.targetNodeId ?? null
+      const allowCustomCode = state.graphHasCustomCode()
 
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
       const socket = new WebSocket(`${protocol}://${window.location.host}/ws/execute`)
@@ -64,6 +71,7 @@ export function useExecutionSocket() {
             seed,
             sample_count: iterationCount,
             cache: true,
+            allow_custom_code: allowCustomCode,
             ...(options?.targetNodeId
               ? { target_node_id: options.targetNodeId }
               : {}),
