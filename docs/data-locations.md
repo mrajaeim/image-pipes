@@ -11,15 +11,24 @@ All backend runtime data lives under `data_root()` (`backend/app/paths.py`):
 | **Electron desktop** | `{app.getPath('userData')}/data` via env `IMAGE_PIPES_DATA_DIR` (set in `desktop/src/main.cjs`) |
 | **Backend alone** (no env override) | `backend/` in the repo |
 
-Electron never writes pipeline data into Program Files / the app install directory.
+Electron never writes pipeline data into the app install directory.
+
+On Windows this often looks like:
+
+| Role | Example path |
+|------|----------------|
+| **Install** (app binary / resources) | `C:\Users\<you>\AppData\Local\Programs\Image Pipes\` |
+| **Data root** (`IMAGE_PIPES_DATA_DIR`) | `C:\Users\<you>\AppData\Roaming\image-pipes-desktop\data\` |
+
+`userData` is named after the Electron package `name` (`image-pipes-desktop` in `desktop/package.json`), not the display `productName` (“Image Pipes”). The install folder uses the product name.
 
 ### Typical Electron locations
 
-| OS | Approx. path (`productName` = Image Pipes) |
-|----|--------------------------------------------|
-| Windows | `%APPDATA%\Image Pipes\data\` |
-| macOS | `~/Library/Application Support/Image Pipes/data/` |
-| Linux | `~/.config/Image Pipes/data/` |
+| OS | Approx. data root |
+|----|-------------------|
+| Windows | `%APPDATA%\image-pipes-desktop\data\` |
+| macOS | `~/Library/Application Support/image-pipes-desktop/data/` |
+| Linux | `~/.config/image-pipes-desktop/data/` |
 
 Layout under the data root:
 
