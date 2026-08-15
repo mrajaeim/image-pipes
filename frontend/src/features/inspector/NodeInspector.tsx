@@ -144,6 +144,7 @@ export function NodeInspector() {
         ) : isUserScript ? (
           <UserScriptParams
             key={selected.id}
+            nodeId={selected.id}
             nodeType={selected.data.type}
             label={selected.data.label}
             version={Number(selected.data.params.version ?? 1)}

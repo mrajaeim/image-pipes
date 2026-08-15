@@ -18,8 +18,11 @@ import {
 import { notifyError } from '../../notify'
 import { useGraphStore } from '../../store/graphStore'
 import { scriptIdFromType, userScriptCodeKey } from '../../workflow/customCodeTrust'
+import { ScriptLogBox } from './ScriptLogBox'
+import { ScriptHelpersButton } from './ScriptHelpersButton'
 
 type UserScriptParamsProps = {
+  nodeId: string
   nodeType: string
   label: string
   version: number
@@ -79,6 +82,7 @@ function EditIcon({ color = ICON_COLOR }: { color?: string }) {
 }
 
 export function UserScriptParams({
+  nodeId,
   nodeType,
   label,
   version,
@@ -201,27 +205,30 @@ export function UserScriptParams({
         <Typography sx={{ fontSize: 12, fontWeight: 650, color: 'rgba(244,241,234,0.7)' }}>
           Code (v{version})
         </Typography>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<EditIcon />}
-          onClick={openEditor}
-          disabled={!cached || !code}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 650,
-            fontSize: 12,
-            color: ICON_COLOR,
-            borderColor: 'rgba(255,255,255,0.16)',
-            '& .MuiButton-startIcon': { color: ICON_COLOR },
-            '&:hover': {
-              borderColor: 'rgba(125,206,160,0.45)',
-              bgcolor: 'rgba(125,206,160,0.08)',
-            },
-          }}
-        >
-          Edit code
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <ScriptHelpersButton />
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<EditIcon />}
+            onClick={openEditor}
+            disabled={!cached || !code}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 650,
+              fontSize: 12,
+              color: ICON_COLOR,
+              borderColor: 'rgba(255,255,255,0.16)',
+              '& .MuiButton-startIcon': { color: ICON_COLOR },
+              '&:hover': {
+                borderColor: 'rgba(125,206,160,0.45)',
+                bgcolor: 'rgba(125,206,160,0.08)',
+              },
+            }}
+          >
+            Edit code
+          </Button>
+        </Box>
       </Box>
 
       <Box
@@ -248,6 +255,8 @@ export function UserScriptParams({
           />
         )}
       </Box>
+
+      <ScriptLogBox nodeId={nodeId} />
 
       <Dialog
         open={editing}
@@ -292,6 +301,7 @@ export function UserScriptParams({
           >
             Edit {label} (new version)
           </Typography>
+          <ScriptHelpersButton compact />
           <Button
             size="small"
             disabled={saving}

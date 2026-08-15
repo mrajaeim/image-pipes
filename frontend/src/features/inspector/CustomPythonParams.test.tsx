@@ -116,4 +116,16 @@ describe('CustomPythonParams', () => {
     await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['nodes'] }))
     fetchSpy.mockRestore()
   })
+
+  it('shows helpers button and script log box', async () => {
+    renderParams()
+    const user = userEvent.setup()
+    expect(screen.getByRole('button', { name: /Script helpers/i })).toBeInTheDocument()
+    expect(screen.getByText(/^Script log$/i)).toBeInTheDocument()
+    expect(screen.getByText(/No script logs yet/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Script helpers/i }))
+    expect(await screen.findByText('Script helpers')).toBeInTheDocument()
+    expect(screen.getByText('log(*args)')).toBeInTheDocument()
+  })
 })

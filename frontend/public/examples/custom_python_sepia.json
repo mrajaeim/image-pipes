@@ -16,7 +16,7 @@
         "id": "custom-1",
         "type": "custom_python",
         "params": {
-          "code": "def process(image, seed=0):\n    # Simple sepia tone (BGR uint8)\n    import numpy as np\n    b = image[:, :, 0].astype(np.float32)\n    g = image[:, :, 1].astype(np.float32)\n    r = image[:, :, 2].astype(np.float32)\n    tr = 0.393 * r + 0.769 * g + 0.189 * b\n    tg = 0.349 * r + 0.686 * g + 0.168 * b\n    tb = 0.272 * r + 0.534 * g + 0.131 * b\n    out = image.copy()\n    out[:, :, 0] = np.clip(tb, 0, 255).astype(np.uint8)\n    out[:, :, 1] = np.clip(tg, 0, 255).astype(np.uint8)\n    out[:, :, 2] = np.clip(tr, 0, 255).astype(np.uint8)\n    return out\n"
+          "code": "def process(image, seed=0):\n    # Simple sepia tone (BGR uint8).\n    # log(...) lines show up in the Script log panel below.\n    log(\"sepia start\", \"seed=\", seed)\n    log(\"input\", image)\n\n    b = image[:, :, 0].astype(np.float32)\n    g = image[:, :, 1].astype(np.float32)\n    r = image[:, :, 2].astype(np.float32)\n    tr = 0.393 * r + 0.769 * g + 0.189 * b\n    tg = 0.349 * r + 0.686 * g + 0.168 * b\n    tb = 0.272 * r + 0.534 * g + 0.131 * b\n    out = image.copy()\n    out[:, :, 0] = np.clip(tb, 0, 255).astype(np.uint8)\n    out[:, :, 1] = np.clip(tg, 0, 255).astype(np.uint8)\n    out[:, :, 2] = np.clip(tr, 0, 255).astype(np.uint8)\n\n    log(\"sepia done\", out)\n    return out\n"
         },
         "position": { "x": 220, "y": 0 }
       }

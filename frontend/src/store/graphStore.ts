@@ -65,6 +65,8 @@ interface GraphState {
   previews: ExecutionPreview[]
   nodeImages: Record<string, NodeImageState>
   logs: string[]
+  /** Per-node lines from custom/user-script log() helpers (cleared each run). */
+  scriptLogsByNodeId: Record<string, string[]>
   nodeTimings: Record<string, NodeTiming>
   generatedCode: string
   isExecuting: boolean
@@ -114,6 +116,7 @@ interface GraphState {
   addPreview: (preview: ExecutionPreview) => void
   clearExecution: () => void
   appendLog: (message: string) => void
+  appendScriptLog: (nodeId: string, message: string) => void
   setNodeTiming: (nodeId: string, timing: NodeTiming) => void
   setGeneratedCode: (code: string) => void
   setIsExecuting: (value: boolean) => void
@@ -198,6 +201,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   previews: [],
   nodeImages: {},
   logs: [],
+  scriptLogsByNodeId: {},
   nodeTimings: {},
   generatedCode: '# Run codegen to export a Python script\n',
   isExecuting: false,
@@ -628,6 +632,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       previews: [],
       nodeImages: {},
       logs: [],
+      scriptLogsByNodeId: {},
       nodeTimings: {},
       activeNodeId: null,
       nodes: get().nodes.map((node) => ({
@@ -637,6 +642,13 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     }),
 
   appendLog: (message) => set({ logs: [...get().logs, message] }),
+  appendScriptLog: (nodeId, message) =>
+    set({
+      scriptLogsByNodeId: {
+        ...get().scriptLogsByNodeId,
+        [nodeId]: [...(get().scriptLogsByNodeId[nodeId] ?? []), message],
+      },
+    }),
   setNodeTiming: (nodeId, timing) =>
     set({
       nodeTimings: { ...get().nodeTimings, [nodeId]: timing },
@@ -682,6 +694,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       previews: [],
       nodeImages: {},
       logs: [],
+      scriptLogsByNodeId: {},
       nodeTimings: {},
       isExecuting: false,
       generatedCode: '# Run codegen to export a Python script\n',
@@ -856,6 +869,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       previews: [],
       nodeImages: {},
       logs: [],
+      scriptLogsByNodeId: {},
       nodeTimings: {},
       isExecuting: false,
       generatedCode: '# Run codegen to export a Python script\n',

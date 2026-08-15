@@ -33,6 +33,7 @@ export function useExecutionSocket() {
   const setActiveNodeId = useGraphStore((s) => s.setActiveNodeId)
   const addPreview = useGraphStore((s) => s.addPreview)
   const appendLog = useGraphStore((s) => s.appendLog)
+  const appendScriptLog = useGraphStore((s) => s.appendScriptLog)
   const setNodeTiming = useGraphStore((s) => s.setNodeTiming)
   const toGraphPayload = useGraphStore((s) => s.toGraphPayload)
   const seed = useGraphStore((s) => s.seed)
@@ -111,7 +112,13 @@ export function useExecutionSocket() {
             })
           }
         }
-        if (event.type === 'log' && event.message) appendLog(event.message)
+        if (event.type === 'log' && event.message) {
+          if (event.node_id) {
+            appendScriptLog(event.node_id, event.message)
+          } else {
+            appendLog(event.message)
+          }
+        }
         if (event.type === 'error') {
           const detail = event.message ?? 'Execution failed'
           appendLog(detail)
@@ -174,6 +181,7 @@ export function useExecutionSocket() {
     [
       addPreview,
       appendLog,
+      appendScriptLog,
       clearExecution,
       iterationCount,
       seed,

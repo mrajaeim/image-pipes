@@ -3,7 +3,13 @@ import { useGraphStore } from '../store/graphStore'
 import type { GraphNodeData, NodeMetadata } from '../types'
 import type { CustomCodeNodeLike } from '../workflow/customCodeTrust'
 
-export const IDENTITY_CODE = 'def process(image, seed=0):\n    return image\n'
+export const IDENTITY_CODE = `def process(image, seed=0):
+    # image: BGR uint8 numpy array (H, W, C)
+    # log(...) writes to the Script log panel in the inspector.
+    log("running custom script", "seed=", seed)
+    log("input image", image)
+    return image
+`
 
 export const customPythonMeta: NodeMetadata = {
   type: 'custom_python',

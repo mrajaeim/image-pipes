@@ -14,6 +14,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { createUserScript } from '../../api/userScripts'
 import { notifyError } from '../../notify'
 import { useGraphStore } from '../../store/graphStore'
+import { ScriptLogBox } from './ScriptLogBox'
+import { ScriptHelpersButton } from './ScriptHelpersButton'
 
 type CustomPythonParamsProps = {
   nodeId: string
@@ -149,7 +151,8 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
         <Typography sx={{ fontSize: 12, fontWeight: 650, color: 'rgba(244,241,234,0.7)' }}>
           Code
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <ScriptHelpersButton />
           <Button
             size="small"
             variant="outlined"
@@ -213,6 +216,8 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
         />
       </Box>
 
+      <ScriptLogBox nodeId={nodeId} />
+
       <Dialog
         open={editing}
         onClose={() => closeEditor(true)}
@@ -255,6 +260,7 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
           >
             Edit Custom Python
           </Typography>
+          <ScriptHelpersButton compact />
           <Button
             size="small"
             onClick={() => closeEditor(false)}

@@ -26,5 +26,7 @@ describe('Custom Python template', () => {
 
     const custom = doc.graph.nodes.find((node) => node.type === 'custom_python')
     expect(custom?.params?.code).toMatch(/def process\s*\(/)
+    expect(custom?.params?.code).toMatch(/log\(/)
+    expect(custom?.params?.code).toMatch(/Script log/)
   })
 })

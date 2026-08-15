@@ -22,6 +22,7 @@ function renderUserScript(onVersionChange = vi.fn()) {
   render(
     <QueryClientProvider client={client}>
       <UserScriptParams
+        nodeId="user-1"
         nodeType="user_script.script_001"
         label="Sepia Tone"
         version={1}
