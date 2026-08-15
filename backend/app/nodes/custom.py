@@ -15,7 +15,11 @@ DEFAULT_CUSTOM_CODE = """\
 def process(image, seed=0):
     # image: BGR uint8 numpy array (H, W, C)
     # return: ndarray (same dtype preferred)
-    # Helpers: log(*args) — writes to Script log in the inspector
+    #
+    # log(...) writes to the Script log panel in the inspector.
+    log("running custom script", "seed=", seed)
+    log("input image", image)
+
     return image
 """
 
