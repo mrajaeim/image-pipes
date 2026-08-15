@@ -15,6 +15,7 @@ SKIP_NODES: frozenset[str] = frozenset(
     {
         "load_image",  # needs asset / sample path setup
         "save_image",  # params affect disk write, not image port pixels
+        "custom_python",  # freeform code string; covered by test_custom_python_node
     }
 )
 
@@ -164,7 +165,9 @@ def first_party_param_metadata() -> list[NodeMetadata]:
     return [
         m
         for m in registry.list_metadata()
-        if not m.type.startswith("albu_") and m.params
+        if not m.type.startswith("albu_")
+        and not m.type.startswith("user_script.")
+        and m.params
     ]
 
 
