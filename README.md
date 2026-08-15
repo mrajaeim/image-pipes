@@ -22,6 +22,7 @@
 [Demo](#-demo) •
 [Features](#-features) •
 [Architecture](#-architecture) •
+[Docs](#-docs) •
 [Quick Start](#-quick-start) •
 [Roadmap](#-roadmap)
 
@@ -45,6 +46,7 @@
 - ⚡ Instant Execution
 - 👀 Live Image Preview
 - 🧠 OpenCV & Albumentations
+- 🐍 Custom Python & reusable scripts
 - 📦 Export Python Code
 
 </td>
@@ -142,6 +144,25 @@ See, live, at every node:
 - Bounding boxes, segmentation masks, and keypoints
 - Execution time per node
 - Runtime logs
+- **Script log** lines from custom / reusable Python (`log(...)`)
+
+### 🐍 Custom Python & Reusable Scripts
+
+Drop a **Custom Python** node when a built-in transform isn't enough. Author `process(image, seed=0)` in the Monaco editor with `cv2`, `numpy`, and Image Pipes helpers available in scope:
+
+```python
+def process(image, seed=0):
+    # log(...) appears in the inspector Script log panel
+    log("input", image, "seed=", seed)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    return cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+```
+
+**Trust before run.** Workflows that include custom code are blocked until you review and confirm — trust is session-only and never written into exported workflow JSON.
+
+**Save as a reusable node.** Promote inline code into a named palette entry under **My Scripts**. Scripts are versioned on disk (`v1`, `v2`, …); canvas nodes pin a version so older pipelines keep running the code they were saved with. Editing always creates a new version instead of overwriting history.
+
+Helpers (starting with `log(*args)`) are documented in-app from the inspector **Helpers** dialog — more runtime helpers will land there over time. For on-disk layout of reusable scripts and the trust model, see [Data locations](docs/data-locations.md) and [Architecture](docs/architecture.md).
 
 ### 🧠 A Smart Execution Engine Under the Hood
 
@@ -199,6 +220,8 @@ Image Pipes fits naturally into workflows like:
 - Building and tuning data augmentation pipelines with Albumentations
 - Teaching computer vision concepts visually
 - Rapid OpenCV experimentation and prototyping
+- Dropping in one-off Custom Python steps (with a trust gate) without leaving the canvas
+- Saving reusable, versioned script nodes for your own toolbox
 - Research reproducibility (deterministic, versionable pipelines)
 - Debugging annotation pipelines (boxes, masks, keypoints)
 - General image analysis and exploration
@@ -214,20 +237,31 @@ Image Pipes fits naturally into workflows like:
                              │
                              ▼
                   DAG Execution Engine
-               ┌─────────────┴─────────────┐
-               │                           │
-               ▼                           ▼
-        OpenCV Processing          Albumentations
-         (classical CV)          (data augmentation)
-               │                           │
-               └─────────────┬─────────────┘
-                             │
-                             ▼
-                  Live Preview & Export
-                             │
-                             ▼
-                    Standalone Python
+               ┌─────────────┼─────────────┐
+               │             │             │
+               ▼             ▼             ▼
+        OpenCV Processing  Albumentations  Custom / user scripts
+         (classical CV)   (augmentation)   (process + log helpers)
+               │             │             │
+               └─────────────┴──────┬──────┘
+                                    │
+                                    ▼
+                         Live Preview & Export
+                                    │
+                                    ▼
+                           Standalone Python
 ```
+
+---
+
+## 📚 Docs
+
+| Guide | What it covers |
+|-------|----------------|
+| [Architecture & node registration](docs/architecture.md) | DAG layers, registering nodes, Custom Python trust gate |
+| [Data locations](docs/data-locations.md) | Cache, uploads, outputs, assets, and versioned `user_scripts/` on disk (Electron vs backend) |
+
+Also see the desktop notes in [desktop/README.md](desktop/README.md).
 
 ---
 
@@ -310,6 +344,8 @@ That's it — the Electron app automatically starts the backend and opens the ed
 | ✅ Live preview at every step | ✅ Deterministic Albumentations augmentation |
 | ✅ Fast, targeted experimentation | ✅ Clean, dependency-free Python export |
 | ✅ Metadata-driven architecture | ✅ Open source & self-hosted desktop app |
+| ✅ Inline Custom Python when you need it | ✅ Versioned reusable scripts + trust gate |
+| ✅ Script `log()` for in-graph debugging | ✅ Monaco editor with in-app helper docs |
 
 ---
 
@@ -319,10 +355,10 @@ That's it — the Electron app automatically starts the backend and opens the ed
 - 🧩 ONNX Runtime and PyTorch inference nodes
 - ⚡ CUDA acceleration
 - 📦 Batch processing
-- 🔌 Plugin SDK
+- 🔌 Plugin SDK (extend beyond built-in + user scripts)
 - ☁️ Cloud workspaces
-- 📐 Pipeline templates
 - 🤖 AI-assisted pipeline generation
+- 🧰 More script helpers beyond `log()` (rename / delete / export scripts with workflows)
 
 ---
 
