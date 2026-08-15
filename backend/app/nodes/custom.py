@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-import cv2
 import numpy as np
 
 from app.engine.registry import BaseNode
 from app.nodes.common import image_in, image_out, require_image, string_param
+from app.nodes.script_runtime import run_process_code
+from app.services.user_scripts import is_user_script_type
 
 DEFAULT_CUSTOM_CODE = """\
 def process(image, seed=0):
@@ -20,13 +21,19 @@ def process(image, seed=0):
 CUSTOM_PYTHON_TYPE = "custom_python"
 
 
-def graph_has_custom_python(nodes: list[Any]) -> bool:
-    """True if any node instance is a custom_python node."""
+def graph_has_custom_code(nodes: list[Any]) -> bool:
+    """True if any node runs user-authored Python (inline or reusable)."""
     for node in nodes:
         node_type = node.type if hasattr(node, "type") else node.get("type")
-        if node_type == CUSTOM_PYTHON_TYPE:
+        if node_type == CUSTOM_PYTHON_TYPE or (
+            isinstance(node_type, str) and is_user_script_type(node_type)
+        ):
             return True
     return False
+
+
+# Back-compat alias used by older imports/tests.
+graph_has_custom_python = graph_has_custom_code
 
 
 class CustomPythonNode(BaseNode):
@@ -56,41 +63,7 @@ class CustomPythonNode(BaseNode):
     ) -> dict[str, np.ndarray | list[np.ndarray]]:
         image = require_image(inputs)
         code = str(params.get("code") or "")
-        if not code.strip():
-            raise ValueError("Custom Python node has empty code")
-
-        namespace: dict[str, Any] = {
-            "__builtins__": __builtins__,
-            "cv2": cv2,
-            "np": np,
-            "numpy": np,
-        }
-        try:
-            compiled = compile(code, "<custom_python>", "exec")
-            exec(compiled, namespace, namespace)  # noqa: S102 — intentional user code
-        except SyntaxError as exc:
-            raise ValueError(f"Custom Python syntax error: {exc}") from exc
-        except Exception as exc:  # noqa: BLE001
-            raise ValueError(f"Custom Python failed while loading: {exc}") from exc
-
-        process = namespace.get("process")
-        if not callable(process):
-            raise ValueError("Custom Python code must define a callable process(image, seed=0)")
-
-        try:
-            result = process(image, seed=seed)
-        except TypeError:
-            try:
-                result = process(image)
-            except Exception as exc:  # noqa: BLE001
-                raise ValueError(f"Custom Python process() failed: {exc}") from exc
-        except Exception as exc:  # noqa: BLE001
-            raise ValueError(f"Custom Python process() failed: {exc}") from exc
-
-        if not isinstance(result, np.ndarray):
-            raise TypeError(
-                f"Custom Python process() must return a numpy ndarray, got {type(result).__name__}"
-            )
+        result = run_process_code(code, image, seed=seed, source_name="<custom_python>")
         return {"image": result}
 
     def emit_python(

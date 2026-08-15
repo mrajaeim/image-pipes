@@ -95,6 +95,15 @@ class NodeRegistry:
     def has(self, node_type: str) -> bool:
         return node_type in self._nodes
 
+    def unregister(self, node_type: str) -> None:
+        self._nodes.pop(node_type, None)
+
+    def replace(self, node: BaseNode) -> None:
+        """Register or overwrite a node implementation (used for user scripts)."""
+        if not node.type:
+            raise ValueError("Node type must be a non-empty string")
+        self._nodes[node.type] = node
+
     def list_metadata(self) -> list[NodeMetadata]:
         return [node.metadata() for node in self._nodes.values()]
 

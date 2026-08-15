@@ -31,7 +31,7 @@ from app.models.graph import (
     NodeInstance,
     PortDirection,
 )
-from app.nodes.custom import graph_has_custom_python
+from app.nodes.custom import graph_has_custom_code
 
 
 class DagValidationError(ValueError):
@@ -354,7 +354,7 @@ class DagExecutor:
         cancel: CancellationToken | None = None,
     ) -> dict[str, Any]:
         cancel = cancel or CancellationToken()
-        if graph_has_custom_python(request.graph.nodes) and not request.allow_custom_code:
+        if graph_has_custom_code(request.graph.nodes) and not request.allow_custom_code:
             raise DagValidationError(
                 "This workflow includes Custom Python nodes. "
                 "Trust the custom code before running (allow_custom_code)."

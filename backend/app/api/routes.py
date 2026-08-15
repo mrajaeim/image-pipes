@@ -11,17 +11,20 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from app.api.user_scripts import router as user_scripts_router
 from app.engine.executor import DagExecutor
 from app.engine.registry import registry
 from app.models.assets import RegisterAssetsRequest, RegisterAssetsResponse
 from app.models.graph import ExecuteRequest, Graph, NodeMetadata
 from app.nodes import register_builtin_nodes
 from app.nodes.common import IMAGE_EXTENSIONS
+from app.nodes.user_script import register_user_scripts
 from app.paths import cache_dir, upload_dir
 from app.services import assets as assets_service
 from app.services.codegen import generate_python
 
 router = APIRouter(prefix="/api")
+router.include_router(user_scripts_router)
 
 CACHE_DIR = cache_dir()
 UPLOAD_DIR = upload_dir()
@@ -69,6 +72,7 @@ def _sample_lena_path() -> Path | None:
 @router.get("/nodes", response_model=list[NodeMetadata])
 def list_nodes() -> list[NodeMetadata]:
     register_builtin_nodes()
+    register_user_scripts()
     return registry.list_metadata()
 
 
