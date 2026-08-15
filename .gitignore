@@ -19,6 +19,7 @@ backend/cache/
 backend/uploads/
 backend/outputs/
 backend/assets/
+backend/user_scripts/
 backend/build/
 backend/dist/
 
