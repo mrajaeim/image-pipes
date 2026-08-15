@@ -15,7 +15,7 @@ import numpy as np
 
 from app.engine.cache import CacheManager, is_image_value
 from app.engine.registry import NodeRegistry, registry
-from app.engine.run_context import current_sample_index
+from app.engine.run_context import current_log_emit, current_node_id, current_sample_index
 from app.engine.save_bundle import (
     FolderSaveTracker,
     SaveBundle,
@@ -432,9 +432,27 @@ class DagExecutor:
                                     cache_hit = True
 
                             if not cache_hit:
-                                produced = node_impl.execute(
-                                    inputs, params, seed=iteration_seed
-                                )
+                                def _script_log_emit(message: str) -> None:
+                                    emit(
+                                        ExecutionEvent(
+                                            type=ExecutionEventType.LOG,
+                                            node_id=node_id,
+                                            message=message,
+                                            sample_index=flat_index,
+                                            iteration=iteration,
+                                            batch_index=batch_index,
+                                        )
+                                    )
+
+                                node_token = current_node_id.set(node_id)
+                                log_token = current_log_emit.set(_script_log_emit)
+                                try:
+                                    produced = node_impl.execute(
+                                        inputs, params, seed=iteration_seed
+                                    )
+                                finally:
+                                    current_log_emit.reset(log_token)
+                                    current_node_id.reset(node_token)
                                 outputs[node_id] = produced
                                 if use_cache:
                                     self.cache.put_outputs(

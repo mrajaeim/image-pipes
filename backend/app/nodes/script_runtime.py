@@ -7,6 +7,38 @@ from typing import Any
 import cv2
 import numpy as np
 
+from app.engine.run_context import current_log_emit
+
+_MAX_LOG_ARG_CHARS = 500
+
+
+def format_log_value(value: Any) -> str:
+    """Pretty-print a value for script log() (ndarrays show shape/dtype)."""
+    if isinstance(value, np.ndarray):
+        return f"ndarray(shape={value.shape}, dtype={value.dtype})"
+    if isinstance(value, str):
+        text = value
+    else:
+        try:
+            text = repr(value)
+        except Exception:  # noqa: BLE001
+            text = str(value)
+    if len(text) > _MAX_LOG_ARG_CHARS:
+        return f"{text[: _MAX_LOG_ARG_CHARS - 1]}…"
+    return text
+
+
+def format_log_message(*args: Any) -> str:
+    return " ".join(format_log_value(arg) for arg in args)
+
+
+def script_log(*args: Any) -> None:
+    """Global helper injected into user scripts: log(*args) → Script log panel."""
+    message = format_log_message(*args)
+    emit = current_log_emit.get()
+    if emit is not None:
+        emit(message)
+
 
 def run_process_code(
     code: str,
@@ -23,6 +55,7 @@ def run_process_code(
         "cv2": cv2,
         "np": np,
         "numpy": np,
+        "log": script_log,
     }
     try:
         compiled = compile(code, source_name, "exec")
