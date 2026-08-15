@@ -13,6 +13,9 @@ import type { ParamField } from '../../types'
 import { FileParamInput } from './FileParamInput'
 import { SaveImageParams } from './SaveImageParams'
 import { AnnotationsParams } from './AnnotationsParams'
+import { CustomPythonParams } from './CustomPythonParams'
+import { UserScriptParams } from './UserScriptParams'
+import { isUserScriptType } from '../../workflow/customCodeTrust'
 
 function buildSchema(fields: ParamField[]) {
   const shape: Record<string, z.ZodTypeAny> = {}
@@ -46,6 +49,8 @@ export function NodeInspector() {
   const isSaveImage = selected?.data.type === 'save_image'
   const isLoadImage = selected?.data.type === 'load_image'
   const isAnnotations = selected?.data.type === 'annotations'
+  const isCustomPython = selected?.data.type === 'custom_python'
+  const isUserScript = selected ? isUserScriptType(selected.data.type) : false
 
   const { register, handleSubmit, reset, setValue, formState } = useForm({
     resolver: zodResolver(schema),
@@ -124,6 +129,28 @@ export function NodeInspector() {
             onPackagingChange={(packaging) => {
               setValue('packaging', packaging, { shouldDirty: true, shouldValidate: true })
               updateNodeParams(selected.id, { packaging })
+            }}
+          />
+        ) : isCustomPython ? (
+          <CustomPythonParams
+            key={selected.id}
+            nodeId={selected.id}
+            code={String(selected.data.params.code ?? '')}
+            onCodeChange={(nextCode) => {
+              setValue('code', nextCode, { shouldDirty: true, shouldValidate: true })
+              updateNodeParams(selected.id, { code: nextCode })
+            }}
+          />
+        ) : isUserScript ? (
+          <UserScriptParams
+            key={selected.id}
+            nodeId={selected.id}
+            nodeType={selected.data.type}
+            label={selected.data.label}
+            version={Number(selected.data.params.version ?? 1)}
+            onVersionChange={(version) => {
+              setValue('version', version, { shouldDirty: true, shouldValidate: true })
+              updateNodeParams(selected.id, { version })
             }}
           />
         ) : isLoadImage ? (

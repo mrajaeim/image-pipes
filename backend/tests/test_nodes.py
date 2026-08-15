@@ -15,6 +15,7 @@ def test_builtin_nodes_registered() -> None:
         "blank_image",
         "save_image",
         "preview",
+        "custom_python",
         "to_gray",
         "to_hsv",
         "to_rgb",

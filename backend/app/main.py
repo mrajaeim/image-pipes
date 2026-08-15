@@ -5,9 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import router as api_router
 from app.nodes import register_builtin_nodes
+from app.nodes.user_script import register_user_scripts
 from app.websocket import router as ws_router
 
 register_builtin_nodes()
+register_user_scripts()
 
 app = FastAPI(
     title="Image Pipeline Playground",

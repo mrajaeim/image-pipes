@@ -3,6 +3,7 @@ import { useGraphStore } from '../store/graphStore'
 import { materializeSampleImages } from '../workflow/materializeSampleImages'
 import { loadWorkflowSession, saveWorkflowSession } from '../workflow/persist'
 import { getWorkflow } from '../workflow/workflowLibrary'
+import { hydrateUserScriptCodes } from '../workflow/hydrateUserScriptCodes'
 
 const SAVE_DEBOUNCE_MS = 400
 
@@ -46,6 +47,9 @@ export function useWorkflowPersistence() {
             id: undefined,
           }
       loadWorkflow(doc)
+      void hydrateUserScriptCodes().catch(() => {
+        // Codes may be missing if scripts were deleted; trust stays blocked.
+      })
       void materializeSampleImages().catch(() => {
         // Session may already have real upload paths; ignore sample staging failures.
       })

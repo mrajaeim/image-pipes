@@ -1,5 +1,3 @@
-"""Public services exports."""
+"""Public services package (submodules imported explicitly)."""
 
-from app.services.codegen import generate_python
-
-__all__ = ["generate_python"]
+__all__: list[str] = []

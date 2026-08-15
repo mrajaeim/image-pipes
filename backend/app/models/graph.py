@@ -50,6 +50,8 @@ class ExecuteRequest(BaseModel):
     sample_count: int = 1
     cache: bool = True
     target_node_id: str | None = None
+    # Required when the graph contains custom_python nodes (frontend trust gate).
+    allow_custom_code: bool = False
 
 
 class ExecutionEventType(StrEnum):

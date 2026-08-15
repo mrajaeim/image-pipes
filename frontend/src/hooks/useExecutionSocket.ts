@@ -33,6 +33,7 @@ export function useExecutionSocket() {
   const setActiveNodeId = useGraphStore((s) => s.setActiveNodeId)
   const addPreview = useGraphStore((s) => s.addPreview)
   const appendLog = useGraphStore((s) => s.appendLog)
+  const appendScriptLog = useGraphStore((s) => s.appendScriptLog)
   const setNodeTiming = useGraphStore((s) => s.setNodeTiming)
   const toGraphPayload = useGraphStore((s) => s.toGraphPayload)
   const seed = useGraphStore((s) => s.seed)
@@ -49,9 +50,16 @@ export function useExecutionSocket() {
 
   const run = useCallback(
     (options?: RunOptions) => {
+      const state = useGraphStore.getState()
+      if (!state.isCustomCodeTrusted()) {
+        state.openCustomCodeTrustDialog(options)
+        return
+      }
+
       clearExecution()
       setIsExecuting(true)
       targetLabelRef.current = options?.targetNodeId ?? null
+      const allowCustomCode = state.graphHasCustomCode()
 
       const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
       const socket = new WebSocket(`${protocol}://${window.location.host}/ws/execute`)
@@ -64,6 +72,7 @@ export function useExecutionSocket() {
             seed,
             sample_count: iterationCount,
             cache: true,
+            allow_custom_code: allowCustomCode,
             ...(options?.targetNodeId
               ? { target_node_id: options.targetNodeId }
               : {}),
@@ -103,7 +112,13 @@ export function useExecutionSocket() {
             })
           }
         }
-        if (event.type === 'log' && event.message) appendLog(event.message)
+        if (event.type === 'log' && event.message) {
+          if (event.node_id) {
+            appendScriptLog(event.node_id, event.message)
+          } else {
+            appendLog(event.message)
+          }
+        }
         if (event.type === 'error') {
           const detail = event.message ?? 'Execution failed'
           appendLog(detail)
@@ -166,6 +181,7 @@ export function useExecutionSocket() {
     [
       addPreview,
       appendLog,
+      appendScriptLog,
       clearExecution,
       iterationCount,
       seed,

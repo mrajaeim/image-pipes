@@ -28,6 +28,7 @@ from app.nodes.color import (
     ToYCrCbNode,
     ToYuvNode,
 )
+from app.nodes.custom import CustomPythonNode
 from app.nodes.filters import (
     BilateralFilterNode,
     BoxBlurNode,
@@ -73,6 +74,7 @@ def register_builtin_nodes() -> None:
         AnnotationsNode(),
         SaveImageNode(),
         PreviewNode(),
+        CustomPythonNode(),
         ToGrayNode(),
         ToHsvNode(),
         ToRgbNode(),

@@ -15,7 +15,7 @@ import numpy as np
 
 from app.engine.cache import CacheManager, is_image_value
 from app.engine.registry import NodeRegistry, registry
-from app.engine.run_context import current_sample_index
+from app.engine.run_context import current_log_emit, current_node_id, current_sample_index
 from app.engine.save_bundle import (
     FolderSaveTracker,
     SaveBundle,
@@ -31,6 +31,7 @@ from app.models.graph import (
     NodeInstance,
     PortDirection,
 )
+from app.nodes.custom import graph_has_custom_code
 
 
 class DagValidationError(ValueError):
@@ -353,6 +354,11 @@ class DagExecutor:
         cancel: CancellationToken | None = None,
     ) -> dict[str, Any]:
         cancel = cancel or CancellationToken()
+        if graph_has_custom_code(request.graph.nodes) and not request.allow_custom_code:
+            raise DagValidationError(
+                "This workflow includes Custom Python nodes. "
+                "Trust the custom code before running (allow_custom_code)."
+            )
         nodes = validate_graph(request.graph, self.registry)
         order = topological_sort(request.graph)
         if request.target_node_id:
@@ -426,9 +432,27 @@ class DagExecutor:
                                     cache_hit = True
 
                             if not cache_hit:
-                                produced = node_impl.execute(
-                                    inputs, params, seed=iteration_seed
-                                )
+                                def _script_log_emit(message: str) -> None:
+                                    emit(
+                                        ExecutionEvent(
+                                            type=ExecutionEventType.LOG,
+                                            node_id=node_id,
+                                            message=message,
+                                            sample_index=flat_index,
+                                            iteration=iteration,
+                                            batch_index=batch_index,
+                                        )
+                                    )
+
+                                node_token = current_node_id.set(node_id)
+                                log_token = current_log_emit.set(_script_log_emit)
+                                try:
+                                    produced = node_impl.execute(
+                                        inputs, params, seed=iteration_seed
+                                    )
+                                finally:
+                                    current_log_emit.reset(log_token)
+                                    current_node_id.reset(node_token)
                                 outputs[node_id] = produced
                                 if use_cache:
                                     self.cache.put_outputs(

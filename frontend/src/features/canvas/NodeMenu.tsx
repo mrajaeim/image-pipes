@@ -266,7 +266,7 @@ export function useNodeMenu({
                 lineHeight: 1.2,
               }}
             >
-              {category}
+              {category === 'user_scripts' ? 'My Scripts' : category}
             </Typography>
             <Typography
               sx={{

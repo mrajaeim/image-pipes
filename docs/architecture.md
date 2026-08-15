@@ -57,3 +57,7 @@ registry.register(BoxFilterNode())
 ```
 
 The palette, inspector, executor, and codegen all discover the node through the registry metadata—no React changes required unless you need custom widgets.
+
+## Custom Python node
+
+`custom_python` runs user-authored `process(image, seed=0)` in-process with `cv2` / `numpy` (no sandbox). Workflows that include it require an explicit UI trust step; the WebSocket execute payload must send `allow_custom_code: true` or the executor rejects the run. Trust is session-only and is not stored in exported workflow JSON.

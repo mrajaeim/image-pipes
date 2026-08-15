@@ -34,3 +34,10 @@ def output_dir() -> Path:
     path = data_root() / "outputs"
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def user_scripts_dir() -> Path:
+    """Reusable versioned user script packages (Electron: under userData/data)."""
+    path = data_root() / "user_scripts"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
