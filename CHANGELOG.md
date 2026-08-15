@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-15
+
+### Added
+
+- **Custom Python** node — author `process(image, seed=0)` in Monaco with `cv2` / `numpy` in scope; gallery template for a sepia example
+- **Trust gate** before Run when a workflow includes custom or reusable script code (session-only; not stored in workflow JSON)
+- **Reusable versioned user scripts** — save Custom Python as a **My Scripts** palette node (`script_NNN`); edits create `vN+1` while canvas nodes pin a version
+- Script **`log(*args)`** helper and inspector **Script log** panel (ndarrays show shape/dtype)
+- In-app **Script helpers** modal documenting available runtime helpers
+- REST API for user scripts (`/api/user-scripts` list/create/versions)
+- Data-locations docs for cache, uploads, outputs, assets, and `user_scripts/` under Electron `userData`
+
+### Changed
+
+- README covers Custom Python, reusable scripts, trust, script logging, and links to docs
+
+### Fixed
+
+- Param-affects-output harness accounts for `custom_python` (skipped) and ignores dynamic `user_script.*` nodes
+
+### Documentation
+
+- [Architecture](docs/architecture.md) notes for Custom Python trust
+- [Data locations](docs/data-locations.md) for on-disk layout including versioned scripts
+
 ## [0.2.3] - 2026-08-15
 
 ### Fixed
@@ -93,7 +118,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Baseline release tag preceding the workflow library and asset-registry work.
 
-[Unreleased]: https://github.com/mrajaeim/image-pipes/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/mrajaeim/image-pipes/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.3.0
 [0.2.3]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.2.3
 [0.2.2]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.2.2
 [0.2.1]: https://github.com/mrajaeim/image-pipes/releases/tag/v0.2.1
