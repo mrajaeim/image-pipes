@@ -18,6 +18,8 @@ import { PipelineNodeView } from './PipelineNode'
 import { EditableEdge } from './EditableEdge'
 import type { NodeMetadata, PortSpec } from '../../types'
 import { portsCompatible } from '../../lib/portTypes'
+import { isUserScriptType } from '../../workflow/customCodeTrust'
+import { hydrateUserScriptCodes } from '../../workflow/hydrateUserScriptCodes'
 
 function FitViewOnGraphChange() {
   const { fitView } = useReactFlow()
@@ -74,6 +76,9 @@ export function PipelineCanvas() {
         y: event.clientY - (bounds?.top ?? 0) - 20,
       }
       addNodeFromType(meta, position)
+      if (isUserScriptType(meta.type)) {
+        void hydrateUserScriptCodes({ autoTrust: true })
+      }
     },
     [addNodeFromType],
   )

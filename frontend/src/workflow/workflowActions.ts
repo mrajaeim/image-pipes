@@ -3,6 +3,7 @@
 import { useGraphStore } from '../store/graphStore'
 import { DEFAULT_WORKFLOW_NAME, type WorkflowDocument } from './io'
 import { saveWorkflowSession } from './persist'
+import { hydrateUserScriptCodes } from './hydrateUserScriptCodes'
 import {
   createWorkflowId,
   deleteWorkflow as deleteLibraryWorkflow,
@@ -32,6 +33,7 @@ export function openWorkflow(id: string): { skippedTypes: string[] } {
     throw new Error('Workflow not found')
   }
   const result = useGraphStore.getState().loadWorkflow(record)
+  void hydrateUserScriptCodes().catch(() => {})
   flushSession()
   return result
 }
@@ -119,6 +121,7 @@ export function loadExternalDocument(
     ...withoutId,
     name: overrides?.name?.trim() || doc.name || DEFAULT_WORKFLOW_NAME,
   })
+  void hydrateUserScriptCodes().catch(() => {})
   flushSession()
   return result
 }

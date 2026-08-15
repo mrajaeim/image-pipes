@@ -11,6 +11,8 @@ import {
 import { useGraphStore } from '../../store/graphStore'
 import type { NodeMetadata } from '../../types'
 import { notifyError } from '../../notify'
+import { isUserScriptType } from '../../workflow/customCodeTrust'
+import { hydrateUserScriptCodes } from '../../workflow/hydrateUserScriptCodes'
 
 async function fetchNodes(): Promise<NodeMetadata[]> {
   const response = await fetch('/api/nodes')
@@ -29,10 +31,20 @@ const CATEGORY_ACCENT: Record<string, string> = {
   math: '#58d68d',
   stochastic: '#f5b041',
   augment: '#e74c3c',
+  script: '#f39c12',
+  user_scripts: '#5dade2',
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  user_scripts: 'My Scripts',
 }
 
 function categoryAccent(category: string): string {
   return CATEGORY_ACCENT[category.toLowerCase()] ?? '#95a5a6'
+}
+
+function categoryLabel(category: string): string {
+  return CATEGORY_LABELS[category.toLowerCase()] ?? category
 }
 
 function portSummary(node: NodeMetadata): { inputs: number; outputs: number } {
@@ -101,7 +113,7 @@ function CategoryHeader({
           color: 'rgba(244,241,234,0.72)',
         }}
       >
-        {category}
+        {categoryLabel(category)}
       </Typography>
       <Typography
         sx={{
@@ -351,6 +363,11 @@ export function NodePalette() {
   const addNode = (node: NodeMetadata) => {
     const offset = (useGraphStore.getState().nodes.length % 8) * 28
     addNodeFromType(node, { x: 180 + offset, y: 120 + offset })
+    if (isUserScriptType(node.type)) {
+      void hydrateUserScriptCodes({ autoTrust: true }).catch((err: unknown) => {
+        notifyError(err instanceof Error ? err.message : String(err))
+      })
+    }
   }
 
   return (

@@ -3,24 +3,25 @@ import {
   computeCustomCodeHash,
   graphHasCustomCode,
   isCustomCodeTrusted,
-  listCustomPythonNodes,
+  listCustomCodeNodes,
   truncateCodePreview,
+  userScriptCodeKey,
 } from './customCodeTrust'
 import { trustNode } from '../test/customPythonFixtures'
 
 describe('customCodeTrust helpers', () => {
-  it('detects and sorts custom_python nodes', () => {
+  it('detects and sorts custom_python and user_script nodes', () => {
     const nodes = [
       trustNode('z-1', 'custom_python', 'a'),
-      trustNode('a-1', 'custom_python', 'b'),
+      trustNode('a-1', 'user_script.script_001', undefined, 2),
       trustNode('mid', 'gaussian_blur'),
     ]
     expect(graphHasCustomCode(nodes)).toBe(true)
     expect(graphHasCustomCode([trustNode('x', 'load_image')])).toBe(false)
-    expect(listCustomPythonNodes(nodes).map((n) => n.id)).toEqual(['a-1', 'z-1'])
+    expect(listCustomCodeNodes(nodes).map((n) => n.id)).toEqual(['a-1', 'z-1'])
   })
 
-  it('fingerprints code and treats matching hash as trusted', () => {
+  it('fingerprints inline code and user script type+version+code', () => {
     const nodes = [trustNode('c-1', 'custom_python', 'return image')]
     const hash = computeCustomCodeHash(nodes)
 
@@ -32,6 +33,21 @@ describe('customCodeTrust helpers', () => {
     expect(isCustomCodeTrusted(nodes, null)).toBe(false)
     expect(isCustomCodeTrusted(nodes, hash)).toBe(true)
     expect(isCustomCodeTrusted([trustNode('x', 'load_image')], null)).toBe(true)
+
+    const scriptNodes = [trustNode('u-1', 'user_script.script_001', undefined, 1)]
+    const codes = {
+      [userScriptCodeKey('user_script.script_001', 1)]: 'def process(image, seed=0):\n  return image\n',
+    }
+    expect(computeCustomCodeHash(scriptNodes)).toBeNull()
+    expect(isCustomCodeTrusted(scriptNodes, 'deadbeef', {})).toBe(false)
+    const scriptHash = computeCustomCodeHash(scriptNodes, codes)
+    expect(scriptHash).not.toBeNull()
+    expect(isCustomCodeTrusted(scriptNodes, scriptHash, codes)).toBe(true)
+    expect(
+      computeCustomCodeHash(scriptNodes, {
+        [userScriptCodeKey('user_script.script_001', 1)]: 'changed',
+      }),
+    ).not.toBe(scriptHash)
   })
 
   it('truncates long code previews', () => {

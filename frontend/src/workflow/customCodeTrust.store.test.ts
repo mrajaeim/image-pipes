@@ -16,7 +16,9 @@ describe('graphStore custom code trust', () => {
   it('auto-trusts palette add and local code edits', () => {
     store().addNodeFromType(customPythonMeta, { x: 10, y: 20 })
     expect(store().isCustomCodeTrusted()).toBe(true)
-    expect(store().trustedCustomCodeHash).toBe(computeCustomCodeHash(store().nodes))
+    expect(store().trustedCustomCodeHash).toBe(
+      computeCustomCodeHash(store().nodes, store().userScriptCodes),
+    )
 
     resetCustomCodeStore({
       nodes: [pipelineCustomNode(IDENTITY_CODE)],

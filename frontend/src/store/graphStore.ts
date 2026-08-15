@@ -9,7 +9,7 @@ import {
   type NodeChange,
 } from '@xyflow/react'
 import { create } from 'zustand'
-import type { ExecutionPreview, GraphNodeData, NodeMetadata } from '../types'
+import type { ExecutionPreview, GraphNodeData, NodeMetadata, PortSpec } from '../types'
 import {
   DEFAULT_WORKFLOW_NAME,
   type WorkflowDocument,
@@ -19,6 +19,10 @@ import {
   computeCustomCodeHash,
   graphHasCustomCode,
   isCustomCodeTrusted,
+  isCustomCodeType,
+  isUserScriptType,
+  type UserScriptCodeMap,
+  userScriptCodeKey,
 } from '../workflow/customCodeTrust'
 import { portTypeColor } from '../lib/portTypes'
 
@@ -74,13 +78,16 @@ interface GraphState {
   workflowCreatedAt: string | null
   workflowUpdatedAt: string | null
   workflowDirty: boolean
-  /** Session-only fingerprint of trusted custom_python code; null = untrusted when code exists. */
+  /** Session-only fingerprint of trusted custom code; null = untrusted when code exists. */
   trustedCustomCodeHash: string | null
+  /** Session cache of user_script sources (not persisted in workflow JSON). */
+  userScriptCodes: UserScriptCodeMap
   customCodeTrustDialogOpen: boolean
   pendingRunOptions: { targetNodeId?: string } | null
   /** When true, confirming the trust dialog also starts a pipeline run. */
   pendingRunAfterTrust: boolean
   setNodeCatalog: (catalog: NodeMetadata[]) => void
+  cacheUserScriptCode: (type: string, version: number, code: string) => void
   onNodesChange: (changes: NodeChange<PipelineNode>[]) => void
   onEdgesChange: (changes: EdgeChange[]) => void
   onConnect: (connection: Connection) => void
@@ -91,6 +98,11 @@ interface GraphState {
   duplicateNode: (nodeId: string) => void
   selectNode: (nodeId: string | null) => void
   updateNodeParams: (nodeId: string, params: Record<string, unknown>) => void
+  /** Replace a canvas node with a reusable user_script.* type (keeps id / edges). */
+  convertNodeToUserScript: (
+    nodeId: string,
+    info: { nodeType: string; label: string; version: number; code: string },
+  ) => void
   setLocalPreview: (nodeId: string, dataUrl: string | null) => void
   setLocalPreviews: (nodeId: string, dataUrls: string[], uploadedFiles?: string[]) => void
   removeLocalPreview: (nodeId: string, index: number) => {
@@ -199,11 +211,19 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   workflowUpdatedAt: null,
   workflowDirty: false,
   trustedCustomCodeHash: null,
+  userScriptCodes: {},
   customCodeTrustDialogOpen: false,
   pendingRunOptions: null,
   pendingRunAfterTrust: false,
 
   setNodeCatalog: (catalog) => set({ nodeCatalog: catalog }),
+
+  cacheUserScriptCode: (type, version, code) => {
+    const key = userScriptCodeKey(type, version)
+    set({
+      userScriptCodes: { ...get().userScriptCodes, [key]: code },
+    })
+  },
 
   onNodesChange: (changes) => {
     const removedIds = changes
@@ -333,13 +353,15 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         localPreviewUrls: [],
       },
     }
+    const nodes = [...get().nodes, node]
+    const hash = isCustomCodeType(meta.type)
+      ? computeCustomCodeHash(nodes, get().userScriptCodes)
+      : null
     set({
-      nodes: [...get().nodes, node],
+      nodes,
       selectedNodeId: id,
       workflowDirty: true,
-      ...(meta.type === 'custom_python'
-        ? { trustedCustomCodeHash: computeCustomCodeHash([...get().nodes, node]) }
-        : {}),
+      ...(hash !== null ? { trustedCustomCodeHash: hash } : {}),
     })
   },
 
@@ -367,18 +389,15 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         uploadedFiles: [...(source.data.uploadedFiles ?? [])],
       },
     }
+    const nodes = [...get().nodes.map((node) => ({ ...node, selected: false })), copy]
+    const hash = isCustomCodeType(source.data.type)
+      ? computeCustomCodeHash(nodes, get().userScriptCodes)
+      : null
     set({
-      nodes: [...get().nodes.map((node) => ({ ...node, selected: false })), copy],
+      nodes,
       selectedNodeId: id,
       workflowDirty: true,
-      ...(source.data.type === 'custom_python'
-        ? {
-            trustedCustomCodeHash: computeCustomCodeHash([
-              ...get().nodes,
-              copy,
-            ]),
-          }
-        : {}),
+      ...(hash !== null ? { trustedCustomCodeHash: hash } : {}),
     })
   },
 
@@ -392,11 +411,68 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     )
     const target = nodes.find((node) => node.id === nodeId)
     const autoTrust =
-      target?.data.type === 'custom_python' && Object.prototype.hasOwnProperty.call(params, 'code')
+      (target?.data.type === 'custom_python' &&
+        Object.prototype.hasOwnProperty.call(params, 'code')) ||
+      (target !== undefined &&
+        isUserScriptType(target.data.type) &&
+        Object.prototype.hasOwnProperty.call(params, 'version'))
+    const hash = autoTrust
+      ? computeCustomCodeHash(nodes, get().userScriptCodes)
+      : null
     set({
       nodes,
       workflowDirty: true,
-      ...(autoTrust ? { trustedCustomCodeHash: computeCustomCodeHash(nodes) } : {}),
+      ...(hash !== null ? { trustedCustomCodeHash: hash } : {}),
+    })
+  },
+
+  convertNodeToUserScript: (nodeId, info) => {
+    const catalogMeta = get().nodeCatalog.find((meta) => meta.type === info.nodeType)
+    const ports =
+      catalogMeta?.ports ??
+      ([
+        {
+          id: 'image',
+          name: 'Image',
+          direction: 'input',
+          data_type: 'image',
+          multiple: false,
+        },
+        {
+          id: 'image',
+          name: 'Image',
+          direction: 'output',
+          data_type: 'image',
+          multiple: false,
+        },
+      ] satisfies PortSpec[])
+
+    const userScriptCodes = {
+      ...get().userScriptCodes,
+      [userScriptCodeKey(info.nodeType, info.version)]: info.code,
+    }
+    const nodes = get().nodes.map((node) =>
+      node.id === nodeId
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              type: info.nodeType,
+              label: info.label,
+              category: catalogMeta?.category ?? 'user_scripts',
+              ports,
+              params: { version: info.version },
+            },
+          }
+        : node,
+    )
+    const hash = computeCustomCodeHash(nodes, userScriptCodes)
+    set({
+      nodes,
+      userScriptCodes,
+      workflowDirty: true,
+      selectedNodeId: nodeId,
+      ...(hash !== null ? { trustedCustomCodeHash: hash } : {}),
     })
   },
 
@@ -803,7 +879,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   },
 
   trustCustomCode: () => {
-    set({ trustedCustomCodeHash: computeCustomCodeHash(get().nodes) })
+    const hash = computeCustomCodeHash(get().nodes, get().userScriptCodes)
+    if (hash !== null) {
+      set({ trustedCustomCodeHash: hash })
+    }
   },
 
   openCustomCodeTrustDialog: (options, runAfterTrust = true) =>
@@ -820,7 +899,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
       pendingRunAfterTrust: false,
     }),
 
-  isCustomCodeTrusted: () => isCustomCodeTrusted(get().nodes, get().trustedCustomCodeHash),
+  isCustomCodeTrusted: () =>
+    isCustomCodeTrusted(get().nodes, get().trustedCustomCodeHash, get().userScriptCodes),
 
   graphHasCustomCode: () => graphHasCustomCode(get().nodes),
 }))

@@ -6,22 +6,31 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
+import { useEffect } from 'react'
 import { useGraphStore } from '../../store/graphStore'
 import {
-  listCustomPythonNodes,
+  listCustomCodeNodes,
+  resolveCustomCodePreview,
   truncateCodePreview,
 } from '../../workflow/customCodeTrust'
+import { hydrateUserScriptCodes } from '../../workflow/hydrateUserScriptCodes'
 import { runPipeline } from '../../hooks/useExecutionSocket'
 
 export function CustomCodeTrustDialog() {
   const open = useGraphStore((s) => s.customCodeTrustDialogOpen)
   const nodes = useGraphStore((s) => s.nodes)
+  const userScriptCodes = useGraphStore((s) => s.userScriptCodes)
   const pendingRunOptions = useGraphStore((s) => s.pendingRunOptions)
   const pendingRunAfterTrust = useGraphStore((s) => s.pendingRunAfterTrust)
   const trustCustomCode = useGraphStore((s) => s.trustCustomCode)
   const closeCustomCodeTrustDialog = useGraphStore((s) => s.closeCustomCodeTrustDialog)
 
-  const customNodes = listCustomPythonNodes(nodes)
+  const customNodes = listCustomCodeNodes(nodes)
+
+  useEffect(() => {
+    if (!open) return
+    void hydrateUserScriptCodes()
+  }, [open, nodes])
 
   const onConfirm = () => {
     const options = pendingRunOptions
@@ -64,9 +73,9 @@ export function CustomCodeTrustDialog() {
           Trust custom Python?
         </Typography>
         <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.6)', lineHeight: 1.5, mb: 2 }}>
-          This workflow includes Custom Python nodes. The code runs on your machine with full
-          access (same as any local script). Only continue if you reviewed the code and trust
-          its source.
+          This workflow includes custom or reusable script nodes. The code runs on your machine
+          with full access (same as any local script). Only continue if you reviewed the code and
+          trust its source.
         </Typography>
 
         <Stack spacing={1.25} sx={{ mb: 2.25, maxHeight: 220, overflow: 'auto' }}>
@@ -81,7 +90,7 @@ export function CustomCodeTrustDialog() {
               }}
             >
               <Typography sx={{ fontSize: 12, fontWeight: 650, mb: 0.5 }}>
-                {node.data.label ?? 'Custom Python'}{' '}
+                {node.data.label ?? node.data.type}{' '}
                 <Typography component="span" sx={{ color: 'rgba(244,241,234,0.4)', fontWeight: 500 }}>
                   ({node.id})
                 </Typography>
@@ -97,7 +106,7 @@ export function CustomCodeTrustDialog() {
                   wordBreak: 'break-word',
                 }}
               >
-                {truncateCodePreview(String(node.data.params.code ?? ''), 160)}
+                {truncateCodePreview(resolveCustomCodePreview(node, userScriptCodes), 160)}
               </Typography>
             </Box>
           ))}

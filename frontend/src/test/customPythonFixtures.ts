@@ -11,8 +11,8 @@ export const customPythonMeta: NodeMetadata = {
   category: 'script',
   description: 'User code',
   ports: [
-    { id: 'image', name: 'Image', direction: 'input', data_type: 'image' },
-    { id: 'image', name: 'Image', direction: 'output', data_type: 'image' },
+    { id: 'image', name: 'Image', direction: 'input', data_type: 'image', multiple: false },
+    { id: 'image', name: 'Image', direction: 'output', data_type: 'image', multiple: false },
   ],
   params: [
     {
@@ -30,7 +30,7 @@ export const loadImageMeta: NodeMetadata = {
   label: 'Load Images',
   category: 'io',
   description: 'Load',
-  ports: [{ id: 'image', name: 'Image', direction: 'output', data_type: 'image' }],
+  ports: [{ id: 'image', name: 'Image', direction: 'output', data_type: 'image', multiple: false }],
   params: [],
   stochastic: false,
 }
@@ -40,13 +40,17 @@ export function trustNode(
   id: string,
   type: string,
   code?: string,
+  version?: number,
 ): CustomCodeNodeLike {
+  const params: Record<string, unknown> = {}
+  if (code !== undefined) params.code = code
+  if (version !== undefined) params.version = version
   return {
     id,
     data: {
       type,
       label: type === 'custom_python' ? 'Custom Python' : type,
-      params: code === undefined ? {} : { code },
+      params,
     },
   }
 }
@@ -74,6 +78,7 @@ export function resetCustomCodeStore(
   patch: Partial<{
     nodes: Node<GraphNodeData>[]
     trustedCustomCodeHash: string | null
+    userScriptCodes: Record<string, string>
     customCodeTrustDialogOpen: boolean
     pendingRunAfterTrust: boolean
     pendingRunOptions: { targetNodeId?: string } | null
@@ -85,6 +90,7 @@ export function resetCustomCodeStore(
     selectedNodeId: null,
     nodeCatalog: [customPythonMeta, loadImageMeta],
     trustedCustomCodeHash: null,
+    userScriptCodes: {},
     customCodeTrustDialogOpen: false,
     pendingRunOptions: null,
     pendingRunAfterTrust: false,

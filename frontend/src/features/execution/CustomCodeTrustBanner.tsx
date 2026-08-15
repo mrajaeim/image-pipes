@@ -1,14 +1,15 @@
 import { Box, Button, Typography } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
-import { isCustomCodeTrusted } from '../../workflow/customCodeTrust'
+import { graphHasCustomCode, isCustomCodeTrusted } from '../../workflow/customCodeTrust'
 
 export function CustomCodeTrustBanner() {
   const nodes = useGraphStore((s) => s.nodes)
   const trustedCustomCodeHash = useGraphStore((s) => s.trustedCustomCodeHash)
+  const userScriptCodes = useGraphStore((s) => s.userScriptCodes)
   const openCustomCodeTrustDialog = useGraphStore((s) => s.openCustomCodeTrustDialog)
 
-  const trusted = isCustomCodeTrusted(nodes, trustedCustomCodeHash)
-  const hasCustom = nodes.some((node) => node.data.type === 'custom_python')
+  const trusted = isCustomCodeTrusted(nodes, trustedCustomCodeHash, userScriptCodes)
+  const hasCustom = graphHasCustomCode(nodes)
 
   if (!hasCustom || trusted) return null
 
