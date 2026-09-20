@@ -34,7 +34,8 @@
 <tr>
 <td width="65%">
 
-<img src="https://github.com/user-attachments/assets/fb73deff-cdf7-4a1d-8893-074dab5e8107">
+<img width="1244" height="690" alt="image" src="https://github.com/user-attachments/assets/7c4bd218-efb8-4230-9121-e1eed16f09ac" />
+
 
 </td>
 
@@ -59,7 +60,8 @@
 <tr>
 <td align="center">
 
-<img src="https://github.com/user-attachments/assets/0222a5f5-d2c1-4803-bb52-72b05c245f6c">
+<img width="985" height="432" alt="image" src="https://github.com/user-attachments/assets/c7cdfb2e-f977-4cc2-8f04-4ef8206f1125" />
+
 
 ### Dataset Augmentation
 
