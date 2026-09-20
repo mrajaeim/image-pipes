@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo } from 'react'
 import {
   Background,
   Controls,
-  MiniMap,
   ReactFlow,
   reconnectEdge,
   useReactFlow,
@@ -16,6 +15,7 @@ import { Box } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
 import { PipelineNodeView } from './PipelineNode'
 import { EditableEdge } from './EditableEdge'
+import { CanvasMiniMap } from './CanvasMiniMap'
 import type { NodeMetadata, PortSpec } from '../../types'
 import { portsCompatible } from '../../lib/portTypes'
 import { isUserScriptType } from '../../workflow/customCodeTrust'
@@ -163,12 +163,7 @@ export function PipelineCanvas() {
         }}
       >
         <FitViewOnGraphChange />
-        <MiniMap
-          pannable
-          zoomable
-          style={{ background: '#1a1a1a' }}
-          maskColor="rgba(0,0,0,0.55)"
-        />
+        <CanvasMiniMap />
         <Controls />
         <Background gap={20} color="rgba(255,255,255,0.05)" />
       </ReactFlow>
