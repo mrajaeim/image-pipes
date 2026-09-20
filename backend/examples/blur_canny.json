@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "blur-and-canny",
-  "description": "Load Lena, blur it, then extract Canny edges.",
+  "description": "Load anna-portrait, blur it, then extract Canny edges.",
   "seed": 0,
   "sampleCount": 1,
   "graph": {
@@ -9,7 +9,7 @@
       {
         "id": "load-1",
         "type": "load_image",
-        "params": { "sample": "lena" },
+        "params": { "sample": "anna-portrait" },
         "position": { "x": 0, "y": 0 }
       },
       {

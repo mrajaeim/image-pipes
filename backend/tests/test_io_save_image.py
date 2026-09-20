@@ -25,10 +25,10 @@ def test_resolve_save_filename_templates() -> None:
     name = resolve_save_filename(
         "{filename}_{index}_{time}.png",
         index=2,
-        filename="lena",
+        filename="anna-portrait",
         when=when,
     )
-    assert name == "lena_2_20260730_225501.png"
+    assert name == "anna-portrait_2_20260730_225501.png"
 
 
 def test_resolve_save_filename_auto_index_when_missing() -> None:

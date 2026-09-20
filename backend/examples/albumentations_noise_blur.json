@@ -9,7 +9,7 @@
       {
         "id": "load-1",
         "type": "load_image",
-        "params": { "sample": "lena" },
+        "params": { "sample": "anna-portrait" },
         "position": { "x": 0, "y": 40 }
       },
       {

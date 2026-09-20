@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "custom-python-sepia",
-  "description": "Load Lena, then apply a sepia look via inline Custom Python (requires trust before Run).",
+  "description": "Load anna-portrait, then apply a sepia look via inline Custom Python (requires trust before Run).",
   "seed": 0,
   "sampleCount": 1,
   "graph": {
@@ -9,7 +9,7 @@
       {
         "id": "load-1",
         "type": "load_image",
-        "params": { "sample": "lena" },
+        "params": { "sample": "anna-portrait" },
         "position": { "x": 0, "y": 0 }
       },
       {

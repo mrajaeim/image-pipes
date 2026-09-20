@@ -35,7 +35,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
   {
     id: 'blur_canny',
     name: 'Blur & Canny',
-    description: 'Load Lena, blur, then extract Canny edges.',
+    description: 'Load anna-portrait, blur, then extract Canny edges.',
     path: '/examples/blur_canny.json',
     category: 'edges',
     steps: ['Load', 'Blur', 'Canny'],
@@ -124,7 +124,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     id: 'custom_python_sepia',
     name: 'Custom Python Sepia',
     description:
-      'Load Lena, then apply a sepia look via inline Custom Python (requires trust before Run).',
+      'Load anna-portrait, then apply a sepia look via inline Custom Python (requires trust before Run).',
     path: '/examples/custom_python_sepia.json',
     category: 'script',
     steps: ['Load', 'Custom Python'],

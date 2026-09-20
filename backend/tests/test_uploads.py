@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-def test_sample_image_returns_lena() -> None:
+def test_sample_image_returns_anna_portrait() -> None:
     client = TestClient(app)
     response = client.get("/api/sample-image")
     assert response.status_code == 200

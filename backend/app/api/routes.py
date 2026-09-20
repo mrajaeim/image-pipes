@@ -52,17 +52,17 @@ def _allowed_extension(filename: str) -> bool:
     return suffix in {ext.lower() for ext in IMAGE_EXTENSIONS}
 
 
-def _sample_lena_path() -> Path | None:
-    """Locate bundled Lena used by example templates."""
+def _sample_anna_portrait_path() -> Path | None:
+    """Locate bundled anna-portrait used by example templates."""
     candidates = [
-        Path(__file__).resolve().parents[2] / "examples" / "lena.png",
-        Path.cwd() / "examples" / "lena.png",
+        Path(__file__).resolve().parents[2] / "examples" / "anna-portrait.png",
+        Path.cwd() / "examples" / "anna-portrait.png",
     ]
     if getattr(sys, "frozen", False):
-        candidates.append(Path(sys.executable).resolve().parent / "examples" / "lena.png")
+        candidates.append(Path(sys.executable).resolve().parent / "examples" / "anna-portrait.png")
         meipass = getattr(sys, "_MEIPASS", None)
         if meipass:
-            candidates.append(Path(meipass) / "examples" / "lena.png")
+            candidates.append(Path(meipass) / "examples" / "anna-portrait.png")
     for path in candidates:
         if path.is_file():
             return path
@@ -79,16 +79,16 @@ def list_nodes() -> list[NodeMetadata]:
 @router.get("/sample-image")
 def sample_image() -> FileResponse:
     """Return the bundled sample image for example workflows."""
-    path = _sample_lena_path()
+    path = _sample_anna_portrait_path()
     if path is None:
         raise HTTPException(status_code=404, detail="Sample image not found")
-    return FileResponse(path, media_type="image/png", filename="lena.png")
+    return FileResponse(path, media_type="image/png", filename="anna-portrait.png")
 
 
 @router.post("/assets/sample", response_model=RegisterAssetsResponse)
 def register_sample_image() -> RegisterAssetsResponse:
     """Register the bundled sample image as an asset batch (no copy)."""
-    path = _sample_lena_path()
+    path = _sample_anna_portrait_path()
     if path is None:
         raise HTTPException(status_code=404, detail="Sample image not found")
     try:

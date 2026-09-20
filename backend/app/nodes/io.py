@@ -75,7 +75,7 @@ class LoadImageNode(BaseNode):
             "sample",
             "Sample",
             "",
-            description="Optional bundled sample key (e.g. lena) for templates",
+            description="Optional bundled sample key (e.g. anna-portrait) for templates",
         ),
     ]
 

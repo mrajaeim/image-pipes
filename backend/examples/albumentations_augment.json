@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "albumentations-augment",
-  "description": "Load Lena with annotations, apply Albumentations color jitter then horizontal flip (synced bboxes/keypoints).",
+  "description": "Load anna-portrait with annotations, apply Albumentations color jitter then horizontal flip (synced bboxes/keypoints).",
   "seed": 0,
   "sampleCount": 1,
   "graph": {
@@ -9,7 +9,7 @@
       {
         "id": "load-1",
         "type": "load_image",
-        "params": { "sample": "lena" },
+        "params": { "sample": "anna-portrait" },
         "position": { "x": 0, "y": 40 }
       },
       {

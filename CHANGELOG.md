@@ -93,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed **Save as…** to **Export…**; first-time **Save** only persists to the library (no file download)
 - Renamed run control **Samples** → **Iterations** (how many times to run the full pipeline over the image set)
 - Save Image default destination is the workflow **output** folder (no nested `downloads/` directory)
-- Load Images UI is picker-only (no editable path field); templates use `"sample": "lena"` instead of `path`
+- Load Images UI is picker-only (no editable path field); templates use `"sample": "anna-portrait"` instead of `path`
 - Save Image folder selection uses a folder picker rather than a free-text path input
 - Example workflows updated to the sample-marker format
 

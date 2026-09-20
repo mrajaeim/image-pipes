@@ -8,7 +8,7 @@ function needsSampleImage(params: Record<string, unknown>): boolean {
   const batchId = String(params.asset_batch_id ?? '').trim()
   if (batchId) return false
   const sample = String(params.sample ?? '').trim().toLowerCase()
-  if (sample === 'lena') return true
+  if (sample === 'anna-portrait') return true
   // Legacy templates used path: examples/...
   const path = String(params.path ?? '')
     .replace(/\\/g, '/')
@@ -39,7 +39,7 @@ export async function materializeSampleImages(): Promise<void> {
     // Share one registered batch across all sample Load Image nodes.
     updateNodeParams(node.id, {
       asset_batch_id: result.batch.id,
-      sample: 'lena',
+      sample: 'anna-portrait',
     })
     setLocalPreviews(node.id, urls, files)
   }
