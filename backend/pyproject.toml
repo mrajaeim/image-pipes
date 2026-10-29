@@ -5,7 +5,7 @@ description = "FastAPI backend for Image Pipeline Playground"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.32.0",
+    "uvicorn[standard]>=0.52.1",
     "opencv-python-headless>=4.10.0",
     "numpy>=2.0.0",
     "pillow>=11.0.0",
