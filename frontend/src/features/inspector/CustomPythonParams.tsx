@@ -1,5 +1,7 @@
+import { tr, useLocale } from '../../i18n'
 import { useRef, useState } from 'react'
-import Editor, { type OnMount } from '@monaco-editor/react'
+import type { OnMount } from '@monaco-editor/react'
+import Editor from '../../i18n/LocalizedEditor'
 import {
   Box,
   Button,
@@ -77,6 +79,7 @@ function EditIcon({ color = ICON_COLOR }: { color?: string }) {
 }
 
 export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonParamsProps) {
+  useLocale()
   const queryClient = useQueryClient()
   const convertNodeToUserScript = useGraphStore((s) => s.convertNodeToUserScript)
   const [editing, setEditing] = useState(false)
@@ -133,11 +136,8 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
 
   return (
     <Box sx={{ display: 'grid', gap: 1.25 }}>
-      <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.55)', lineHeight: 1.45 }}>
-        Define <code>process(image, seed=0)</code> and return a BGR numpy ndarray.{' '}
-        <code>cv2</code>, <code>np</code>, and <code>numpy</code> are available. Code runs with
-        full local privileges — only run workflows you trust.
-      </Typography>
+      <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.55)', lineHeight: 1.45 }}>{tr("Define ")}<code>{tr("process(image, seed=0)")}</code>{tr(" and return a BGR numpy ndarray.")}{' '}
+        <code>{tr("cv2")}</code>, <code>{tr("np")}</code>{tr(", and ")}<code>{tr("numpy")}</code>{tr(" are available. Code runs with full local privileges — only run workflows you trust.")}</Typography>
 
       <Box
         sx={{
@@ -148,9 +148,7 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
           flexWrap: 'wrap',
         }}
       >
-        <Typography sx={{ fontSize: 12, fontWeight: 650, color: 'rgba(244,241,234,0.7)' }}>
-          Code
-        </Typography>
+        <Typography sx={{ fontSize: 12, fontWeight: 650, color: 'rgba(244,241,234,0.7)' }}>{tr("Code")}</Typography>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <ScriptHelpersButton />
           <Button
@@ -171,9 +169,7 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
                 bgcolor: 'rgba(93,173,226,0.08)',
               },
             }}
-          >
-            Save as reusable node
-          </Button>
+          >{tr("Save as reusable node")}</Button>
           <Button
             size="small"
             variant="outlined"
@@ -191,9 +187,7 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
                 bgcolor: 'rgba(125,206,160,0.08)',
               },
             }}
-          >
-            Edit code
-          </Button>
+          >{tr("Edit code")}</Button>
         </Box>
       </Box>
 
@@ -257,9 +251,7 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
               fontSize: 18,
               letterSpacing: '-0.02em',
             }}
-          >
-            Edit Custom Python
-          </Typography>
+          >{tr("Edit Custom Python")}</Typography>
           <ScriptHelpersButton compact />
           <Button
             size="small"
@@ -268,9 +260,7 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
               textTransform: 'none',
               color: 'rgba(244,241,234,0.65)',
             }}
-          >
-            Cancel
-          </Button>
+          >{tr("Cancel")}</Button>
           <Button
             size="small"
             variant="contained"
@@ -282,9 +272,7 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
               color: '#0f0f0f',
               '&:hover': { bgcolor: '#6bbd8e' },
             }}
-          >
-            Save
-          </Button>
+          >{tr("Save")}</Button>
         </Box>
         <DialogContent
           className="nokey"
@@ -335,18 +323,13 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
           },
         }}
       >
-        <DialogTitle sx={{ fontFamily: '"Fraunces", Georgia, serif', fontWeight: 700 }}>
-          Save as reusable node
-        </DialogTitle>
+        <DialogTitle sx={{ fontFamily: '"Fraunces", Georgia, serif', fontWeight: 700 }}>{tr("Save as reusable node")}</DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.55)', mb: 2 }}>
-            Creates a new palette node under My Scripts. Later edits bump the version without
-            overwriting older pipelines.
-          </Typography>
+          <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.55)', mb: 2 }}>{tr("Creates a new palette node under My Scripts. Later edits bump the version without overwriting older pipelines.")}</Typography>
           <TextField
             autoFocus
             fullWidth
-            label="Display name"
+            label={tr("Display name")}
             value={saveName}
             onChange={(event) => setSaveName(event.target.value)}
             disabled={saving}
@@ -363,9 +346,7 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
             disabled={saving}
             onClick={() => setSaveOpen(false)}
             sx={{ textTransform: 'none', color: 'rgba(244,241,234,0.65)' }}
-          >
-            Cancel
-          </Button>
+          >{tr("Cancel")}</Button>
           <Button
             variant="contained"
             disabled={saving}
@@ -378,7 +359,7 @@ export function CustomPythonParams({ nodeId, code, onCodeChange }: CustomPythonP
               '&:hover': { bgcolor: '#4ea0d6' },
             }}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? tr("Saving…") : tr("Save")}
           </Button>
         </DialogActions>
       </Dialog>

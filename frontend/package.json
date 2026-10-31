@@ -20,12 +20,15 @@
     "@mui/material": "^9.2.0",
     "@tanstack/react-query": "^5.101.4",
     "@xyflow/react": "^12.11.2",
+    "i18next": "26.4.2",
     "notistack": "^3.0.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.83.0",
+    "react-i18next": "17.0.16",
     "zod": "^3.25.76",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.14",
+    "monaco-runtime": "npm:monaco-editor@0.55.1"
   },
   "devDependencies": {
     "@emnapi/core": "2.0.0-alpha.3",

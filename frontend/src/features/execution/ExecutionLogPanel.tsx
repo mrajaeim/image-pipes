@@ -1,8 +1,11 @@
+import { messageText } from '../../i18n'
+import { tr, useLocale } from '../../i18n'
 import { useEffect, useRef } from 'react'
 import { Box, Typography } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
 
 export function ExecutionLogPanel() {
+  useLocale()
   const logs = useGraphStore((s) => s.logs)
   const nodeTimings = useGraphStore((s) => s.nodeTimings)
   const isExecuting = useGraphStore((s) => s.isExecuting)
@@ -46,17 +49,15 @@ export function ExecutionLogPanel() {
             fontSize: 13,
             color: '#f4f1ea',
           }}
-        >
-          Execution Log
-        </Typography>
+        >{tr("Execution Log")}</Typography>
         <Typography sx={{ fontSize: 11, color: 'rgba(244,241,234,0.4)' }}>
           {isExecuting
             ? activeNodeId
-              ? `Running ${activeNodeId}…`
-              : 'Running…'
+              ? tr("Running {{v0}}…", { v0: activeNodeId })
+              : tr("Running…")
             : timingEntries.length > 0
-              ? `${timingEntries.length} nodes · ${totalMs.toFixed(1)}ms`
-              : 'Idle'}
+              ? tr("{{v0}} nodes · {{v1}}ms", { v0: timingEntries.length, v1: totalMs.toFixed(1) })
+              : tr("Idle")}
         </Typography>
       </Box>
       <Box
@@ -74,13 +75,11 @@ export function ExecutionLogPanel() {
         }}
       >
         {logs.length === 0 ? (
-          <Typography sx={{ fontSize: 11, color: 'rgba(244,241,234,0.35)' }}>
-            Run a pipeline to see per-node timing and progress.
-          </Typography>
+          <Typography sx={{ fontSize: 11, color: 'rgba(244,241,234,0.35)' }}>{tr("Run a pipeline to see per-node timing and progress.")}</Typography>
         ) : (
           logs.map((line, index) => (
-            <Box key={`${index}-${line}`} component="div">
-              {line}
+            <Box key={`${index}-${messageText(line)}`} component="div">
+              {messageText(line)}
             </Box>
           ))
         )}

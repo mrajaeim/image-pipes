@@ -42,6 +42,8 @@ export interface ImagePipesDesktop {
   openFolder: () => Promise<DesktopFolderResult>
   pickFolder: () => Promise<DesktopFolderResult>
   revealInFolder: (targetPath: string) => Promise<void>
+  getLanguage: () => Promise<'zh-CN' | 'en'>
+  setLanguage: (language: 'zh-CN' | 'en') => Promise<void>
 }
 
 declare global {

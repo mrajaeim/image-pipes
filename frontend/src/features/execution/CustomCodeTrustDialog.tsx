@@ -1,3 +1,5 @@
+import { nodeLabel } from '../../i18n'
+import { tr, useLocale } from '../../i18n'
 import {
   Box,
   Button,
@@ -17,6 +19,7 @@ import { hydrateUserScriptCodes } from '../../workflow/hydrateUserScriptCodes'
 import { runPipeline } from '../../hooks/useExecutionSocket'
 
 export function CustomCodeTrustDialog() {
+  useLocale()
   const open = useGraphStore((s) => s.customCodeTrustDialogOpen)
   const nodes = useGraphStore((s) => s.nodes)
   const userScriptCodes = useGraphStore((s) => s.userScriptCodes)
@@ -69,14 +72,8 @@ export function CustomCodeTrustDialog() {
             fontSize: 20,
             letterSpacing: '-0.02em',
           }}
-        >
-          Trust custom Python?
-        </Typography>
-        <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.6)', lineHeight: 1.5, mb: 2 }}>
-          This workflow includes custom or reusable script nodes. The code runs on your machine
-          with full access (same as any local script). Only continue if you reviewed the code and
-          trust its source.
-        </Typography>
+        >{tr("Trust custom Python?")}</Typography>
+        <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.6)', lineHeight: 1.5, mb: 2 }}>{tr("This workflow includes custom or reusable script nodes. The code runs on your machine with full access (same as any local script). Only continue if you reviewed the code and trust its source.")}</Typography>
 
         <Stack spacing={1.25} sx={{ mb: 2.25, maxHeight: 220, overflow: 'auto' }}>
           {customNodes.map((node) => (
@@ -90,7 +87,7 @@ export function CustomCodeTrustDialog() {
               }}
             >
               <Typography sx={{ fontSize: 12, fontWeight: 650, mb: 0.5 }}>
-                {node.data.label ?? node.data.type}{' '}
+                {nodeLabel(node.data.type, node.data.label ?? node.data.type)}{' '}
                 <Typography component="span" sx={{ color: 'rgba(244,241,234,0.4)', fontWeight: 500 }}>
                   ({node.id})
                 </Typography>
@@ -116,9 +113,7 @@ export function CustomCodeTrustDialog() {
           <Button
             onClick={closeCustomCodeTrustDialog}
             sx={{ textTransform: 'none', color: 'rgba(244,241,234,0.65)' }}
-          >
-            Cancel
-          </Button>
+          >{tr("Cancel")}</Button>
           <Button
             variant="contained"
             onClick={onConfirm}
@@ -129,7 +124,7 @@ export function CustomCodeTrustDialog() {
               '&:hover': { bgcolor: '#a93226' },
             }}
           >
-            {pendingRunAfterTrust ? 'Trust and run' : 'Trust'}
+            {pendingRunAfterTrust ? tr("Trust and run") : tr("Trust")}
           </Button>
         </Box>
       </DialogContent>

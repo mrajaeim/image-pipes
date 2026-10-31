@@ -1,5 +1,7 @@
+import { tr, useLocale } from '../../i18n'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Editor, { type OnMount } from '@monaco-editor/react'
+import type { OnMount } from '@monaco-editor/react'
+import Editor from '../../i18n/LocalizedEditor'
 import {
   Box,
   Button,
@@ -88,6 +90,7 @@ export function UserScriptParams({
   version,
   onVersionChange,
 }: UserScriptParamsProps) {
+  useLocale()
   const queryClient = useQueryClient()
   const cacheUserScriptCode = useGraphStore((s) => s.cacheUserScriptCode)
   const userScriptCodes = useGraphStore((s) => s.userScriptCodes)
@@ -170,26 +173,22 @@ export function UserScriptParams({
 
   return (
     <Box sx={{ display: 'grid', gap: 1.25 }}>
-      <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.55)', lineHeight: 1.45 }}>
-        Reusable script <strong>{label}</strong> ({scriptId}). Editing always creates a new
-        version; this canvas node pins the version below.
-      </Typography>
+      <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.55)', lineHeight: 1.45 }}>{tr("Reusable script ")}<strong>{label}</strong> ({scriptId}{tr("). Editing always creates a new version; this canvas node pins the version below.")}</Typography>
 
       <TextField
         select
         size="small"
-        label="Pinned version"
+        label={tr("Pinned version")}
         value={version}
         onChange={(event) => {
           const next = Number(event.target.value)
           if (Number.isFinite(next) && next >= 1) onVersionChange(Math.floor(next))
         }}
-        helperText="Older versions stay on disk; change only if you intend to retarget."
+        helperText={tr("Older versions stay on disk; change only if you intend to retarget.")}
       >
         {versionOptions.map((option) => (
-          <MenuItem key={option} value={option}>
-            v{option}
-            {option === currentVersion ? ' (latest)' : ''}
+          <MenuItem key={option} value={option}>{tr("v")}{option}
+            {option === currentVersion ? tr(' (latest)') : ''}
           </MenuItem>
         ))}
       </TextField>
@@ -202,8 +201,7 @@ export function UserScriptParams({
           gap: 1,
         }}
       >
-        <Typography sx={{ fontSize: 12, fontWeight: 650, color: 'rgba(244,241,234,0.7)' }}>
-          Code (v{version})
+        <Typography sx={{ fontSize: 12, fontWeight: 650, color: 'rgba(244,241,234,0.7)' }}>{tr("Code (v")}{version})
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <ScriptHelpersButton />
@@ -225,9 +223,7 @@ export function UserScriptParams({
                 bgcolor: 'rgba(125,206,160,0.08)',
               },
             }}
-          >
-            Edit code
-          </Button>
+          >{tr("Edit code")}</Button>
         </Box>
       </Box>
 
@@ -243,7 +239,7 @@ export function UserScriptParams({
       >
         {!cached ? (
           <Typography sx={{ p: 2, fontSize: 12, color: 'rgba(244,241,234,0.45)' }}>
-            {fetchError ? 'Failed to load script.' : 'Loading script…'}
+            {fetchError ? tr("Failed to load script.") : tr("Loading script…")}
           </Typography>
         ) : (
           <Editor
@@ -298,18 +294,14 @@ export function UserScriptParams({
               fontSize: 18,
               letterSpacing: '-0.02em',
             }}
-          >
-            Edit {label} (new version)
-          </Typography>
+          >{tr("Edit ")}{label}{tr(" (new version)")}</Typography>
           <ScriptHelpersButton compact />
           <Button
             size="small"
             disabled={saving}
             onClick={() => void closeEditor(false)}
             sx={{ textTransform: 'none', color: 'rgba(244,241,234,0.65)' }}
-          >
-            Cancel
-          </Button>
+          >{tr("Cancel")}</Button>
           <Button
             size="small"
             variant="contained"
@@ -323,7 +315,7 @@ export function UserScriptParams({
               '&:hover': { bgcolor: '#6bbd8e' },
             }}
           >
-            {saving ? 'Saving…' : 'Save as new version'}
+            {saving ? tr("Saving…") : tr("Save as new version")}
           </Button>
         </Box>
         <DialogContent

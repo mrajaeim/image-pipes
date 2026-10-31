@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../../i18n'
 import {
   Box,
   Button,
@@ -20,6 +21,7 @@ type ScriptHelpersModalProps = {
 }
 
 export function ScriptHelpersModal({ open, onClose }: ScriptHelpersModalProps) {
+  useLocale()
   return (
     <Dialog
       open={open}
@@ -48,12 +50,10 @@ export function ScriptHelpersModal({ open, onClose }: ScriptHelpersModalProps) {
           letterSpacing: '-0.02em',
           pb: 0.5,
         }}
-      >
-        Script helpers
-      </DialogTitle>
+      >{tr("Script helpers")}</DialogTitle>
       <DialogContent>
         <Typography sx={{ color: 'rgba(244,241,234,0.55)', fontSize: 13, mb: 2 }}>
-          {SCRIPT_HELPERS_TAGLINE}
+          {tr(SCRIPT_HELPERS_TAGLINE)}
         </Typography>
 
         <Stack spacing={1.75} sx={{ mb: 2.5 }}>
@@ -81,10 +81,10 @@ export function ScriptHelpersModal({ open, onClose }: ScriptHelpersModalProps) {
                 {helper.signature}
               </Typography>
               <Typography sx={{ fontSize: 14, fontWeight: 600, mb: 0.5 }}>
-                {helper.summary}
+                {tr(helper.summary)}
               </Typography>
               <Typography sx={{ fontSize: 13, lineHeight: 1.55, color: 'rgba(244,241,234,0.6)' }}>
-                {helper.detail}
+                {tr(helper.detail)}
               </Typography>
             </Box>
           ))}
@@ -97,7 +97,7 @@ export function ScriptHelpersModal({ open, onClose }: ScriptHelpersModalProps) {
             lineHeight: 1.5,
           }}
         >
-          {SCRIPT_HELPERS_FOOTNOTE}
+          {tr(SCRIPT_HELPERS_FOOTNOTE)}
         </Typography>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -111,9 +111,7 @@ export function ScriptHelpersModal({ open, onClose }: ScriptHelpersModalProps) {
             color: '#0f0f0f',
             '&:hover': { bgcolor: '#f39c12' },
           }}
-        >
-          Close
-        </Button>
+        >{tr("Close")}</Button>
       </DialogActions>
     </Dialog>
   )

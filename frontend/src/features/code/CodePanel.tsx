@@ -1,4 +1,5 @@
-import Editor from '@monaco-editor/react'
+import { tr, useLocale } from '../../i18n'
+import Editor from '../../i18n/LocalizedEditor'
 import { Box, Button, Typography } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
 import { requestCodegen } from '../../hooks/useExecutionSocket'
@@ -7,6 +8,7 @@ import { notifyError, notifySuccess } from '../../notify'
 export const DEFAULT_GENERATED_CODE = '# Run codegen to export a Python script\n'
 
 export function CodePanel() {
+  useLocale()
   const code = useGraphStore((s) => s.generatedCode)
   const setGeneratedCode = useGraphStore((s) => s.setGeneratedCode)
   const isExecuting = useGraphStore((s) => s.isExecuting)
@@ -28,14 +30,10 @@ export function CodePanel() {
       <Typography
         variant="subtitle1"
         sx={{ fontFamily: '"Fraunces", Georgia, serif', fontWeight: 700, px: 2, pt: 2 }}
-      >
-        Python Export
-      </Typography>
+      >{tr("Python Export")}</Typography>
       {isPlaceholder ? (
         <Box sx={{ flex: 1, px: 2, pb: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <Typography sx={{ color: 'rgba(244,241,234,0.55)', fontSize: 13, lineHeight: 1.5 }}>
-            Generate a standalone OpenCV script from the current pipeline.
-          </Typography>
+          <Typography sx={{ color: 'rgba(244,241,234,0.55)', fontSize: 13, lineHeight: 1.5 }}>{tr("Generate a standalone OpenCV script from the current pipeline.")}</Typography>
           <Button
             variant="outlined"
             disabled={isExecuting || nodeCount === 0}
@@ -51,9 +49,7 @@ export function CodePanel() {
                 bgcolor: 'rgba(125,206,160,0.08)',
               },
             }}
-          >
-            Export Python
-          </Button>
+          >{tr("Export Python")}</Button>
         </Box>
       ) : (
         <Box sx={{ flex: 1, minHeight: 0 }}>

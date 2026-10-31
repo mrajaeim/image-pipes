@@ -1,3 +1,4 @@
+import { initializeMonacoLanguage } from './i18n/monaco'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
@@ -5,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './app/App'
 import { AppSnackbarProvider } from './app/AppSnackbarProvider'
 import './index.css'
+import { initializeLanguage } from './i18n'
 
 const theme = createTheme({
   palette: {
@@ -25,6 +27,8 @@ const theme = createTheme({
 
 const queryClient = new QueryClient()
 
+await initializeLanguage()
+await initializeMonacoLanguage()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

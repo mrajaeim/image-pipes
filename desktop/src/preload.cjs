@@ -7,4 +7,6 @@ contextBridge.exposeInMainWorld('imagePipesDesktop', {
   openFolder: () => ipcRenderer.invoke('desktop:openFolder'),
   pickFolder: () => ipcRenderer.invoke('desktop:pickFolder'),
   revealInFolder: (targetPath) => ipcRenderer.invoke('desktop:revealInFolder', targetPath),
+  getLanguage: () => ipcRenderer.invoke('desktop:getLanguage'),
+  setLanguage: (language) => ipcRenderer.invoke('desktop:setLanguage', language),
 })

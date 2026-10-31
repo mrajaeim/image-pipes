@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../../i18n'
 import { useState } from 'react'
 import { Box, Button, Dialog, DialogContent, Stack, TextField, Typography } from '@mui/material'
 
@@ -37,6 +38,7 @@ function WorkflowNameForm({
   onClose,
   onConfirm,
 }: Omit<WorkflowNameDialogProps, 'open'>) {
+  useLocale()
   const [name, setName] = useState(initialName)
   const [description, setDescription] = useState(initialDescription)
 
@@ -62,7 +64,7 @@ function WorkflowNameForm({
       <Stack spacing={1.5}>
         <TextField
           size="small"
-          label="Name"
+          label={tr("Name")}
           value={name}
           autoFocus
           onChange={(event) => setName(event.target.value)}
@@ -73,7 +75,7 @@ function WorkflowNameForm({
         />
         <TextField
           size="small"
-          label="Description (optional)"
+          label={tr("Description (optional)")}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           sx={fieldSx}
@@ -88,9 +90,7 @@ function WorkflowNameForm({
               color: '#f0ebe3',
               borderColor: 'rgba(255,255,255,0.16)',
             }}
-          >
-            Cancel
-          </Button>
+          >{tr("Cancel")}</Button>
           <Button
             variant="contained"
             disabled={!name.trim()}
@@ -120,6 +120,7 @@ export function WorkflowNameDialog({
   onClose,
   onConfirm,
 }: WorkflowNameDialogProps) {
+  useLocale()
   return (
     <Dialog
       open={open}

@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../../i18n'
 import { useCallback, useMemo, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   BaseEdge,
@@ -120,6 +121,7 @@ function BendHandle({
   onDrag: (event: ReactPointerEvent<HTMLButtonElement>) => void
   onRemove?: () => void
 }) {
+  useLocale()
   return (
     <button
       type="button"
@@ -165,6 +167,7 @@ export function EditableEdge({
   selected,
   data,
 }: EdgeProps<Edge<EditableEdgeData>>) {
+  useLocale()
   const { deleteElements, screenToFlowPosition } = useReactFlow()
   const setEdgeWaypoints = useGraphStore((state) => state.setEdgeWaypoints)
   const waypoints = useMemo(() => data?.waypoints ?? [], [data?.waypoints])
@@ -292,7 +295,7 @@ export function EditableEdge({
         <button
           type="button"
           className="nodrag nopan"
-          aria-label="Remove connection"
+          aria-label={tr("Remove connection")}
           onClick={(event) => {
             event.stopPropagation()
             void deleteElements({ edges: [{ id }] })
@@ -329,8 +332,8 @@ export function EditableEdge({
             x={labelX}
             y={labelY}
             selected={selected}
-            label="Bend connection"
-            title="Drag to reshape the connector"
+            label={tr("Bend connection")}
+            title={tr("Drag to reshape the connector")}
             onDrag={startDragNewBend}
           />
         )}
@@ -341,8 +344,8 @@ export function EditableEdge({
             x={point.x}
             y={point.y}
             selected={selected}
-            label={`Move bend ${index + 1}`}
-            title="Drag to reshape · double-click to remove"
+            label={tr("Move bend {{v0}}", { v0: index + 1 })}
+            title={tr("Drag to reshape · double-click to remove")}
             onDrag={(event) => startDragExisting(index, event)}
             onRemove={() =>
               setEdgeWaypoints(

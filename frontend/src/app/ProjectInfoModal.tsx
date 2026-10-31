@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../i18n'
 import {
   Box,
   Button,
@@ -17,6 +18,7 @@ interface ProjectInfoModalProps {
 }
 
 export function ProjectInfoModal({ open, onClose }: ProjectInfoModalProps) {
+  useLocale()
   return (
     <Dialog
       open={open}
@@ -50,10 +52,10 @@ export function ProjectInfoModal({ open, onClose }: ProjectInfoModalProps) {
         <Typography
           sx={{ color: 'rgba(244,241,234,0.55)', fontSize: 13, mb: 2 }}
         >
-          {PROJECT_INFO.tagline}
+          {tr(PROJECT_INFO.tagline)}
         </Typography>
         <Typography sx={{ fontSize: 14, lineHeight: 1.6, mb: 2.5 }}>
-          {PROJECT_INFO.description}
+          {tr(PROJECT_INFO.description)}
         </Typography>
 
         <Stack spacing={1.5}>
@@ -67,11 +69,9 @@ export function ProjectInfoModal({ open, onClose }: ProjectInfoModalProps) {
                 color: 'rgba(244,241,234,0.4)',
                 mb: 0.4,
               }}
-            >
-              License
-            </Typography>
+            >{tr("License")}</Typography>
             <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
-              {PROJECT_INFO.licenseLabel}
+              {tr(PROJECT_INFO.licenseLabel)}
             </Typography>
           </Box>
 
@@ -85,9 +85,7 @@ export function ProjectInfoModal({ open, onClose }: ProjectInfoModalProps) {
                 color: 'rgba(244,241,234,0.4)',
                 mb: 0.4,
               }}
-            >
-              GitHub
-            </Typography>
+            >{tr("GitHub")}</Typography>
             <Link
               href={PROJECT_INFO.githubUrl}
               target="_blank"
@@ -121,9 +119,7 @@ export function ProjectInfoModal({ open, onClose }: ProjectInfoModalProps) {
               bgcolor: 'rgba(125,206,160,0.08)',
             },
           }}
-        >
-          Open GitHub
-        </Button>
+        >{tr("Open GitHub")}</Button>
         <Button
           onClick={onClose}
           variant="contained"
@@ -134,9 +130,7 @@ export function ProjectInfoModal({ open, onClose }: ProjectInfoModalProps) {
             color: '#0f0f0f',
             '&:hover': { bgcolor: '#f39c12' },
           }}
-        >
-          Close
-        </Button>
+        >{tr("Close")}</Button>
       </DialogActions>
     </Dialog>
   )

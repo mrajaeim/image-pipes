@@ -1,3 +1,4 @@
+import { messageText } from '../i18n'
 /** Workflow library orchestration used by the Workflows UI. */
 
 import { useGraphStore } from '../store/graphStore'
@@ -18,7 +19,7 @@ export function confirmDiscardIfDirty(message?: string): boolean {
   const dirty = useGraphStore.getState().workflowDirty
   if (!dirty) return true
   return window.confirm(
-    message ?? 'You have unsaved changes. Discard them and continue?',
+    message ?? messageText('You have unsaved changes. Discard them and continue?'),
   )
 }
 

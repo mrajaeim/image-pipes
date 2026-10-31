@@ -4,6 +4,7 @@ const http = require('node:http')
 const net = require('node:net')
 const path = require('node:path')
 const fs = require('node:fs')
+const { initializeLanguage, setLanguage, getLanguage, text } = require('./language.cjs')
 
 const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'bmp', 'tif', 'tiff', 'webp', 'gif']
 
@@ -211,13 +212,15 @@ function uiUrl() {
 }
 
 function registerDesktopIpc() {
+  ipcMain.handle('desktop:getLanguage', () => getLanguage())
+  ipcMain.handle('desktop:setLanguage', (_event, language) => setLanguage(language))
   ipcMain.handle('desktop:openImages', async () => {
     const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
-      title: 'Choose images',
+      title: text('Choose images'),
       properties: ['openFile', 'multiSelections'],
       filters: [
-        { name: 'Images', extensions: IMAGE_EXTENSIONS },
-        { name: 'All Files', extensions: ['*'] },
+        { name: text('Images'), extensions: IMAGE_EXTENSIONS },
+        { name: text('All Files'), extensions: ['*'] },
       ],
     })
     if (result.canceled) return { canceled: true, paths: [] }
@@ -226,7 +229,7 @@ function registerDesktopIpc() {
 
   ipcMain.handle('desktop:openFolder', async () => {
     const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
-      title: 'Choose image folder',
+      title: text('Choose image folder'),
       properties: ['openDirectory'],
     })
     if (result.canceled || result.filePaths.length === 0) {
@@ -237,7 +240,7 @@ function registerDesktopIpc() {
 
   ipcMain.handle('desktop:pickFolder', async () => {
     const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
-      title: 'Choose output folder',
+      title: text('Choose output folder'),
       properties: ['openDirectory', 'createDirectory'],
     })
     if (result.canceled || result.filePaths.length === 0) {
@@ -303,17 +306,18 @@ async function bootstrap() {
 }
 
 app.whenReady().then(() => {
+  initializeLanguage()
   Menu.setApplicationMenu(null)
   registerDesktopIpc()
   void bootstrap().catch(async (error) => {
     console.error(error)
     stopChildren()
     await dialog.showErrorBox(
-      'Image Pipes failed to start',
+      text('Image Pipes failed to start'),
       `${error instanceof Error ? error.message : String(error)}\n\n` +
         (useViteDev
-          ? 'Dev tip: run `uv sync` in backend/ and `npm install` in frontend/.'
-          : 'Dev tip: run `uv sync` in backend/ and `npm run build` in frontend/.'),
+          ? text('Dev tip: run `uv sync` in backend/ and `npm install` in frontend/.')
+          : text('Dev tip: run `uv sync` in backend/ and `npm run build` in frontend/.')),
     )
     app.quit()
   })

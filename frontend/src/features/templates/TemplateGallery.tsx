@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../../i18n'
 import { useMemo, useState } from 'react'
 import {
   Box,
@@ -34,6 +35,7 @@ const FILTERS: { id: FilterId; label: string }[] = [
 ]
 
 function PipelineRibbon({ steps, accent }: { steps: string[]; accent: string }) {
+  useLocale()
   return (
     <Box
       sx={{
@@ -45,7 +47,7 @@ function PipelineRibbon({ steps, accent }: { steps: string[]; accent: string }) 
       }}
     >
       {steps.map((step, index) => (
-        <Box key={`${step}-${index}`} sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+        <Box key={`${tr(step)}-${index}`} sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
           <Box
             component="span"
             sx={{
@@ -62,7 +64,7 @@ function PipelineRibbon({ steps, accent }: { steps: string[]; accent: string }) 
               lineHeight: 1.2,
             }}
           >
-            {step}
+            {tr(step)}
           </Box>
           {index < steps.length - 1 && (
             <Box
@@ -91,6 +93,7 @@ function TemplateTile({
   disabled?: boolean
   onSelect: () => void
 }) {
+  useLocale()
   const meta = TEMPLATE_CATEGORY_META[template.category]
   return (
     <Box
@@ -148,7 +151,7 @@ function TemplateTile({
             mb: 1,
           }}
         >
-          {meta.label}
+          {tr(meta.label)}
         </Typography>
         <PipelineRibbon steps={template.steps} accent={meta.accent} />
       </Box>
@@ -163,7 +166,7 @@ function TemplateTile({
             lineHeight: 1.2,
           }}
         >
-          {template.name}
+          {tr(template.name)}
         </Typography>
         <Typography
           sx={{
@@ -173,7 +176,7 @@ function TemplateTile({
             flex: 1,
           }}
         >
-          {template.description}
+          {tr(template.description)}
         </Typography>
         <Typography
           sx={{
@@ -183,15 +186,14 @@ function TemplateTile({
             color: meta.accent,
             opacity: 0.9,
           }}
-        >
-          Load pipeline →
-        </Typography>
+        >{tr("Load pipeline →")}</Typography>
       </Box>
     </Box>
   )
 }
 
 export function TemplateGallery({ open, onClose, onSelect, disabled }: TemplateGalleryProps) {
+  const locale = useLocale()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<FilterId>(ALL_FILTER)
 
@@ -207,16 +209,16 @@ export function TemplateGallery({ open, onClose, onSelect, disabled }: TemplateG
       if (filter !== ALL_FILTER && template.category !== filter) return false
       if (!needle) return true
       const haystack = [
-        template.name,
-        template.description,
+        tr(template.name, { lng: locale }),
+        tr(template.description, { lng: locale }),
         template.category,
-        ...template.steps,
+        ...template.steps.map((step) => tr(step, { lng: locale })),
       ]
         .join(' ')
         .toLowerCase()
       return haystack.includes(needle)
     })
-  }, [filter, query])
+  }, [filter, query, locale])
 
   return (
     <Dialog
@@ -261,15 +263,11 @@ export function TemplateGallery({ open, onClose, onSelect, disabled }: TemplateG
               letterSpacing: '-0.03em',
               lineHeight: 1.15,
             }}
-          >
-            Starter pipelines
-          </Typography>
-          <Typography sx={{ mt: 0.75, fontSize: 13, color: 'rgba(244,241,234,0.5)', maxWidth: 520 }}>
-            Drop a ready-made graph onto the canvas. Your current workflow will be replaced.
-          </Typography>
+          >{tr("Starter pipelines")}</Typography>
+          <Typography sx={{ mt: 0.75, fontSize: 13, color: 'rgba(244,241,234,0.5)', maxWidth: 520 }}>{tr("Drop a ready-made graph onto the canvas. Your current workflow will be replaced.")}</Typography>
         </Box>
         <IconButton
-          aria-label="Close templates"
+          aria-label={tr("Close templates")}
           onClick={handleClose}
           size="small"
           sx={{
@@ -295,7 +293,7 @@ export function TemplateGallery({ open, onClose, onSelect, disabled }: TemplateG
         >
           <TextField
             size="small"
-            placeholder="Search templates…"
+            placeholder={tr("Search templates…")}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             fullWidth
@@ -361,7 +359,7 @@ export function TemplateGallery({ open, onClose, onSelect, disabled }: TemplateG
                     },
                   }}
                 >
-                  {item.label}
+                  {tr(item.label)}
                 </Box>
               )
             })}
@@ -378,7 +376,7 @@ export function TemplateGallery({ open, onClose, onSelect, disabled }: TemplateG
               color: 'rgba(244,241,234,0.45)',
             }}
           >
-            <Typography sx={{ fontSize: 14 }}>No templates match that search.</Typography>
+            <Typography sx={{ fontSize: 14 }}>{tr("No templates match that search.")}</Typography>
           </Box>
         ) : (
           <Box
@@ -429,8 +427,7 @@ export function TemplateGallery({ open, onClose, onSelect, disabled }: TemplateG
             letterSpacing: '0.02em',
           }}
         >
-          {filtered.length} of {WORKFLOW_TEMPLATES.length} starters
-        </Typography>
+          {filtered.length}{tr(" of ")}{WORKFLOW_TEMPLATES.length}{tr(" starters")}</Typography>
       </DialogContent>
     </Dialog>
   )

@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../../i18n'
 import { useMemo, useState } from 'react'
 import {
   Box,
@@ -84,6 +85,7 @@ export function AnnotationsParams({
   keypointsJson,
   onChange,
 }: AnnotationsParamsProps) {
+  useLocale()
   const [bboxes, setBboxes] = useState(() => parseBBoxes(bboxesJson))
   const [keypoints, setKeypoints] = useState(() => parseKeypoints(keypointsJson))
   const [advanced, setAdvanced] = useState(false)
@@ -108,9 +110,7 @@ export function AnnotationsParams({
   return (
     <Stack spacing={2}>
       <Box>
-        <Typography variant="caption" sx={{ color: 'rgba(244,241,234,0.65)' }}>
-          Pascal VOC bboxes · [x_min, y_min, x_max, y_max, label]
-        </Typography>
+        <Typography variant="caption" sx={{ color: 'rgba(244,241,234,0.65)' }}>{tr("Pascal VOC bboxes · [x_min, y_min, x_max, y_max, label]")}</Typography>
         <Stack spacing={1} sx={{ mt: 1 }}>
           {bboxes.map((row, index) => (
             <Stack
@@ -123,7 +123,7 @@ export function AnnotationsParams({
                 <TextField
                   key={key}
                   size="small"
-                  label={key}
+                  label={tr(key)}
                   value={row[key]}
                   onChange={(event) => {
                     const next = bboxes.map((item, i) =>
@@ -136,7 +136,7 @@ export function AnnotationsParams({
               ))}
               <IconButton
                 size="small"
-                aria-label="Remove bbox"
+                aria-label={tr("Remove bbox")}
                 onClick={() => commit(bboxes.filter((_, i) => i !== index), keypoints)}
                 disabled={bboxes.length <= 1}
               >
@@ -153,16 +153,12 @@ export function AnnotationsParams({
                 keypoints,
               )
             }
-          >
-            Add bbox
-          </Button>
+          >{tr("Add bbox")}</Button>
         </Stack>
       </Box>
 
       <Box>
-        <Typography variant="caption" sx={{ color: 'rgba(244,241,234,0.65)' }}>
-          Keypoints · [x, y]
-        </Typography>
+        <Typography variant="caption" sx={{ color: 'rgba(244,241,234,0.65)' }}>{tr("Keypoints · [x, y]")}</Typography>
         <Stack spacing={1} sx={{ mt: 1 }}>
           {keypoints.map((row, index) => (
             <Stack
@@ -173,7 +169,7 @@ export function AnnotationsParams({
             >
               <TextField
                 size="small"
-                label="x"
+                label={tr("x")}
                 value={row.x}
                 onChange={(event) => {
                   const next = keypoints.map((item, i) =>
@@ -185,7 +181,7 @@ export function AnnotationsParams({
               />
               <TextField
                 size="small"
-                label="y"
+                label={tr("y")}
                 value={row.y}
                 onChange={(event) => {
                   const next = keypoints.map((item, i) =>
@@ -197,7 +193,7 @@ export function AnnotationsParams({
               />
               <IconButton
                 size="small"
-                aria-label="Remove keypoint"
+                aria-label={tr("Remove keypoint")}
                 onClick={() => commit(bboxes, keypoints.filter((_, i) => i !== index))}
                 disabled={keypoints.length <= 1}
               >
@@ -209,20 +205,18 @@ export function AnnotationsParams({
             size="small"
             variant="outlined"
             onClick={() => commit(bboxes, [...keypoints, { x: '0', y: '0' }])}
-          >
-            Add keypoint
-          </Button>
+          >{tr("Add keypoint")}</Button>
         </Stack>
       </Box>
 
       <Button size="small" onClick={() => setAdvanced((value) => !value)}>
-        {advanced ? 'Hide JSON' : 'Show JSON'}
+        {advanced ? tr("Hide JSON") : tr("Show JSON")}
       </Button>
       {advanced && (
         <Stack spacing={1}>
           <TextField
             size="small"
-            label="BBoxes JSON"
+            label={tr("BBoxes JSON")}
             multiline
             minRows={2}
             value={jsonPreview.bboxes}
@@ -233,7 +227,7 @@ export function AnnotationsParams({
           />
           <TextField
             size="small"
-            label="Keypoints JSON"
+            label={tr("Keypoints JSON")}
             multiline
             minRows={2}
             value={jsonPreview.keypoints}

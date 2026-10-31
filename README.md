@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎨 Image Pipes
+# Better Image Pipes
 
 ### Stop scripting. Start seeing.
 

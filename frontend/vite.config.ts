@@ -1,12 +1,13 @@
+import { monacoLocalization } from './monaco-localization.ts'
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 const apiTarget = process.env.IMAGE_PIPES_API_PROXY || 'http://127.0.0.1:8000'
 const vitePort = Number(process.env.IMAGE_PIPES_VITE_PORT || 5173)
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [monacoLocalization(), react()],
   server: {
     port: vitePort,
     strictPort: true,

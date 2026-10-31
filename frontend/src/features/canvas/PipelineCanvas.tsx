@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../../i18n'
 import { useCallback, useEffect, useMemo } from 'react'
 import {
   Background,
@@ -51,6 +52,7 @@ function findPort(
 }
 
 export function PipelineCanvas() {
+  useLocale()
   const nodes = useGraphStore((s) => s.nodes)
   const edges = useGraphStore((s) => s.edges)
   const onNodesChange = useGraphStore((s) => s.onNodesChange)
@@ -133,6 +135,19 @@ export function PipelineCanvas() {
       onDrop={onDrop}
     >
       <ReactFlow
+        ariaLabelConfig={{
+          'node.a11yDescription.default': tr('Press enter or space to select a node. Press delete to remove it and escape to cancel.'),
+          'node.a11yDescription.keyboardDisabled': tr('Press enter or space to select a node. You can then use the arrow keys to move the node around. Press delete to remove it and escape to cancel.'),
+          'node.a11yDescription.ariaLiveMessage': ({ direction, x, y }) => tr('Moved selected node {{v0}}. New position, x: {{v1}}, y: {{v2}}', { v0: direction, v1: x, v2: y }),
+          'edge.a11yDescription.default': tr('Press enter or space to select an edge. You can then press delete to remove it or escape to cancel.'),
+          'controls.ariaLabel': tr('Control Panel'),
+          'controls.zoomIn.ariaLabel': tr('Zoom In'),
+          'controls.zoomOut.ariaLabel': tr('Zoom Out'),
+          'controls.fitView.ariaLabel': tr('Fit View'),
+          'controls.interactive.ariaLabel': tr('Toggle Interactivity'),
+          'minimap.ariaLabel': tr('Mini Map'),
+          'handle.ariaLabel': tr('Handle'),
+        }}
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}

@@ -1,3 +1,4 @@
+import { tr } from '../../i18n'
 import { useCallback, useState, type MouseEvent, type ReactNode } from 'react'
 /* eslint-disable react-refresh/only-export-components -- hook + private menu UI helpers */
 import {
@@ -157,7 +158,7 @@ export function useNodeMenu({
           <IconButton
             size="small"
             className="nodrag nopan"
-            aria-label="Run to here"
+            aria-label={tr("Run to here")}
             disabled={isExecuting}
             onClick={runFromButton}
             onMouseDown={(event) => event.stopPropagation()}
@@ -179,7 +180,7 @@ export function useNodeMenu({
           <IconButton
             size="small"
             className="nodrag nopan"
-            aria-label="Node actions"
+            aria-label={tr("Node actions")}
             aria-haspopup="menu"
             aria-expanded={open}
             onClick={openFromButton}
@@ -266,7 +267,7 @@ export function useNodeMenu({
                 lineHeight: 1.2,
               }}
             >
-              {category === 'user_scripts' ? 'My Scripts' : category}
+              {tr(category === 'user_scripts' ? 'My Scripts' : category)}
             </Typography>
             <Typography
               sx={{
@@ -300,7 +301,7 @@ export function useNodeMenu({
               <MenuGlyph>▶</MenuGlyph>
             </ListItemIcon>
             <ListItemText
-              primary="Run to here"
+              primary={tr("Run to here")}
               slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 600 } } }}
             />
           </MenuItem>
@@ -320,7 +321,7 @@ export function useNodeMenu({
               <MenuGlyph>⎘</MenuGlyph>
             </ListItemIcon>
             <ListItemText
-              primary="Duplicate"
+              primary={tr("Duplicate")}
               slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 600 } } }}
             />
             <ShortcutHint keys={`${modKey}+D`} />
@@ -344,7 +345,7 @@ export function useNodeMenu({
               <MenuGlyph danger>⌫</MenuGlyph>
             </ListItemIcon>
             <ListItemText
-              primary="Delete"
+              primary={tr("Delete")}
               slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 600, color: '#ff8a80' } } }}
             />
             <ShortcutHint keys="Del" />

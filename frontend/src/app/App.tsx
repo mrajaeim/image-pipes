@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../i18n'
 import { Box, Tab, Tabs } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
 import { PipelineCanvas } from '../features/canvas/PipelineCanvas'
@@ -38,6 +39,7 @@ import { CustomCodeTrustDialog } from '../features/execution/CustomCodeTrustDial
 type NamePrompt = 'save' | 'export' | 'rename' | null
 
 export default function App() {
+  useLocale()
   const toWorkflowDocument = useGraphStore((s) => s.toWorkflowDocument)
   const workflowId = useGraphStore((s) => s.workflowId)
   const workflowName = useGraphStore((s) => s.workflowName)
@@ -218,13 +220,13 @@ export default function App() {
         open={namePrompt != null}
         title={
           namePrompt === 'rename'
-            ? 'Rename workflow'
+            ? tr("Rename workflow")
             : namePrompt === 'export'
-              ? 'Export'
-              : 'Save workflow'
+              ? tr("Export")
+              : tr("Save workflow")
         }
         confirmLabel={
-          namePrompt === 'rename' ? 'Rename' : namePrompt === 'export' ? 'Export' : 'Save'
+          namePrompt === 'rename' ? tr("Rename") : namePrompt === 'export' ? tr("Export") : tr("Save")
         }
         initialName={workflowName}
         initialDescription={workflowDescription}
@@ -306,8 +308,8 @@ export default function App() {
                 '& .MuiTabs-indicator': { bgcolor: '#7dcea0', height: 2 },
               }}
             >
-              <Tab label="Code" />
-              <Tab label="Results" />
+              <Tab label={tr("Code")} />
+              <Tab label={tr("Results")} />
             </Tabs>
             <Box sx={{ flex: 1, minHeight: 0 }}>
               {sideTab === 0 ? <CodePanel /> : <PreviewGrid />}

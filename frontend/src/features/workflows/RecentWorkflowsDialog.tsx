@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../../i18n'
 import { useState } from 'react'
 import {
   Box,
@@ -67,6 +68,7 @@ function WorkflowRow({
   onOpen: () => void
   onDelete: () => void
 }) {
+  useLocale()
   const nodeCount = workflow.graph.nodes.length
   return (
     <Box
@@ -104,9 +106,7 @@ function WorkflowRow({
                 textTransform: 'uppercase',
                 color: '#7dcea0',
               }}
-            >
-              Open
-            </Box>
+            >{tr("Open")}</Box>
           ) : null}
         </Typography>
         {workflow.description ? (
@@ -129,7 +129,7 @@ function WorkflowRow({
             fontVariantNumeric: 'tabular-nums',
           }}
         >
-          {nodeCount} node{nodeCount === 1 ? '' : 's'} · Updated {formatUpdatedAt(workflow.updatedAt)}
+           {tr("{{v0}} nodes · Updated {{v1}}", { v0: nodeCount, v1: formatUpdatedAt(workflow.updatedAt) })}
         </Typography>
       </Box>
       <Stack spacing={0.75} sx={{ justifyContent: 'center' }}>
@@ -139,9 +139,7 @@ function WorkflowRow({
           disabled={disabled || active}
           onClick={onOpen}
           sx={outlineBtnSx}
-        >
-          Open
-        </Button>
+        >{tr("Open")}</Button>
         <Button
           size="small"
           variant="outlined"
@@ -156,9 +154,7 @@ function WorkflowRow({
               bgcolor: 'rgba(192,57,43,0.12)',
             },
           }}
-        >
-          Delete
-        </Button>
+        >{tr("Delete")}</Button>
       </Stack>
     </Box>
   )
@@ -169,6 +165,7 @@ export function RecentWorkflowsDialog({
   onClose,
   disabled,
 }: RecentWorkflowsDialogProps) {
+  useLocale()
   const workflowId = useGraphStore((s) => s.workflowId)
   const workflowDirty = useGraphStore((s) => s.workflowDirty)
   const [workflows, setWorkflows] = useState<WorkflowRecord[]>([])
@@ -200,7 +197,7 @@ export function RecentWorkflowsDialog({
   }
 
   const onDelete = (id: string, name: string) => {
-    if (!window.confirm(`Delete “${name}” from recent workflows? This cannot be undone.`)) {
+    if (!window.confirm(tr("Delete “{{v0}}” from recent workflows? This cannot be undone.", { v0: name }))) {
       return
     }
     deleteWorkflowById(id)
@@ -254,15 +251,11 @@ export function RecentWorkflowsDialog({
               letterSpacing: '-0.03em',
               lineHeight: 1.15,
             }}
-          >
-            Recent
-          </Typography>
-          <Typography sx={{ mt: 0.75, fontSize: 13, color: 'rgba(244,241,234,0.5)', maxWidth: 480 }}>
-            Open a workflow saved in this browser.
-          </Typography>
+          >{tr("Recent")}</Typography>
+          <Typography sx={{ mt: 0.75, fontSize: 13, color: 'rgba(244,241,234,0.5)', maxWidth: 480 }}>{tr("Open a workflow saved in this browser.")}</Typography>
         </Box>
         <IconButton
-          aria-label="Close recent workflows"
+          aria-label={tr("Close recent workflows")}
           onClick={onClose}
           size="small"
           sx={{
@@ -287,10 +280,8 @@ export function RecentWorkflowsDialog({
               color: 'rgba(244,241,234,0.45)',
             }}
           >
-            <Typography sx={{ fontSize: 14 }}>No saved workflows yet.</Typography>
-            <Typography sx={{ mt: 0.75, fontSize: 12.5, color: 'rgba(244,241,234,0.35)' }}>
-              Use Save or Export… from the Workflow menu.
-            </Typography>
+            <Typography sx={{ fontSize: 14 }}>{tr("No saved workflows yet.")}</Typography>
+            <Typography sx={{ mt: 0.75, fontSize: 12.5, color: 'rgba(244,241,234,0.35)' }}>{tr("Use Save or Export… from the Workflow menu.")}</Typography>
           </Box>
         ) : (
           <Stack spacing={1.25}>
@@ -315,8 +306,7 @@ export function RecentWorkflowsDialog({
             letterSpacing: '0.02em',
           }}
         >
-          {workflows.length} workflow{workflows.length === 1 ? '' : 's'} in this browser
-        </Typography>
+          {tr("{{v0}} workflows in this browser", { v0: workflows.length })}</Typography>
       </DialogContent>
     </Dialog>
   )

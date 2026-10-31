@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../../i18n'
 import { Box, Button, MenuItem, TextField, Typography } from '@mui/material'
 import { getDesktop, isDesktopApp } from '../../api/assets'
 import { notifyError } from '../../notify'
@@ -32,6 +33,7 @@ export function SaveImageParams({
   onOutputDirChange,
   onPackagingChange,
 }: SaveImageParamsProps) {
+  useLocale()
   const desktop = isDesktopApp()
   const hasFolder = Boolean(outputDir.trim())
 
@@ -56,15 +58,12 @@ export function SaveImageParams({
 
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }}>
-      <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.55)', lineHeight: 1.45 }}>
-        Choose bare files or a ZIP, then optionally pick a destination folder. Default is the
-        workflow output folder.
-      </Typography>
+      <Typography sx={{ fontSize: 13, color: 'rgba(244,241,234,0.55)', lineHeight: 1.45 }}>{tr("Choose bare files or a ZIP, then optionally pick a destination folder. Default is the workflow output folder.")}</Typography>
 
       <TextField
         select
         size="small"
-        label="Packaging"
+        label={tr("Packaging")}
         value={packaging}
         onChange={(event) => {
           const next = event.target.value === 'zip' ? 'zip' : 'bare'
@@ -72,13 +71,13 @@ export function SaveImageParams({
         }}
         helperText={
           packaging === 'zip'
-            ? 'Images are packed into one ZIP under the destination folder'
-            : 'Each image is written as a separate file'
+            ? tr("Images are packed into one ZIP under the destination folder")
+            : tr("Each image is written as a separate file")
         }
       >
         {PACKAGING_OPTIONS.map((option) => (
           <MenuItem key={option.value} value={option.value}>
-            {option.label}
+            {tr(option.label)}
           </MenuItem>
         ))}
       </TextField>
@@ -92,9 +91,7 @@ export function SaveImageParams({
             textTransform: 'uppercase',
             color: 'rgba(244,241,234,0.4)',
           }}
-        >
-          Output folder
-        </Typography>
+        >{tr("Output folder")}</Typography>
         <Box
           title={hasFolder ? outputDir : 'output'}
           sx={{
@@ -118,7 +115,7 @@ export function SaveImageParams({
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
             }}
           >
-            {hasFolder ? outputDir : 'output (default)'}
+            {hasFolder ? outputDir : tr('output (default)')}
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -128,7 +125,7 @@ export function SaveImageParams({
             onClick={() => void pickFolder()}
             sx={{ textTransform: 'none' }}
           >
-            {hasFolder ? 'Change folder' : 'Choose folder'}
+            {hasFolder ? tr("Change folder") : tr("Choose folder")}
           </Button>
           {hasFolder && (
             <Button
@@ -136,25 +133,20 @@ export function SaveImageParams({
               variant="text"
               onClick={() => onOutputDirChange('')}
               sx={{ textTransform: 'none', color: 'rgba(244,241,234,0.55)' }}
-            >
-              Use default
-            </Button>
+            >{tr("Use default")}</Button>
           )}
         </Box>
         {!desktop && (
-          <Typography sx={{ fontSize: 12, color: 'rgba(244,241,234,0.4)', lineHeight: 1.4 }}>
-            Folder selection needs the desktop app. Without it, saves use the default output
-            folder.
-          </Typography>
+          <Typography sx={{ fontSize: 12, color: 'rgba(244,241,234,0.4)', lineHeight: 1.4 }}>{tr("Folder selection needs the desktop app. Without it, saves use the default output folder.")}</Typography>
         )}
       </Box>
 
       <TextField
         size="small"
-        label="Filename"
+        label={tr("Filename")}
         value={filename}
         onChange={(event) => onFilenameChange(event.target.value)}
-        helperText="Templates: {filename}, {time}, {index}"
+        helperText={tr("Templates: {filename}, {time}, {index}")}
       />
 
       <Box>
@@ -167,9 +159,7 @@ export function SaveImageParams({
             color: 'rgba(244,241,234,0.4)',
             mb: 0.5,
           }}
-        >
-          Available templates
-        </Typography>
+        >{tr("Available templates")}</Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
           {SAVE_PATH_TEMPLATES.map((item) => (
             <Button
@@ -191,7 +181,7 @@ export function SaveImageParams({
                   bgcolor: 'rgba(125,206,160,0.08)',
                 },
               }}
-              title={item.hint}
+              title={tr(item.hint)}
             >
               {item.token}
               <Box

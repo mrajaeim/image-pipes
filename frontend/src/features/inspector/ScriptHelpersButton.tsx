@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../../i18n'
 import { useState } from 'react'
 import { Button } from '@mui/material'
 import { ScriptHelpersModal } from './ScriptHelpersModal'
@@ -10,6 +11,7 @@ type ScriptHelpersButtonProps = {
 }
 
 export function ScriptHelpersButton({ compact = false }: ScriptHelpersButtonProps) {
+  useLocale()
   const [open, setOpen] = useState(false)
 
   return (
@@ -17,7 +19,7 @@ export function ScriptHelpersButton({ compact = false }: ScriptHelpersButtonProp
       <Button
         size="small"
         variant="outlined"
-        aria-label="Script helpers"
+        aria-label={tr("Script helpers")}
         onClick={() => setOpen(true)}
         sx={{
           textTransform: 'none',
@@ -34,7 +36,7 @@ export function ScriptHelpersButton({ compact = false }: ScriptHelpersButtonProp
           },
         }}
       >
-        {compact ? '?' : 'Helpers'}
+        {compact ? '?' : tr("Helpers")}
       </Button>
       <ScriptHelpersModal open={open} onClose={() => setOpen(false)} />
     </>

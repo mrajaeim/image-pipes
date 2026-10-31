@@ -25,6 +25,7 @@ import {
   userScriptCodeKey,
 } from '../workflow/customCodeTrust'
 import { portTypeColor } from '../lib/portTypes'
+import { canonicalizeSelectParams } from '../workflow/canonicalizeSelectParams'
 
 
 type PipelineNode = Node<GraphNodeData>
@@ -826,7 +827,7 @@ export const useGraphStore = create<GraphState>((set, get) => ({
           type: meta.type,
           label: meta.label,
           category: meta.category,
-          params: { ...raw.params },
+          params: canonicalizeSelectParams(meta, raw.params),
           ports: meta.ports,
           localPreviewUrls: [],
           active: false,

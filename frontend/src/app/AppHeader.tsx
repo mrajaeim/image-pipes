@@ -1,3 +1,4 @@
+import { tr, useLocale, setLocale } from '../i18n'
 import {
   Box,
   Button,
@@ -176,6 +177,7 @@ export function AppHeader({
   onOpenTemplates,
   onOpenRecent,
 }: AppHeaderProps) {
+  const locale = useLocale()
   const seed = useGraphStore((s) => s.seed)
   const iterationCount = useGraphStore((s) => s.iterationCount)
   const setSeed = useGraphStore((s) => s.setSeed)
@@ -188,6 +190,7 @@ export function AppHeader({
   const workflowDirty = useGraphStore((s) => s.workflowDirty)
   const [infoOpen, setInfoOpen] = useState(false)
   const [workflowAnchor, setWorkflowAnchor] = useState<null | HTMLElement>(null)
+  const [languageAnchor, setLanguageAnchor] = useState<null | HTMLElement>(null)
   const workflowMenuOpen = Boolean(workflowAnchor)
 
   const closeWorkflowMenu = () => setWorkflowAnchor(null)
@@ -218,7 +221,7 @@ export function AppHeader({
           component="button"
           type="button"
           onClick={() => setInfoOpen(true)}
-          aria-label="About Image Pipes"
+          aria-label={tr("About Image Pipes")}
           sx={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -250,9 +253,7 @@ export function AppHeader({
                 color: '#f4f1ea',
                 letterSpacing: '-0.02em',
               }}
-            >
-              Image Pipes
-            </Typography>
+            >{tr("Image Pipes")}</Typography>
             <Typography
               sx={{
                 fontSize: 11,
@@ -260,14 +261,12 @@ export function AppHeader({
                 lineHeight: 1.2,
                 whiteSpace: 'nowrap',
               }}
-            >
-              OpenCV pipeline playground
-            </Typography>
+            >{tr("OpenCV pipeline playground")}</Typography>
           </Box>
         </Box>
         <IconButton
           size="small"
-          aria-label="Project info"
+          aria-label={tr("Project info")}
           onClick={() => setInfoOpen(true)}
           sx={{
             width: 30,
@@ -283,9 +282,7 @@ export function AppHeader({
               bgcolor: 'rgba(125,206,160,0.08)',
             },
           }}
-        >
-          i
-        </IconButton>
+        >{tr("i")}</IconButton>
         <Box
           sx={{
             display: { xs: 'none', sm: 'flex' },
@@ -306,9 +303,7 @@ export function AppHeader({
               color: 'rgba(244,241,234,0.4)',
               lineHeight: 1.2,
             }}
-          >
-            Workflow
-          </Typography>
+          >{tr("Workflow")}</Typography>
           <Typography
             title={workflowName}
             sx={{
@@ -338,8 +333,8 @@ export function AppHeader({
         spacing={0.75}
         sx={{ display: { xs: 'none', md: 'flex' }, ml: 1 }}
       >
-        <StatPill label="Nodes" value={nodeCount} />
-        <StatPill label="Links" value={edgeCount} />
+        <StatPill label={tr("Nodes")} value={nodeCount} />
+        <StatPill label={tr("Links")} value={edgeCount} />
       </Stack>
 
       <Box sx={{ flex: 1 }} />
@@ -357,13 +352,13 @@ export function AppHeader({
         }}
       >
         <Tooltip
-          title="Base random seed for stochastic nodes (noise, augmentations, etc.). The same seed gives reproducible results; each iteration uses seed + iteration index."
+          title={tr("Base random seed for stochastic nodes (noise, augmentations, etc.). The same seed gives reproducible results; each iteration uses seed + iteration index.")}
           arrow
           enterDelay={400}
         >
           <TextField
             size="small"
-            label="Seed"
+            label={tr("Seed")}
             type="number"
             value={seed}
             onChange={(e) => setSeed(Number(e.target.value))}
@@ -371,13 +366,13 @@ export function AppHeader({
           />
         </Tooltip>
         <Tooltip
-          title="How many times to run the full pipeline over your image set. A batch of 10 images with Iterations=1 runs once; raise this to preview stochastic variation."
+          title={tr("How many times to run the full pipeline over your image set. A batch of 10 images with Iterations=1 runs once; raise this to preview stochastic variation.")}
           arrow
           enterDelay={400}
         >
           <TextField
             size="small"
-            label="Iterations"
+            label={tr("Iterations")}
             type="number"
             value={iterationCount}
             onChange={(e) => setIterationCount(Math.max(1, Number(e.target.value) || 1))}
@@ -415,9 +410,7 @@ export function AppHeader({
                 bgcolor: 'rgba(192,57,43,0.12)',
               },
             }}
-          >
-            Cancel
-          </Button>
+          >{tr("Cancel")}</Button>
         ) : null}
 
         <Button
@@ -444,7 +437,7 @@ export function AppHeader({
           }}
         >
           <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
-            {isExecuting ? 'Running…' : 'Run'}
+            {isExecuting ? tr("Running…") : tr("Run")}
           </Box>
         </Button>
 
@@ -453,9 +446,7 @@ export function AppHeader({
           disabled={isExecuting || !selectedNodeId}
           onClick={onRunToSelected}
           sx={outlineBtnSx}
-        >
-          Run to selected
-        </Button>
+        >{tr("Run to selected")}</Button>
       </Stack>
 
       <Stack
@@ -478,9 +469,7 @@ export function AppHeader({
           aria-controls={workflowMenuOpen ? 'workflow-menu' : undefined}
           onClick={(event) => setWorkflowAnchor(event.currentTarget)}
           sx={outlineBtnSx}
-        >
-          Workflow
-          <Box component="span" sx={{ ml: 0.75, fontSize: 10, opacity: 0.7, lineHeight: 1 }}>
+        >{tr("Workflow")}<Box component="span" sx={{ ml: 0.75, fontSize: 10, opacity: 0.7, lineHeight: 1 }}>
             ▾
           </Box>
         </Button>
@@ -513,28 +502,62 @@ export function AppHeader({
             },
           }}
         >
-          <MenuItem onClick={() => runMenuAction(onNewWorkflow)} sx={menuItemSx}>
-            New
+          <MenuItem onClick={() => runMenuAction(onNewWorkflow)} sx={menuItemSx}>{tr("New")}</MenuItem>
+          <MenuItem onClick={() => runMenuAction(onSaveWorkflow)} sx={menuItemSx}>{tr("Save")}</MenuItem>
+          <MenuItem
+            aria-haspopup="menu"
+            aria-expanded={languageAnchor ? 'true' : undefined}
+            aria-controls={languageAnchor ? 'language-menu' : undefined}
+            onClick={(event) => setLanguageAnchor(event.currentTarget)}
+            sx={menuItemSx}
+          >
+            {tr("Language")}
           </MenuItem>
-          <MenuItem onClick={() => runMenuAction(onSaveWorkflow)} sx={menuItemSx}>
-            Save
-          </MenuItem>
-          <MenuItem onClick={() => runMenuAction(onSaveAsWorkflow)} sx={menuItemSx}>
-            Export…
-          </MenuItem>
-          <MenuItem onClick={() => runMenuAction(onRenameWorkflow)} sx={menuItemSx}>
-            Rename…
-          </MenuItem>
+          <MenuItem onClick={() => runMenuAction(onSaveAsWorkflow)} sx={menuItemSx}>{tr("Export…")}</MenuItem>
+          <MenuItem onClick={() => runMenuAction(onRenameWorkflow)} sx={menuItemSx}>{tr("Rename…")}</MenuItem>
           <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', my: 0.5 }} />
-          <MenuItem onClick={() => runMenuAction(onImportWorkflow)} sx={menuItemSx}>
-            Import…
-          </MenuItem>
-          <MenuItem onClick={() => runMenuAction(onOpenTemplates)} sx={menuItemSx}>
-            Templates…
-          </MenuItem>
-          <MenuItem onClick={() => runMenuAction(onOpenRecent)} sx={menuItemSx}>
-            Recent…
-          </MenuItem>
+          <MenuItem onClick={() => runMenuAction(onImportWorkflow)} sx={menuItemSx}>{tr("Import…")}</MenuItem>
+          <MenuItem onClick={() => runMenuAction(onOpenTemplates)} sx={menuItemSx}>{tr("Templates…")}</MenuItem>
+          <MenuItem onClick={() => runMenuAction(onOpenRecent)} sx={menuItemSx}>{tr("Recent…")}</MenuItem>
+        </Menu>
+        <Menu
+          id="language-menu"
+          anchorEl={languageAnchor}
+          open={Boolean(languageAnchor)}
+          onClose={() => setLanguageAnchor(null)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          slotProps={{
+            paper: {
+              elevation: 0,
+              sx: {
+                minWidth: 200,
+                bgcolor: '#161616',
+                color: '#f4f1ea',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 1.5,
+                overflow: 'hidden',
+                boxShadow: '0 18px 40px rgba(0,0,0,0.55)',
+                backgroundImage: 'none',
+              },
+            },
+            list: { dense: true, sx: { py: 0.5 } },
+          }}
+        >
+          {(['zh-CN', 'en'] as const).map((language) => (
+            <MenuItem
+              key={language}
+              selected={locale === language}
+              onClick={async () => {
+                await setLocale(language)
+                setLanguageAnchor(null)
+                closeWorkflowMenu()
+              }}
+              sx={menuItemSx}
+            >
+              {locale === language ? '✓ ' : ''}{language === 'zh-CN' ? '简体中文' : 'English'}
+            </MenuItem>
+          ))}
         </Menu>
       </Stack>
     </Box>

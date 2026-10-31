@@ -1,3 +1,5 @@
+import { metadataText, messageText } from '../../i18n'
+import { tr, useLocale } from '../../i18n'
 import { useEffect, useRef, useState } from 'react'
 import { Box, Button, IconButton, Typography } from '@mui/material'
 import {
@@ -64,6 +66,7 @@ export function FileParamInput({
   onPreviews,
   onRemovePreview,
 }: FileParamInputProps) {
+  useLocale()
   const fileRef = useRef<HTMLInputElement>(null)
   const addRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
@@ -203,12 +206,12 @@ export function FileParamInput({
           color: 'rgba(244,241,234,0.4)',
         }}
       >
-        {field.label}
+        {metadataText(field.label)}
       </Typography>
       <Typography sx={{ fontSize: 12, color: 'rgba(244,241,234,0.55)', lineHeight: 1.4 }}>
         {desktop
-          ? 'Native dialogs register local paths in the asset registry (no copy).'
-          : (field.description ?? `Allowed: ${acceptAttr(field)}`)}
+          ? tr("Native dialogs register local paths in the asset registry (no copy).")
+          : (metadataText(field.description) ?? tr("Allowed: {{v0}}", { v0: acceptAttr(field) }))}
       </Typography>
       <Box
         sx={{
@@ -227,9 +230,7 @@ export function FileParamInput({
             else fileRef.current?.click()
           }}
           sx={{ textTransform: 'none' }}
-        >
-          Choose images
-        </Button>
+        >{tr("Choose images")}</Button>
         <Button
           size="small"
           variant="outlined"
@@ -239,9 +240,7 @@ export function FileParamInput({
             else addRef.current?.click()
           }}
           sx={{ textTransform: 'none' }}
-        >
-          Add image
-        </Button>
+        >{tr("Add image")}</Button>
         <Button
           size="small"
           variant="outlined"
@@ -251,9 +250,7 @@ export function FileParamInput({
             else folderRef.current?.click()
           }}
           sx={{ textTransform: 'none' }}
-        >
-          Choose folder
-        </Button>
+        >{tr("Choose folder")}</Button>
       </Box>
       {!desktop && (
         <>
@@ -313,13 +310,13 @@ export function FileParamInput({
               <Box
                 component="img"
                 src={src}
-                alt={`Image ${index + 1}`}
+                alt={tr("Image {{v0}}", { v0: index + 1 })}
                 sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
               />
               {onRemovePreview && (
                 <IconButton
                   size="small"
-                  aria-label={`Remove image ${index + 1}`}
+                  aria-label={tr("Remove image {{v0}}", { v0: index + 1 })}
                   onClick={() => onRemovePreview(index)}
                   sx={{
                     position: 'absolute',
@@ -340,11 +337,11 @@ export function FileParamInput({
         </Box>
       )}
       <Typography variant="caption" color="text.secondary">
-        {summary}
+        {messageText(summary)}
       </Typography>
       {error && (
         <Typography variant="caption" color="error">
-          {error}
+          {messageText(error)}
         </Typography>
       )}
     </Box>

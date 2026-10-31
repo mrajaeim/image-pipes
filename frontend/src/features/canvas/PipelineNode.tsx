@@ -1,3 +1,5 @@
+import { nodeLabel, metadataText } from '../../i18n'
+import { tr, useLocale } from '../../i18n'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Handle,
@@ -56,9 +58,9 @@ function toSrc(image: string): string {
   return image.startsWith('data:') ? image : `data:image/png;base64,${image}`
 }
 
-function portLabel(portId: string | undefined, ports: PortSpec[]): string | undefined {
+function portLabel(portId: string | undefined, ports: PortSpec[], locale?: ReturnType<typeof useLocale>): string | undefined {
   if (!portId || portId === 'image') return undefined
-  return ports.find((port) => port.id === portId)?.name ?? portId.toUpperCase()
+  return metadataText(ports.find((port) => port.id === portId)?.name, locale) ?? portId.toUpperCase()
 }
 
 function sideHandleTop(index: number, total: number, contentHeight: number): number {
@@ -78,6 +80,7 @@ function PortTag({
   top: number
   side: 'left' | 'right'
 }) {
+  useLocale()
   return (
     <Typography
       component="span"
@@ -134,6 +137,7 @@ function buildRowsFromColumns(
   columns: string[],
   columnImages: string[][],
   sectionPorts: PortSpec[],
+  locale: ReturnType<typeof useLocale>,
 ): ImageItem[][] {
   const totalRows = Math.max(1, ...columnImages.map((images) => images.length))
   const hasAny = columnImages.some((images) => images.some(Boolean))
@@ -144,7 +148,7 @@ function buildRowsFromColumns(
     rows.push(
       columns.map((portId, col) => {
         const src = columnImages[col][row] ?? ''
-        const channel = portLabel(portId, sectionPorts)
+        const channel = portLabel(portId, sectionPorts, locale)
         return {
           src,
           portId,
@@ -161,10 +165,12 @@ function buildPreviewGrid({
   entry,
   outputPorts,
   localPreviewUrls,
+  locale,
 }: {
   entry: NodeImageState | undefined
   outputPorts: PortSpec[]
   localPreviewUrls: string[]
+  locale: ReturnType<typeof useLocale>
 }): { columns: string[]; slides: ImageItem[][][]; sectionPorts: PortSpec[] } {
   // Prefer image-like output ports for the preview grid; annotation ports are
   // overlaid on the image by the backend and shown as caption chips.
@@ -195,7 +201,7 @@ function buildPreviewGrid({
     const slides: ImageItem[][][] = []
     for (let slide = 0; slide < slideCount; slide += 1) {
       const columnImages = columnIterations.map((iters) => iters[slide] ?? [])
-      const rows = buildRowsFromColumns(columns, columnImages, sectionPorts)
+      const rows = buildRowsFromColumns(columns, columnImages, sectionPorts, locale)
       if (rows.length > 0) slides.push(rows)
     }
     if (slides.length > 0) return { columns, slides, sectionPorts }
@@ -226,6 +232,7 @@ function SamplePager({
   total: number
   onChange: (next: number) => void
 }) {
+  useLocale()
   if (total <= 1) return null
   const display = index + 1
   return (
@@ -245,7 +252,7 @@ function SamplePager({
     >
       <IconButton
         size="small"
-        aria-label="Previous result"
+        aria-label={tr("Previous result")}
         disabled={index <= 0}
         onClick={() => onChange(Math.max(0, index - 1))}
         sx={{
@@ -274,7 +281,7 @@ function SamplePager({
       </Typography>
       <IconButton
         size="small"
-        aria-label="Next result"
+        aria-label={tr("Next result")}
         disabled={index >= total - 1}
         onClick={() => onChange(Math.min(total - 1, index + 1))}
         sx={{
@@ -294,6 +301,7 @@ function SamplePager({
 }
 
 export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowNode>) {
+  const locale = useLocale()
   const [viewer, setViewer] = useState<ImageItem | null>(null)
   const [slideIndex, setSlideIndex] = useState(0)
   const updateNodeInternals = useUpdateNodeInternals()
@@ -305,7 +313,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
   )
   const { menu: nodeMenu, openFromContext } = useNodeMenu({
     nodeId: id,
-    label: data.label,
+    label: nodeLabel(data.type, data.label),
     category: data.category,
   })
 
@@ -342,8 +350,9 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
             entry: nodeImages[id],
             outputPorts,
             localPreviewUrls,
+            locale,
           }),
-    [id, isSaveImage, localPreviewUrls, nodeImages, outputPorts],
+    [id, isSaveImage, localPreviewUrls, nodeImages, outputPorts, locale],
   )
 
   const sectionPorts = grid.sectionPorts
@@ -395,10 +404,10 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
     const kpCount = Array.isArray(annotations.keypoints) ? annotations.keypoints.length : 0
     if (boxCount === 0 && kpCount === 0) return null
     const parts: string[] = []
-    if (boxCount > 0) parts.push(`${boxCount} bbox${boxCount === 1 ? '' : 's'}`)
-    if (kpCount > 0) parts.push(`${kpCount} kp`)
+    if (boxCount > 0) parts.push(tr(boxCount === 1 ? '{{v0}} bbox' : '{{v0}} bboxes', { v0: boxCount, lng: locale }))
+    if (kpCount > 0) parts.push(tr('{{v0}} kp', { v0: kpCount, lng: locale }))
     return parts.join(' · ')
-  }, [id, nodeImages])
+  }, [id, nodeImages, locale])
 
   const firstImageInSlide = (index: number): ImageItem | undefined => {
     const rows = grid.slides[index]
@@ -464,7 +473,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                 textOverflow: 'ellipsis',
               }}
             >
-              {data.category}
+              {tr(data.category === 'user_scripts' ? 'My Scripts' : data.category)}
             </Typography>
             <Typography
               sx={{
@@ -477,7 +486,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                 textOverflow: 'ellipsis',
               }}
             >
-              {data.label}
+              {nodeLabel(data.type, data.label)}
             </Typography>
           </Box>
           <Box sx={{ flex: '0 0 auto', display: 'flex', alignItems: 'center' }}>{nodeMenu}</Box>
@@ -498,7 +507,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
           {timing && (
             <Box
               component="span"
-              title={timing.cacheHit ? 'Served from cache' : 'Execution time'}
+              title={timing.cacheHit ? tr("Served from cache") : tr("Execution time")}
               sx={{
                 position: 'absolute',
                 top: 6,
@@ -524,15 +533,13 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                 pointerEvents: 'none',
               }}
             >
-              {timing.ms < 10 ? timing.ms.toFixed(1) : Math.round(timing.ms)}
-              ms
-              {timing.cacheHit ? ' · cache' : ''}
+              {timing.ms < 10 ? timing.ms.toFixed(1) : Math.round(timing.ms)}{tr("ms")}{timing.cacheHit ? tr(' · cache') : ''}
             </Box>
           )}
           {annotationSummary && (
             <Box
               component="span"
-              title="Annotation targets from last run"
+              title={tr("Annotation targets from last run")}
               sx={{
                 position: 'absolute',
                 top: 6,
@@ -580,7 +587,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                   textTransform: 'uppercase',
                 }}
               >
-                {savePathKind}
+                {tr(savePathKind)}
               </Typography>
               <Typography
                 title={savePathDisplay}
@@ -629,7 +636,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                         lineHeight: 1.4,
                       }}
                     >
-                      {emptyHint}
+                      {tr(emptyHint)}
                     </Typography>
                   )}
                   {columnCount > 1 && sectionPorts[col] && (
@@ -649,7 +656,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                         textTransform: 'uppercase',
                       }}
                     >
-                      {sectionPorts[col].name}
+                      {metadataText(sectionPorts[col].name)}
                     </Typography>
                   )}
                 </Box>
@@ -690,7 +697,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                           <Box
                             component="img"
                             src={toSrc(item.src)}
-                            alt={item.label ?? 'node image'}
+                            alt={item.label ?? tr('node image')}
                             draggable={false}
                             sx={{
                               width: '100%',
@@ -721,7 +728,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
                           >
                             {item.label ??
                               portLabel(item.portId, sectionPorts) ??
-                              `Out ${col + 1}`}
+                              tr("Out {{v0}}", { v0: col + 1 })}
                           </Typography>
                         )}
                       </Box>
@@ -763,7 +770,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               />
               {showLabel && (
                 <PortTag
-                  label={port.optional ? `${port.name} (optional)` : port.name}
+                  label={port.optional ? tr("{{v0}} (optional)", { v0: metadataText(port.name) }) : metadataText(port.name)!}
                   top={top}
                   side="left"
                 />
@@ -790,7 +797,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               />
               {showLabel && (
                 <PortTag
-                  label={port.optional ? `${port.name} (optional)` : port.name}
+                  label={port.optional ? tr("{{v0}} (optional)", { v0: metadataText(port.name) }) : metadataText(port.name)!}
                   top={top}
                   side="right"
                 />
@@ -832,7 +839,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
           }}
         >
           <Box component="span">
-            {data.label}
+            {nodeLabel(data.type, data.label)}
             {totalSlides > 1 ? ` · ${activeIndex + 1}/${totalSlides}` : ''}
             {viewer?.label ? ` · ${viewer.label}` : ''}
           </Box>
@@ -840,7 +847,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
             <Stack direction="row" spacing={0.5} className="nodrag nopan">
               <IconButton
                 size="small"
-                aria-label="Previous result"
+                aria-label={tr("Previous result")}
                 disabled={activeIndex <= 0}
                 onClick={() => openSlide(activeIndex - 1)}
                 sx={{ color: '#f0ebe3' }}
@@ -849,7 +856,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               </IconButton>
               <IconButton
                 size="small"
-                aria-label="Next result"
+                aria-label={tr("Next result")}
                 disabled={activeIndex >= totalSlides - 1}
                 onClick={() => openSlide(activeIndex + 1)}
                 sx={{ color: '#f0ebe3' }}
@@ -874,7 +881,7 @@ export function PipelineNodeView({ id, data, selected }: NodeProps<PipelineFlowN
               <Box
                 component="img"
                 src={toSrc(viewer.src)}
-                alt={viewer.label ?? data.label}
+                alt={viewer.label ?? nodeLabel(data.type, data.label)}
                 sx={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
               />
             )}

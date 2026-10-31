@@ -1,3 +1,5 @@
+import { messageText } from '../i18n'
+import { tr, useLocale } from '../i18n'
 import type { ReactNode } from 'react'
 import {
   MaterialDesignContent,
@@ -18,6 +20,7 @@ const baseContentSx = {
 } as const
 
 const StyledContent = forwardRef<HTMLDivElement, CustomContentProps>((props, ref) => {
+  useLocale()
   const variant = props.variant ?? 'default'
   const colors: Record<string, { bg: string; fg: string }> = {
     success: { bg: '#1b3d2f', fg: '#b8f0cf' },
@@ -32,6 +35,7 @@ const StyledContent = forwardRef<HTMLDivElement, CustomContentProps>((props, ref
     <MaterialDesignContent
       ref={ref}
       {...props}
+      message={typeof props.message === 'string' ? messageText(props.message) : props.message}
       style={{
         ...baseContentSx,
         backgroundColor: tone.bg,
@@ -43,10 +47,11 @@ const StyledContent = forwardRef<HTMLDivElement, CustomContentProps>((props, ref
 StyledContent.displayName = 'StyledSnackbarContent'
 
 function DismissButton({ snackbarId }: { snackbarId: string | number }) {
+  useLocale()
   return (
     <IconButton
       size="small"
-      aria-label="Dismiss"
+      aria-label={tr("Dismiss")}
       onClick={() => closeSnackbar(snackbarId)}
       sx={{ color: 'inherit', opacity: 0.7, '&:hover': { opacity: 1 } }}
     >
@@ -58,6 +63,7 @@ function DismissButton({ snackbarId }: { snackbarId: string | number }) {
 }
 
 export function AppSnackbarProvider({ children }: { children: ReactNode }) {
+  useLocale()
   return (
     <SnackbarProvider
       maxSnack={4}

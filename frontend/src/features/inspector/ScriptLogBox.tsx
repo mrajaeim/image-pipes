@@ -1,3 +1,4 @@
+import { tr, useLocale } from '../../i18n'
 import { useEffect, useRef } from 'react'
 import { Box, Typography } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
@@ -9,6 +10,7 @@ type ScriptLogBoxProps = {
 const EMPTY_LINES: string[] = []
 
 export function ScriptLogBox({ nodeId }: ScriptLogBoxProps) {
+  useLocale()
   const lines = useGraphStore((s) => s.scriptLogsByNodeId[nodeId] ?? EMPTY_LINES)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -20,9 +22,7 @@ export function ScriptLogBox({ nodeId }: ScriptLogBoxProps) {
 
   return (
     <Box sx={{ display: 'grid', gap: 0.75 }}>
-      <Typography sx={{ fontSize: 12, fontWeight: 650, color: 'rgba(244,241,234,0.7)' }}>
-        Script log
-      </Typography>
+      <Typography sx={{ fontSize: 12, fontWeight: 650, color: 'rgba(244,241,234,0.7)' }}>{tr("Script log")}</Typography>
       <Box
         ref={listRef}
         sx={{
@@ -40,9 +40,7 @@ export function ScriptLogBox({ nodeId }: ScriptLogBoxProps) {
         }}
       >
         {lines.length === 0 ? (
-          <Typography sx={{ fontSize: 11, color: 'rgba(244,241,234,0.4)', fontFamily: 'inherit' }}>
-            No script logs yet — call <code>log(...)</code> in process().
-          </Typography>
+          <Typography sx={{ fontSize: 11, color: 'rgba(244,241,234,0.4)', fontFamily: 'inherit' }}>{tr("No script logs yet — call ")}<code>{tr("log(...)")}</code>{tr(" in process().")}</Typography>
         ) : (
           lines.map((line, index) => (
             <Box

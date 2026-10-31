@@ -1,3 +1,5 @@
+import { nodeLabel, metadataText, messageText } from '../../i18n'
+import { tr, useLocale } from '../../i18n'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -35,6 +37,7 @@ function buildSchema(fields: ParamField[]) {
 }
 
 export function NodeInspector() {
+  useLocale()
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId)
   const nodes = useGraphStore((s) => s.nodes)
   const catalog = useGraphStore((s) => s.nodeCatalog)
@@ -68,13 +71,11 @@ export function NodeInspector() {
         <Typography
           variant="subtitle1"
           sx={{ fontFamily: '"Fraunces", Georgia, serif', fontWeight: 700, mb: 1 }}
-        >
-          Inspector
-        </Typography>
+        >{tr("Inspector")}</Typography>
         <Typography variant="body2" sx={{ color: 'rgba(244,241,234,0.55)', mb: 2, lineHeight: 1.5 }}>
           {nodeCount === 0
-            ? 'Drag a node from the palette, or load the Example pipeline to get started.'
-            : 'Click a node on the canvas to edit its parameters here.'}
+            ? tr("Drag a node from the palette, or load the Example pipeline to get started.")
+            : tr("Click a node on the canvas to edit its parameters here.")}
         </Typography>
         <Box
           component="ul"
@@ -86,9 +87,9 @@ export function NodeInspector() {
             lineHeight: 1.7,
           }}
         >
-          <li>Connect matching port types (image, mask, bboxes, keypoints)</li>
-          <li>Press Run to execute with live previews</li>
-          <li>Workflow menu: save, import, templates, and recent pipelines</li>
+          <li>{tr("Connect matching port types (image, mask, bboxes, keypoints)")}</li>
+          <li>{tr("Press Run to execute with live previews")}</li>
+          <li>{tr("Workflow menu: save, import, templates, and recent pipelines")}</li>
         </Box>
       </Box>
     )
@@ -99,7 +100,7 @@ export function NodeInspector() {
   return (
     <Box sx={{ p: 2, height: '100%', overflow: 'auto' }}>
       <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-        {selected.data.label}
+        {nodeLabel(selected.data.type, selected.data.label)}
       </Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
         {selected.data.type}
@@ -146,7 +147,7 @@ export function NodeInspector() {
             key={selected.id}
             nodeId={selected.id}
             nodeType={selected.data.type}
-            label={selected.data.label}
+            label={nodeLabel(selected.data.type, selected.data.label)}
             version={Number(selected.data.params.version ?? 1)}
             onVersionChange={(version) => {
               setValue('version', version, { shouldDirty: true, shouldValidate: true })
@@ -223,9 +224,7 @@ export function NodeInspector() {
         ) : (
           <>
             {fields.length === 0 && (
-              <Typography variant="body2" color="text.secondary">
-                No configurable parameters.
-              </Typography>
+              <Typography variant="body2" color="text.secondary">{tr("No configurable parameters.")}</Typography>
             )}
             {fields.map((field) => {
               if (
@@ -245,8 +244,8 @@ export function NodeInspector() {
                     key={`${selected.id}:${field.name}`}
                     select
                     size="small"
-                    label={field.label}
-                    helperText={field.description ?? undefined}
+                    label={metadataText(field.label)}
+                    helperText={metadataText(field.description)}
                     value={String(
                       selected.data.params[field.name] ?? field.default ?? '',
                     )}
@@ -261,7 +260,7 @@ export function NodeInspector() {
                   >
                     {field.options.map((option) => (
                       <MenuItem key={option} value={option}>
-                        {option}
+                        {metadataText(option)}
                       </MenuItem>
                     ))}
                   </TextField>
@@ -274,9 +273,9 @@ export function NodeInspector() {
                 <TextField
                   key={`${selected.id}:${field.name}`}
                   size="small"
-                  label={field.label}
+                  label={metadataText(field.label)}
                   type={field.type === 'string' ? 'text' : 'number'}
-                  helperText={errorText ?? field.description ?? undefined}
+                  helperText={errorText ? messageText(errorText) : metadataText(field.description)}
                   {...register(field.name)}
                 />
               )

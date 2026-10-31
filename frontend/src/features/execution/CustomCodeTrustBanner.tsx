@@ -1,8 +1,10 @@
+import { tr, useLocale } from '../../i18n'
 import { Box, Button, Typography } from '@mui/material'
 import { useGraphStore } from '../../store/graphStore'
 import { graphHasCustomCode, isCustomCodeTrusted } from '../../workflow/customCodeTrust'
 
 export function CustomCodeTrustBanner() {
+  useLocale()
   const nodes = useGraphStore((s) => s.nodes)
   const trustedCustomCodeHash = useGraphStore((s) => s.trustedCustomCodeHash)
   const userScriptCodes = useGraphStore((s) => s.userScriptCodes)
@@ -25,9 +27,7 @@ export function CustomCodeTrustBanner() {
         borderBottom: '1px solid rgba(192, 57, 43, 0.35)',
       }}
     >
-      <Typography sx={{ flex: 1, fontSize: 13, color: '#f0ebe3', lineHeight: 1.4 }}>
-        This workflow includes custom Python. Review and trust the code before running.
-      </Typography>
+      <Typography sx={{ flex: 1, fontSize: 13, color: '#f0ebe3', lineHeight: 1.4 }}>{tr("This workflow includes custom Python. Review and trust the code before running.")}</Typography>
       <Button
         size="small"
         variant="outlined"
@@ -43,9 +43,7 @@ export function CustomCodeTrustBanner() {
             bgcolor: 'rgba(255,255,255,0.06)',
           },
         }}
-      >
-        Review & trust
-      </Button>
+      >{tr("Review & trust")}</Button>
     </Box>
   )
 }

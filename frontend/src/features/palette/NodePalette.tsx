@@ -1,3 +1,5 @@
+import { nodeLabel, metadataText } from '../../i18n'
+import { tr, useLocale } from '../../i18n'
 import { useMemo, useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -43,8 +45,8 @@ function categoryAccent(category: string): string {
   return CATEGORY_ACCENT[category.toLowerCase()] ?? '#95a5a6'
 }
 
-function categoryLabel(category: string): string {
-  return CATEGORY_LABELS[category.toLowerCase()] ?? category
+function categoryLabel(category: string, locale?: ReturnType<typeof useLocale>): string {
+  return tr(CATEGORY_LABELS[category.toLowerCase()] ?? category, { lng: locale })
 }
 
 function portSummary(node: NodeMetadata): { inputs: number; outputs: number } {
@@ -69,6 +71,7 @@ function CategoryHeader({
   open: boolean
   onToggle: () => void
 }) {
+  useLocale()
   const accent = categoryAccent(category)
   return (
     <Box
@@ -154,6 +157,7 @@ function NodeCard({
   onAdd: (node: NodeMetadata) => void
   showStartBadge?: boolean
 }) {
+  useLocale()
   const accent = showStartBadge ? '#7dcea0' : categoryAccent(node.category)
   const { inputs, outputs } = portSummary(node)
 
@@ -165,7 +169,7 @@ function NodeCard({
         event.dataTransfer.effectAllowed = 'move'
       }}
       onDoubleClick={() => onAdd(node)}
-      title={`${node.description || node.type}\nDrag onto canvas · Double-click to add`}
+      title={tr("{{v0}}\nDrag onto canvas · Double-click to add", { v0: node.type.startsWith('user_script:') ? node.description || node.type : metadataText(node.description) || node.type })}
       sx={{
         position: 'relative',
         display: 'grid',
@@ -202,7 +206,7 @@ function NodeCard({
                 textOverflow: 'ellipsis',
               }}
             >
-              {node.label}
+              {nodeLabel(node.type, node.label)}
             </Typography>
             <Typography
               sx={{
@@ -216,13 +220,13 @@ function NodeCard({
                 overflow: 'hidden',
               }}
             >
-              {node.description || node.type}
+              {node.type.startsWith('user_script:') ? node.description || node.type : metadataText(node.description) || node.type}
             </Typography>
           </Box>
           <IconButton
             size="small"
             className="nodrag"
-            aria-label={`Add ${node.label}`}
+            aria-label={tr("Add {{v0}}", { v0: nodeLabel(node.type, node.label) })}
             onClick={(event) => {
               event.stopPropagation()
               onAdd(node)
@@ -260,8 +264,7 @@ function NodeCard({
               borderRadius: 0.75,
             }}
           >
-            {inputs} in
-          </Typography>
+            {inputs}{tr(" in")}</Typography>
           <Typography
             component="span"
             sx={{
@@ -275,8 +278,7 @@ function NodeCard({
               borderRadius: 0.75,
             }}
           >
-            {outputs} out
-          </Typography>
+            {outputs}{tr(" out")}</Typography>
           {showStartBadge && (
             <Typography
               component="span"
@@ -290,9 +292,7 @@ function NodeCard({
                 py: 0.15,
                 borderRadius: 0.75,
               }}
-            >
-              start
-            </Typography>
+            >{tr("start")}</Typography>
           )}
           {node.stochastic && (
             <Typography
@@ -307,9 +307,7 @@ function NodeCard({
                 py: 0.15,
                 borderRadius: 0.75,
               }}
-            >
-              random
-            </Typography>
+            >{tr("random")}</Typography>
           )}
         </Box>
       </Box>
@@ -318,6 +316,7 @@ function NodeCard({
 }
 
 export function NodePalette() {
+  const locale = useLocale()
   const setNodeCatalog = useGraphStore((s) => s.setNodeCatalog)
   const catalog = useGraphStore((s) => s.nodeCatalog)
   const addNodeFromType = useGraphStore((s) => s.addNodeFromType)
@@ -337,12 +336,12 @@ export function NodePalette() {
     const needle = query.trim().toLowerCase()
     if (!needle) return catalog
     return catalog.filter((node) => {
-      const haystack = [node.label, node.type, node.category, node.description]
+      const haystack = [nodeLabel(node.type, node.label, locale), node.type, categoryLabel(node.category, locale), node.type.startsWith('user_script:') ? node.description : metadataText(node.description, locale)]
         .join(' ')
         .toLowerCase()
       return haystack.includes(needle)
     })
-  }, [catalog, query])
+  }, [catalog, query, locale])
 
   const starters = useMemo(
     () => filtered.filter((node) => isStarterNode(node)),
@@ -400,9 +399,7 @@ export function NodePalette() {
             color: '#f4f1ea',
             lineHeight: 1.2,
           }}
-        >
-          Nodes
-        </Typography>
+        >{tr("Nodes")}</Typography>
         <Typography
           sx={{
             mt: 0.35,
@@ -411,15 +408,13 @@ export function NodePalette() {
             color: 'rgba(244,241,234,0.45)',
             lineHeight: 1.35,
           }}
-        >
-          Drag onto the canvas, or press + / double-click to drop
-        </Typography>
+        >{tr("Drag onto the canvas, or press + / double-click to drop")}</Typography>
         <TextField
           size="small"
           fullWidth
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search nodes…"
+          placeholder={tr("Search nodes…")}
           slotProps={{
             input: {
               startAdornment: (
@@ -431,7 +426,7 @@ export function NodePalette() {
                 <InputAdornment position="end">
                   <IconButton
                     size="small"
-                    aria-label="Clear search"
+                    aria-label={tr("Clear search")}
                     onClick={() => setQuery('')}
                     sx={{ color: 'rgba(255,255,255,0.4)' }}
                   >
@@ -465,14 +460,10 @@ export function NodePalette() {
 
       <Box sx={{ flex: 1, overflow: 'auto', px: 1.25, py: 1.25 }}>
         {isLoading && (
-          <Typography sx={{ px: 0.5, fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-            Loading node catalog…
-          </Typography>
+          <Typography sx={{ px: 0.5, fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{tr("Loading node catalog…")}</Typography>
         )}
         {error && (
-          <Typography sx={{ px: 0.5, fontSize: 12, color: '#ff8a80' }}>
-            Could not load nodes
-          </Typography>
+          <Typography sx={{ px: 0.5, fontSize: 12, color: '#ff8a80' }}>{tr("Could not load nodes")}</Typography>
         )}
         {!isLoading && !error && categories.length === 0 && (
           <Box
@@ -484,12 +475,8 @@ export function NodePalette() {
               borderRadius: 1.5,
             }}
           >
-            <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'rgba(244,241,234,0.7)' }}>
-              No matches
-            </Typography>
-            <Typography sx={{ mt: 0.5, fontSize: 11, color: 'rgba(244,241,234,0.4)' }}>
-              Try another search term
-            </Typography>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'rgba(244,241,234,0.7)' }}>{tr("No matches")}</Typography>
+            <Typography sx={{ mt: 0.5, fontSize: 11, color: 'rgba(244,241,234,0.4)' }}>{tr("Try another search term")}</Typography>
           </Box>
         )}
 
